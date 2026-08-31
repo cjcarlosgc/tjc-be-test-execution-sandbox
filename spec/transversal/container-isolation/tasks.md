@@ -1,0 +1,14 @@
+# container-isolation — Tareas
+
+- [ ] Docker security options.
+- [ ] mount policy.
+- [ ] network policy.
+- [ ] security regression tests.
+
+## Calidad
+
+- [ ] Agregar/actualizar pruebas.
+- [ ] Verificar manejo de errores.
+- [ ] Verificar observabilidad mínima.
+- [ ] Ejecutar lint/test/build.
+- [ ] Registrar evidencia de revisión en `harness/reports/`.
