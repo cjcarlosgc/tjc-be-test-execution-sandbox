@@ -2,12 +2,17 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
 import { ExecutionsService } from './executions.service.js';
 import { InMemoryExecutionRepository } from './execution.repository.js';
+import type { ExecutionPipelineService } from './execution-pipeline.service.js';
 import type { CreateSandboxExecutionRequestDto } from './dto/create-execution-request.dto.js';
 
 function fakeConfigService(): ConfigService {
   return {
     get: (_key: string, defaultValue?: unknown) => defaultValue,
   } as unknown as ConfigService;
+}
+
+function noopPipeline(): ExecutionPipelineService {
+  return { run: () => {} } as unknown as ExecutionPipelineService;
 }
 
 function validRequest(
@@ -51,7 +56,11 @@ describe('ExecutionsService', () => {
 
   beforeEach(() => {
     repository = new InMemoryExecutionRepository();
-    service = new ExecutionsService(repository, fakeConfigService());
+    service = new ExecutionsService(
+      repository,
+      fakeConfigService(),
+      noopPipeline(),
+    );
   });
 
   it('accepts a valid request and returns PENDING with a stable executionId', () => {

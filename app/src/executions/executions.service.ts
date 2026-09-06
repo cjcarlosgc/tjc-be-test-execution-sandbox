@@ -8,6 +8,7 @@ import type {
   SandboxExecutionResultResponse,
   SandboxExecutionStatusResponse,
 } from './dto/responses.js';
+import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import { computeRequestFingerprint } from './execution-fingerprint.js';
 import {
   EXECUTION_REPOSITORY,
@@ -28,6 +29,7 @@ export class ExecutionsService {
     @Inject(EXECUTION_REPOSITORY)
     private readonly repository: ExecutionRepository,
     private readonly configService: ConfigService,
+    private readonly pipeline: ExecutionPipelineService,
   ) {}
 
   create(
@@ -89,6 +91,7 @@ export class ExecutionsService {
     this.logger.log(
       `execution accepted executionId=${record.executionId} requestId=${record.requestId} testRunId=${record.testRunId} projectVersionId=${record.projectVersionId} correlationId=${correlationId}`,
     );
+    void this.pipeline.run(record.executionId);
 
     return this.toAcceptedResponse(record);
   }
