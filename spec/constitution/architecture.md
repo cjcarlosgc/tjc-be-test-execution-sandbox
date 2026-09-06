@@ -16,7 +16,7 @@ Usar Docker API vía `dockerode`, no shelling-out a `docker` CLI. Node version s
 
 El entorno temporal aprobado para desarrollo y prevalidación es la MacBook del desarrollador encendida, con Docker Desktop activo y su VM Linux proporcionando Docker Engine. El servicio debe seguir tratando el endpoint del motor como configuración y no asumir disponibilidad permanente del equipo local.
 
-El destino previsto es una VM Linux remota con Docker Engine. `DEC-INF-001` mantiene PENDING la selección de un proveedor preferentemente gratuito y bloquea solo su aprovisionamiento; no decide todavía imagen Node, package managers, cuotas ni exposición de red.
+El destino previsto es una VM Linux remota con Docker Engine. `DEC-INF-001` mantiene PENDING la selección de un proveedor preferentemente gratuito y bloquea solo su aprovisionamiento. Docker Desktop local queda confirmado como suficiente para desarrollo/prevalidación durante Sprint 2-4; el proveedor remoto se revisita después de Sprint 4 y no se adopta un fallback automático si una opción gratuita falla. Esto no decide todavía imagen Node, package managers, cuotas ni exposición de red.
 
 ## Etapas
 
