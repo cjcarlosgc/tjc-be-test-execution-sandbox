@@ -128,6 +128,26 @@ describe('ExecutionPipelineService', () => {
     expect(workspaceManager.cleanup).toHaveBeenCalled();
   });
 
+  it('keeps the persisted FAILED result even if cleanup itself fails (timeouts-cleanup)', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = build({
+      downloadToFile: async () => {
+        throw new InputDownloadFailedError('host not allowed', 'CONFIGURATION');
+      },
+      cleanup: async () => {
+        throw new Error('cleanup blew up');
+      },
+    });
+    repository.save(record);
+
+    // El error de cleanup no debe propagarse como un rechazo sin manejar.
+    await expect(pipeline.run(record.executionId)).resolves.toBeUndefined();
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('INPUT_DOWNLOAD_FAILED');
+  });
+
   it('classifies an unexpected error as UNKNOWN and still cleans up the workspace', async () => {
     const record = baseRecord();
     const { pipeline, repository, workspaceManager } = build({
