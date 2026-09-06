@@ -91,7 +91,10 @@ describe('Executions API (e2e)', () => {
   let snapshotSha256: string;
   let snapshotZip: Buffer;
   let artifactSha256: string;
-  const snapshotContent = { 'package.json': '{"name":"fixture-project"}' };
+  const snapshotContent = {
+    'package.json':
+      '{"name":"fixture-project","devDependencies":{"vitest":"^2.0.0"}}',
+  };
   const artifactContent = 'export const generated = true;\n';
 
   beforeAll(async () => {
@@ -301,6 +304,39 @@ describe('Executions API (e2e)', () => {
     expect(status.body.status).toBe('PREPARING');
     expect(status.body.stage).toBe('PREPARING');
     expect(status.body.failureCode).toBeNull();
+  });
+
+  it('fails with UNSUPPORTED_RUNNER when runnerHint does not match the project', async () => {
+    const accepted = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+      .send(
+        validExecutionPayload({
+          requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          // El snapshot real declara vitest; se pide JEST a propósito.
+          runnerHint: 'JEST',
+          snapshot: {
+            role: 'PROJECT_SNAPSHOT',
+            url: `${fixtureServer.baseUrl}/snapshot.zip`,
+            expiresAt: '2099-01-01T00:00:00.000Z',
+            sha256: snapshotSha256,
+            sizeBytes: snapshotZip.length,
+          },
+        }),
+      );
+
+    expect(accepted.status).toBe(202);
+    const executionId = accepted.body.executionId;
+
+    await pollExecutionStatus(app, executionId, (status) => status === 'FAILED');
+
+    const result = await request(app.getHttpServer())
+      .get(`/executions/${executionId}/result`)
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
+
+    expect(result.body.failure.code).toBe('UNSUPPORTED_RUNNER');
+    expect(result.body.failure.category).toBe('CONFIGURATION');
   });
 
   it('returns 404 for an unknown executionId', async () => {

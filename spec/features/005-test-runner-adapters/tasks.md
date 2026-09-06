@@ -1,15 +1,15 @@
 # 005-test-runner-adapters — Tareas
 
-- [ ] Interface.
-- [ ] Jest adapter.
-- [ ] Vitest adapter.
-- [ ] fixtures de outputs reales.
-- [ ] parse failures.
+- [x] Interface.
+- [x] Jest adapter.
+- [x] Vitest adapter.
+- [x] fixtures de outputs reales.
+- [x] parse failures.
 
 ## Calidad
 
-- [ ] Agregar/actualizar pruebas.
-- [ ] Verificar manejo de errores.
-- [ ] Verificar observabilidad mínima.
-- [ ] Ejecutar lint/test/build.
-- [ ] Registrar evidencia de revisión en `harness/reports/`.
+- [x] Agregar/actualizar pruebas.
+- [x] Verificar manejo de errores.
+- [x] Verificar observabilidad mínima.
+- [x] Ejecutar lint/test/build.
+- [x] Registrar evidencia de revisión en `harness/reports/`.

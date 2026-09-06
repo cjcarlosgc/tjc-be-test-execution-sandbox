@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { SandboxFailureFact } from '../common/contracts/sandbox-execution.contract.js';
 import { SandboxFactError } from '../common/errors/sandbox-fact-error.js';
 import { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
+import { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
 import {
   EXECUTION_INPUT_DOWNLOAD_SERVICE,
   type ExecutionInputDownloadService,
@@ -38,6 +39,7 @@ export class ExecutionPipelineService {
     @Inject(EXECUTION_INPUT_DOWNLOAD_SERVICE)
     private readonly downloadService: ExecutionInputDownloadService,
     private readonly artifactMaterializer: ArtifactMaterializer,
+    private readonly runnerAdapterRegistry: RunnerAdapterRegistry,
   ) {}
 
   /**
@@ -86,6 +88,14 @@ export class ExecutionPipelineService {
         workspacePath,
         record.artifacts,
       );
+
+      // Verifica runnerHint contra el proyecto ya materializado
+      // (INTEROP-1.1 §7.2); una incompatibilidad se propaga al catch como
+      // UNSUPPORTED_RUNNER/CONFIGURATION. No instala ni ejecuta nada.
+      await this.runnerAdapterRegistry.resolve(record.runnerHint, {
+        workspacePath,
+        resultsFilePath: path.join(workspacePath, '.sandbox-results.json'),
+      });
 
       this.repository.save({
         ...this.mustFind(executionId),

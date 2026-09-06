@@ -49,3 +49,9 @@ export class InvalidArtifactPathError extends SandboxFactError {
     super('INVALID_ARTIFACT_PATH', 'CONFIGURATION', message);
   }
 }
+
+export class UnsupportedRunnerError extends SandboxFactError {
+  constructor(message: string) {
+    super('UNSUPPORTED_RUNNER', 'CONFIGURATION', message);
+  }
+}

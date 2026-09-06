@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
+import type { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
 import type { ExecutionInputDownloadService } from '../workspace/execution-input-download.service.js';
 import type { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
 import type { WorkspaceManager } from '../workspace/workspace-manager.js';
-import { InputDownloadFailedError } from '../common/errors/sandbox-fact-error.js';
+import {
+  InputDownloadFailedError,
+  UnsupportedRunnerError,
+} from '../common/errors/sandbox-fact-error.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import { InMemoryExecutionRepository } from './execution.repository.js';
@@ -47,6 +51,7 @@ describe('ExecutionPipelineService', () => {
     extract?: () => Promise<void>;
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
+    resolveRunner?: () => Promise<unknown>;
   }) {
     const repository = new InMemoryExecutionRepository();
 
@@ -69,15 +74,20 @@ describe('ExecutionPipelineService', () => {
       applyArtifacts: options.applyArtifacts ?? (async () => []),
     } as unknown as ArtifactMaterializer;
 
+    const runnerAdapterRegistry = {
+      resolve: options.resolveRunner ?? (async () => ({})),
+    } as unknown as RunnerAdapterRegistry;
+
     const pipeline = new ExecutionPipelineService(
       repository,
       workspaceManager,
       archiveExtractor,
       downloadService,
       artifactMaterializer,
+      runnerAdapterRegistry,
     );
 
-    return { pipeline, repository, workspaceManager };
+    return { pipeline, repository, workspaceManager, runnerAdapterRegistry };
   }
 
   it('moves a PENDING execution to PREPARING and leaves it there on success', async () => {
@@ -146,6 +156,24 @@ describe('ExecutionPipelineService', () => {
 
     expect(applyArtifacts).toHaveBeenCalledWith('/tmp/workspace', []);
     expect(repository.findById(record.executionId)?.status).toBe('PREPARING');
+  });
+
+  it('fails with UNSUPPORTED_RUNNER when the runnerHint does not match the project', async () => {
+    const record = baseRecord();
+    const { pipeline, repository, workspaceManager } = build({
+      resolveRunner: async () => {
+        throw new UnsupportedRunnerError('project does not declare VITEST');
+      },
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('UNSUPPORTED_RUNNER');
+    expect(updated?.result?.failure?.category).toBe('CONFIGURATION');
+    expect(workspaceManager.cleanup).toHaveBeenCalled();
   });
 
   it('is a no-op when the execution no longer exists', async () => {
