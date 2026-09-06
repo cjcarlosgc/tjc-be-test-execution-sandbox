@@ -1,6 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
 import type { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
+import { parseJestCompatibleJson } from '../runner-adapters/jest-compatible-result-parser.js';
+import type { TestRunnerAdapter } from '../runner-adapters/test-runner-adapter.js';
+import type {
+  ContainerRunner,
+  ContainerRunResult,
+} from '../container/container-runner.service.js';
 import type { ExecutionInputDownloadService } from '../workspace/execution-input-download.service.js';
 import type { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
 import type { WorkspaceManager } from '../workspace/workspace-manager.js';
@@ -44,19 +53,74 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
   };
 }
 
+function okContainerResult(
+  overrides: Partial<ContainerRunResult> = {},
+): ContainerRunResult {
+  return {
+    exitCode: 0,
+    stdout: '',
+    stdoutTruncated: false,
+    stdoutOriginalBytes: 0,
+    stderr: '',
+    stderrTruncated: false,
+    stderrOriginalBytes: 0,
+    timedOut: false,
+    durationMs: 1,
+    ...overrides,
+  };
+}
+
+const PASSING_REPORT = JSON.stringify({
+  success: true,
+  numTotalTests: 1,
+  numPassedTests: 1,
+  numFailedTests: 0,
+  numPendingTests: 0,
+  testResults: [
+    {
+      name: 'src/math.test.ts',
+      status: 'passed',
+      assertionResults: [
+        { title: 'works', status: 'passed', duration: 1, failureMessages: [] },
+      ],
+    },
+  ],
+});
+
 describe('ExecutionPipelineService', () => {
-  function build(options: {
-    createWorkspace?: () => Promise<string>;
+  const createdDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      createdDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })),
+    );
+  });
+
+  async function build(options: {
+    withPnpmLockfile?: boolean;
     downloadToFile?: () => Promise<void>;
     extract?: () => Promise<void>;
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
     resolveRunner?: () => Promise<unknown>;
+    installDependencies?: () => Promise<ContainerRunResult>;
+    runTestCommand?: (resultsFilePath: string) => Promise<ContainerRunResult>;
   }) {
+    const workspaceDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'pipeline-test-'),
+    );
+    createdDirs.push(workspaceDir);
+    if (options.withPnpmLockfile !== false) {
+      await fs.writeFile(
+        path.join(workspaceDir, 'pnpm-lock.yaml'),
+        "lockfileVersion: '9.0'\n",
+      );
+    }
+
     const repository = new InMemoryExecutionRepository();
 
     const workspaceManager = {
-      createWorkspace: options.createWorkspace ?? (async () => '/tmp/workspace'),
+      createWorkspace: async () => workspaceDir,
       cleanup: options.cleanup ?? vi.fn(async () => {}),
     } as unknown as WorkspaceManager;
 
@@ -74,9 +138,34 @@ describe('ExecutionPipelineService', () => {
       applyArtifacts: options.applyArtifacts ?? (async () => []),
     } as unknown as ArtifactMaterializer;
 
+    const fakeAdapter: TestRunnerAdapter = {
+      runner: 'VITEST',
+      supports: async () => true,
+      buildCommand: (context) => [
+        'node_modules/.bin/vitest',
+        'run',
+        '--reporter=json',
+        `--outputFile=${context.resultsFilePath}`,
+      ],
+      parseResult: (raw) => parseJestCompatibleJson('VITEST', raw),
+    };
+
     const runnerAdapterRegistry = {
-      resolve: options.resolveRunner ?? (async () => ({})),
+      resolve: options.resolveRunner ?? (async () => fakeAdapter),
     } as unknown as RunnerAdapterRegistry;
+
+    // Simula lo que hace un container real: el comando escribe en la ruta
+    // montada (`/app/...`), que en disco corresponde a `workspaceDir` (el
+    // mismo bind mount); el fake escribe directo en la ruta del host.
+    const hostResultsFilePath = path.join(workspaceDir, '.sandbox-results.json');
+    const containerRunner = {
+      installDependencies: options.installDependencies ?? (async () => okContainerResult()),
+      runTestCommand: () =>
+        options.runTestCommand?.(hostResultsFilePath) ??
+        fs
+          .writeFile(hostResultsFilePath, PASSING_REPORT, 'utf8')
+          .then(() => okContainerResult()),
+    } as unknown as ContainerRunner;
 
     const pipeline = new ExecutionPipelineService(
       repository,
@@ -85,28 +174,39 @@ describe('ExecutionPipelineService', () => {
       downloadService,
       artifactMaterializer,
       runnerAdapterRegistry,
+      containerRunner,
     );
 
-    return { pipeline, repository, workspaceManager, runnerAdapterRegistry };
+    return { pipeline, repository, workspaceManager, workspaceDir, containerRunner };
   }
 
-  it('moves a PENDING execution to PREPARING and leaves it there on success', async () => {
+  it('completes an execution end to end and stores RunnerFacts', async () => {
     const record = baseRecord();
-    const { pipeline, repository } = build({});
+    const { pipeline, repository } = await build({});
     repository.save(record);
 
     await pipeline.run(record.executionId);
 
     const updated = repository.findById(record.executionId);
-    expect(updated?.status).toBe('PREPARING');
-    expect(updated?.stage).toBe('PREPARING');
-    expect(updated?.startedAt).toBeTruthy();
-    expect(updated?.failureCode).toBeNull();
+    expect(updated?.status).toBe('COMPLETED');
+    expect(updated?.stage).toBe('FINALIZING');
+    expect(updated?.completedAt).toBeTruthy();
+    expect(updated?.result?.facts?.passed).toBe(true);
+    expect(updated?.result?.facts?.totalTests).toBe(1);
+    expect(updated?.result?.failure).toBeNull();
+    expect(
+      updated?.result?.stageDurations.map((d) => d.stage),
+    ).toEqual(['PREPARING', 'INSTALLING_DEPENDENCIES', 'RUNNING_TESTS']);
+    expect(updated?.result?.evidence.map((e) => e.kind)).toEqual([
+      'TEST_STDOUT',
+      'TEST_STDERR',
+      'RUNNER_REPORT',
+    ]);
   });
 
   it('marks the execution FAILED with a SandboxFailureFact when the download is rejected', async () => {
     const record = baseRecord();
-    const { pipeline, repository, workspaceManager } = build({
+    const { pipeline, repository, workspaceManager } = await build({
       downloadToFile: async () => {
         throw new InputDownloadFailedError('host not allowed', 'CONFIGURATION');
       },
@@ -130,7 +230,7 @@ describe('ExecutionPipelineService', () => {
 
   it('keeps the persisted FAILED result even if cleanup itself fails (timeouts-cleanup)', async () => {
     const record = baseRecord();
-    const { pipeline, repository } = build({
+    const { pipeline, repository } = await build({
       downloadToFile: async () => {
         throw new InputDownloadFailedError('host not allowed', 'CONFIGURATION');
       },
@@ -150,7 +250,7 @@ describe('ExecutionPipelineService', () => {
 
   it('classifies an unexpected error as UNKNOWN and still cleans up the workspace', async () => {
     const record = baseRecord();
-    const { pipeline, repository, workspaceManager } = build({
+    const { pipeline, repository, workspaceManager } = await build({
       extract: async () => {
         throw new Error('disk exploded');
       },
@@ -166,21 +266,24 @@ describe('ExecutionPipelineService', () => {
     expect(workspaceManager.cleanup).toHaveBeenCalled();
   });
 
-  it('applies artifacts and records how many were materialized', async () => {
+  it('applies artifacts before checking the package manager and running the pipeline', async () => {
     const record = baseRecord();
     const applyArtifacts = vi.fn(async () => ['a1', 'a2']);
-    const { pipeline, repository } = build({ applyArtifacts });
+    const { pipeline, repository } = await build({ applyArtifacts });
     repository.save(record);
 
     await pipeline.run(record.executionId);
 
-    expect(applyArtifacts).toHaveBeenCalledWith('/tmp/workspace', []);
-    expect(repository.findById(record.executionId)?.status).toBe('PREPARING');
+    expect(applyArtifacts).toHaveBeenCalledTimes(1);
+    expect(repository.findById(record.executionId)?.result?.appliedArtifactIds).toEqual([
+      'a1',
+      'a2',
+    ]);
   });
 
   it('fails with UNSUPPORTED_RUNNER when the runnerHint does not match the project', async () => {
     const record = baseRecord();
-    const { pipeline, repository, workspaceManager } = build({
+    const { pipeline, repository, workspaceManager } = await build({
       resolveRunner: async () => {
         throw new UnsupportedRunnerError('project does not declare VITEST');
       },
@@ -196,8 +299,136 @@ describe('ExecutionPipelineService', () => {
     expect(workspaceManager.cleanup).toHaveBeenCalled();
   });
 
+  it('fails with UNSUPPORTED_PACKAGE_MANAGER when there is no pnpm-lock.yaml (DEC-SBX-002)', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({ withPnpmLockfile: false });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('UNSUPPORTED_PACKAGE_MANAGER');
+    expect(updated?.result?.failure?.stage).toBe('PREPARING');
+  });
+
+  it('fails with DEPENDENCY category when pnpm install exits non-zero', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      installDependencies: async () =>
+        okContainerResult({ exitCode: 1, stderr: 'ERR_PNPM_OUTDATED_LOCKFILE' }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('DEPENDENCY_INSTALL_FAILED');
+    expect(updated?.result?.failure?.category).toBe('DEPENDENCY');
+    expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
+  });
+
+  it('reports TIMED_OUT (not FAILED) when dependency installation times out', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      installDependencies: async () => okContainerResult({ timedOut: true, exitCode: null }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('TIMED_OUT');
+    expect(updated?.failureCode).toBe('INSTALL_TIMEOUT');
+    expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
+  });
+
+  it('reports TIMED_OUT when the test run times out', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      runTestCommand: async () => okContainerResult({ timedOut: true, exitCode: null }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('TIMED_OUT');
+    expect(updated?.failureCode).toBe('TEST_TIMEOUT');
+    expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+  });
+
+  it('fails with TEST_EXECUTION_FAILED when the runner produced no results file', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      runTestCommand: async () => okContainerResult({ exitCode: 1 }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('TEST_EXECUTION_FAILED');
+    expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+  });
+
+  it('completes with facts.passed=false when tests ran but some failed (not a Sandbox failure)', async () => {
+    const record = baseRecord();
+    const failingReport = JSON.stringify({
+      success: false,
+      numTotalTests: 2,
+      numPassedTests: 1,
+      numFailedTests: 1,
+      numPendingTests: 0,
+      testResults: [
+        {
+          name: 'src/math.test.ts',
+          status: 'failed',
+          assertionResults: [
+            { title: 'a', status: 'passed', duration: 1, failureMessages: [] },
+            { title: 'b', status: 'failed', duration: 1, failureMessages: ['boom'] },
+          ],
+        },
+      ],
+    });
+    const { pipeline, repository } = await build({
+      runTestCommand: async (resultsFilePath) => {
+        await fs.writeFile(resultsFilePath, failingReport, 'utf8');
+        return okContainerResult({ exitCode: 1 });
+      },
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('COMPLETED');
+    expect(updated?.result?.facts?.passed).toBe(false);
+    expect(updated?.result?.facts?.failedTests).toBe(1);
+    expect(updated?.result?.failure).toBeNull();
+  });
+
+  it('propagates a DependencyInstallFailedError message truncated from stderr', async () => {
+    const record = baseRecord();
+    const longStderr = 'x'.repeat(2000);
+    const { pipeline, repository } = await build({
+      installDependencies: async () =>
+        okContainerResult({ exitCode: 1, stderr: longStderr }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const failure = repository.findById(record.executionId)?.result?.failure;
+    expect(failure?.code).toBe('DEPENDENCY_INSTALL_FAILED');
+    expect(failure?.message).toBeTruthy();
+    expect(failure!.message.length).toBeLessThan(longStderr.length);
+  });
+
   it('is a no-op when the execution no longer exists', async () => {
-    const { pipeline } = build({});
+    const { pipeline } = await build({});
     await expect(pipeline.run('does-not-exist')).resolves.toBeUndefined();
   });
 });

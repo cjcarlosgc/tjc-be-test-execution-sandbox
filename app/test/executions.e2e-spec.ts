@@ -6,25 +6,14 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import request from 'supertest';
-import { Agent, fetch as undiciFetch } from 'undici';
 import { AppModule } from '../src/app.module.js';
 import { HttpExceptionFilter } from '../src/common/http/http-exception.filter.js';
-import {
-  FETCH_CLIENT,
-  type FetchLike,
-} from '../src/workspace/execution-input-download.service.js';
+import { FETCH_CLIENT } from '../src/workspace/execution-input-download.service.js';
 import { startFixtureServer, type FixtureServer } from './support/https-fixture-server.js';
+import { insecureFetch } from './support/insecure-fetch.js';
 import { buildZipFixture } from './support/zip-fixture.js';
 
 const SERVICE_TOKEN = 'e2e-service-token';
-
-/** El servidor fixture usa un certificado autofirmado; solo el fetch de test lo confía. */
-const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } });
-const insecureFetch: FetchLike = ((input, init) =>
-  undiciFetch(input as never, {
-    ...(init as Record<string, unknown>),
-    dispatcher: insecureAgent,
-  } as never)) as unknown as FetchLike;
 
 function validExecutionPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -44,21 +33,6 @@ function validExecutionPayload(overrides: Record<string, unknown> = {}) {
     runnerHint: 'VITEST',
     ...overrides,
   };
-}
-
-async function waitForFile(filePath: string, timeoutMs = 3000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      await fs.access(filePath);
-      return;
-    } catch {
-      if (Date.now() > deadline) {
-        throw new Error(`timed out waiting for file ${filePath}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-  }
 }
 
 async function pollExecutionStatus(
@@ -243,7 +217,12 @@ describe('Executions API (e2e)', () => {
     expect(result.body.failure.stage).toBe('PREPARING');
   });
 
-  it('downloads a real snapshot over HTTPS, extracts it and materializes an artifact', async () => {
+  it('downloads a real snapshot over HTTPS and extracts it, then fails without a pnpm-lock.yaml (DEC-SBX-002)', async () => {
+    // La descarga+extracción+materialización real de punta a punta con un
+    // proyecto instalable de verdad está cubierta por
+    // full-pipeline.e2e-spec.ts; aquí solo se ejercita la ruta HTTP real
+    // hasta el punto en que este fixture minimal (sin pnpm-lock.yaml) debe
+    // fallar de forma factual, no silenciosa.
     const accepted = await request(app.getHttpServer())
       .post('/executions')
       .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
@@ -277,33 +256,17 @@ describe('Executions API (e2e)', () => {
 
     expect(accepted.status).toBe(202);
     const executionId = accepted.body.executionId;
-    const workspacePath = path.join(workspaceRoot, executionId);
-    const generatedTestPath = path.join(
-      workspacePath,
-      'src',
-      'generated.spec.ts',
-    );
 
-    // El contrato solo expone PENDING/PREPARING (sin distinción de progreso
-    // dentro de PREPARING todavía), así que se espera el artefacto final en
-    // disco en vez de un estado HTTP intermedio inexistente.
-    await waitForFile(generatedTestPath);
+    await pollExecutionStatus(app, executionId, (status) => status === 'FAILED');
 
-    const packageJson = await fs.readFile(
-      path.join(workspacePath, 'package.json'),
-      'utf8',
-    );
-    expect(packageJson).toBe(snapshotContent['package.json']);
-
-    const generatedTest = await fs.readFile(generatedTestPath, 'utf8');
-    expect(generatedTest).toBe(artifactContent);
-
-    const status = await request(app.getHttpServer())
-      .get(`/executions/${executionId}`)
+    const result = await request(app.getHttpServer())
+      .get(`/executions/${executionId}/result`)
       .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
-    expect(status.body.status).toBe('PREPARING');
-    expect(status.body.stage).toBe('PREPARING');
-    expect(status.body.failureCode).toBeNull();
+
+    expect(result.body.status).toBe('FAILED');
+    expect(result.body.failure.code).toBe('UNSUPPORTED_PACKAGE_MANAGER');
+    expect(result.body.failure.category).toBe('CONFIGURATION');
+    expect(result.body.failure.stage).toBe('PREPARING');
   });
 
   it('fails with UNSUPPORTED_RUNNER when runnerHint does not match the project', async () => {

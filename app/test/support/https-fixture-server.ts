@@ -8,6 +8,7 @@ import * as path from 'node:path';
 export interface FixtureServer {
   baseUrl: string;
   host: string;
+  addRoute(routePath: string, handler: () => Buffer): void;
   close(): Promise<void>;
 }
 
@@ -40,11 +41,12 @@ function generateSelfSignedCert(): { key: string; cert: string } {
   };
 }
 
-/** Sirve buffers fijos por ruta sobre HTTPS con un certificado autofirmado, para probar la descarga real de EphemeralDownloadRef sin depender de una red externa. */
+/** Sirve buffers por ruta sobre HTTPS con un certificado autofirmado, para probar la descarga real de EphemeralDownloadRef sin depender de una red externa. */
 export function startFixtureServer(
-  routes: Record<string, () => Buffer>,
+  initialRoutes: Record<string, () => Buffer>,
 ): Promise<FixtureServer> {
   const { key, cert } = generateSelfSignedCert();
+  const routes: Record<string, () => Buffer> = { ...initialRoutes };
 
   return new Promise((resolve, reject) => {
     const server = https.createServer({ key, cert }, (req, res) => {
@@ -65,6 +67,9 @@ export function startFixtureServer(
       resolve({
         baseUrl: `https://127.0.0.1:${address.port}`,
         host: '127.0.0.1',
+        addRoute: (routePath, handler) => {
+          routes[routePath] = handler;
+        },
         close: () =>
           new Promise((res, rej) => {
             server.close((error) => (error ? rej(error) : res()));

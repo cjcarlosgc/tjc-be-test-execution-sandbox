@@ -2,10 +2,9 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
- * Detección de configuración del runner de tests declarada en el proyecto.
- * Distinto de la detección del package manager (`DEC-SBX-002`, PENDING):
- * solo lee `package.json`/archivos de config ya presentes en el snapshot,
- * sin instalar nada ni resolver un gestor de paquetes.
+ * Detección de configuración ya presente en el snapshot (config del runner
+ * de tests y presencia de `pnpm-lock.yaml`, `DEC-SBX-002` APROBADO): solo
+ * lee archivos, nunca instala ni ejecuta nada.
  */
 export async function fileExists(filePath: string): Promise<boolean> {
   try {

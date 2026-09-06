@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ContainerModule } from '../container/container.module.js';
 import { MaterializationModule } from '../materialization/materialization.module.js';
 import { RunnerAdaptersModule } from '../runner-adapters/runner-adapters.module.js';
 import { WorkspaceModule } from '../workspace/workspace.module.js';
@@ -11,7 +12,12 @@ import {
 } from './execution.repository.js';
 
 @Module({
-  imports: [WorkspaceModule, MaterializationModule, RunnerAdaptersModule],
+  imports: [
+    WorkspaceModule,
+    MaterializationModule,
+    RunnerAdaptersModule,
+    ContainerModule,
+  ],
   controllers: [ExecutionsController],
   providers: [
     ExecutionsService,

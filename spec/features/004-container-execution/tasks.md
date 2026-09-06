@@ -3,7 +3,7 @@
 - [x] dockerode client.
 - [x] image/runtime selection.
 - [x] limits.
-- [ ] install/compile/test commands seguros. — bloqueado por `DEC-SBX-002` (PENDING): requiere elegir package manager/lockfiles soportados del proyecto ejecutado antes de construir el comando de instalación. Se implementó en su lugar un "Docker smoke execution" (comando fijo `node --version` del propio Sandbox, sin comandos del proyecto ni de Core) para probar ciclo de vida, límites y aislamiento del container.
+- [x] install/compile/test commands seguros. — `DEC-SBX-002` (APROBADO): `corepack pnpm@<versión>` con `--frozen-lockfile` (red acotada a esa etapa) y el comando del `TestRunnerAdapter` resuelto (sin red). No hay una etapa `COMPILING` separada: Jest/Vitest transpilen TypeScript al vuelo y un fallo de compilación se refleja en `RunnerFacts.compiled=false` (005-test-runner-adapters), no en un `tsc` adicional.
 - [x] timeout kill.
 - [x] remove container.
 

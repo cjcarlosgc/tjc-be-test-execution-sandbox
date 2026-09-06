@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { ZipFile } from 'yazl';
 
 /** Construye un ZIP en memoria a partir de `{ path: content }` para fixtures de test. */
@@ -8,6 +10,42 @@ export function buildZipFixture(files: Record<string, string>): Promise<Buffer> 
       zip.addBuffer(Buffer.from(content, 'utf8'), entryPath);
     }
 
+    const chunks: Buffer[] = [];
+    zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
+    zip.outputStream.on('error', reject);
+    zip.end();
+  });
+}
+
+async function listFilesRecursively(dir: string, base = dir): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listFilesRecursively(fullPath, base)));
+    } else if (entry.isFile()) {
+      files.push(path.relative(base, fullPath));
+    }
+  }
+  return files;
+}
+
+/**
+ * Construye un ZIP en memoria a partir de un directorio real en disco
+ * (fixtures de proyectos reales committeados, p. ej. para el pipeline
+ * completo con `pnpm install`/`vitest` reales).
+ */
+export async function buildZipFixtureFromDir(dir: string): Promise<Buffer> {
+  const relativeFiles = await listFilesRecursively(dir);
+  const zip = new ZipFile();
+  for (const relativePath of relativeFiles) {
+    const content = await fs.readFile(path.join(dir, relativePath));
+    zip.addBuffer(content, relativePath.split(path.sep).join('/'));
+  }
+
+  return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
     zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));

@@ -55,3 +55,29 @@ export class UnsupportedRunnerError extends SandboxFactError {
     super('UNSUPPORTED_RUNNER', 'CONFIGURATION', message);
   }
 }
+
+/** `DEC-SBX-002` (APROBADO): V1 solo soporta pnpm. */
+export class UnsupportedPackageManagerError extends SandboxFactError {
+  constructor(message: string) {
+    super('UNSUPPORTED_PACKAGE_MANAGER', 'CONFIGURATION', message);
+  }
+}
+
+export class DependencyInstallFailedError extends SandboxFactError {
+  constructor(message: string) {
+    super('DEPENDENCY_INSTALL_FAILED', 'DEPENDENCY', message);
+  }
+}
+
+export class TestExecutionFailedError extends SandboxFactError {
+  constructor(message: string) {
+    super('TEST_EXECUTION_FAILED', 'TEST_RUNTIME', message);
+  }
+}
+
+/**
+ * Marca un `SandboxFactError` cuya causa es un timeout de etapa: el
+ * pipeline usa `instanceof` para reportar `status: 'TIMED_OUT'` en vez de
+ * `'FAILED'` (resource-limits: "Exceder tiempo produce TIMED_OUT").
+ */
+export class SandboxTimeoutError extends SandboxFactError {}

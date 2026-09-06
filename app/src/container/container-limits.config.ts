@@ -7,13 +7,20 @@ export interface ContainerLimitsConfig {
   nanoCpus: number;
   pidsLimit: number;
   timeoutMs: number;
+  installTimeoutMs: number;
+  testTimeoutMs: number;
   maxCapturedOutputBytes: number;
+  pnpmVersion: string;
 }
 
 /**
  * tech-stack.md: la imagen/runtime Node es seleccionable/configurable, nunca
  * una única versión fija global. CPU/RAM/PIDs/timeout son política del
  * Sandbox (resource-limits transversal); el request de Core no las eleva.
+ * `pnpmVersion` resuelve `DEC-SBX-002` (APROBADO, solo pnpm): se invoca
+ * siempre `corepack pnpm@<pnpmVersion>` en vez de confiar en el campo
+ * `packageManager` del proyecto, que en la práctica suele traer rangos
+ * (`^9.0.0`) que corepack rechaza por no ser un semver exacto.
  */
 export function resolveContainerLimits(
   configService: ConfigService,
@@ -37,9 +44,18 @@ export function resolveContainerLimits(
       'SANDBOX_CONTAINER_TIMEOUT_MS',
       30_000,
     ),
+    installTimeoutMs: configService.get<number>(
+      'SANDBOX_INSTALL_TIMEOUT_MS',
+      180_000,
+    ),
+    testTimeoutMs: configService.get<number>(
+      'SANDBOX_TEST_TIMEOUT_MS',
+      120_000,
+    ),
     maxCapturedOutputBytes: configService.get<number>(
       'SANDBOX_CONTAINER_MAX_OUTPUT_BYTES',
       64 * 1024,
     ),
+    pnpmVersion: configService.get<string>('SANDBOX_PNPM_VERSION', '9'),
   };
 }

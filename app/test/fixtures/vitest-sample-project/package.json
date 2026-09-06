@@ -1,0 +1,8 @@
+{
+  "name": "vitest-sample-project",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "vitest": "2.1.9"
+  }
+}

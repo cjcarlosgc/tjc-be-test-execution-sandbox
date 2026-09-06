@@ -170,4 +170,96 @@ describe('ContainerRunner', () => {
     ).rejects.toThrow('start failed');
     expect(container.remove).toHaveBeenCalledWith({ force: true });
   });
+
+  it('installs dependencies via corepack pnpm@<version> with network and a writable mount', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(
+      docker as never,
+      fakeConfigService({ SANDBOX_PNPM_VERSION: '9' }),
+    );
+
+    await runner.installDependencies(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+    );
+
+    expect(docker.createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'sandbox-11111111-1111-4111-8111-111111111111-install',
+        Cmd: ['corepack', 'pnpm@9', 'install', '--frozen-lockfile'],
+        HostConfig: expect.objectContaining({
+          Binds: ['/tmp/workspace:/app'],
+          NetworkMode: 'bridge',
+        }),
+      }),
+    );
+  });
+
+  it('runs the test command without network on a writable mount', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+    await runner.runTestCommand(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+      ['node_modules/.bin/vitest', 'run', '--reporter=json'],
+    );
+
+    expect(docker.createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'sandbox-11111111-1111-4111-8111-111111111111-test',
+        Cmd: ['node_modules/.bin/vitest', 'run', '--reporter=json'],
+        HostConfig: expect.objectContaining({
+          Binds: ['/tmp/workspace:/app'],
+          NetworkMode: 'none',
+        }),
+      }),
+    );
+  });
+
+  it('marks stdout as truncated and reports the original byte count beyond the cap', async () => {
+    const docker = {
+      createContainer: vi.fn(async () => ({
+        id: 'fake-id',
+        start: vi.fn(async () => {}),
+        wait: vi.fn(async () => ({ StatusCode: 0 })),
+        kill: vi.fn(async () => {}),
+        inspect: vi.fn(async () => ({ State: { ExitCode: 0 } })),
+        remove: vi.fn(async () => {}),
+        logs: vi.fn(async () => new PassThrough()),
+      })),
+      getImage: vi.fn(() => ({ inspect: vi.fn(async () => ({})) })),
+      pull: vi.fn(async () => new PassThrough()),
+      modem: {
+        demuxStream: vi.fn(
+          (stream: PassThrough, stdout: PassThrough, stderr: PassThrough) => {
+            setImmediate(() => {
+              stdout.write(Buffer.alloc(50, 'x'));
+              stdout.end();
+              stderr.end();
+              stream.emit('end');
+            });
+          },
+        ),
+        followProgress: vi.fn(
+          (_stream: unknown, callback: (error: Error | null) => void) => {
+            callback(null);
+          },
+        ),
+      },
+    };
+    const runner = new ContainerRunner(
+      docker as never,
+      fakeConfigService({ SANDBOX_CONTAINER_MAX_OUTPUT_BYTES: 10 }),
+    );
+
+    const result = await runner.runSmokeCheck(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+    );
+
+    expect(result.stdout).toHaveLength(10);
+    expect(result.stdoutTruncated).toBe(true);
+    expect(result.stdoutOriginalBytes).toBe(50);
+  });
 });
