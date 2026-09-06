@@ -1,0 +1,8 @@
+allowBuilds:
+  # Transitive optional deps of dockerode's docker-modem (SSH transport to a
+  # remote Docker host). The Sandbox only connects via unix socket/TCP
+  # (docker-client.provider.ts), so no native build is needed; kept as
+  # denied rather than approved.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
