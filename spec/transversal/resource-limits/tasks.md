@@ -1,8 +1,9 @@
 # resource-limits — Tareas
 
-- [ ] Config schema.
-- [ ] Docker limits.
-- [ ] OOM/timeout handling.
+- [ ] Esquema de configuración para tiempo, CPU, RAM, disco temporal, PIDs, output y ZIP.
+- [ ] Límites Docker y workspace/download.
+- [ ] Normalización de OOM, timeout, disco/PIDs/output y cleanup.
+- [ ] Pruebas que demuestren que el request no puede elevar límites.
 
 ## Calidad
 

@@ -11,9 +11,9 @@ Aplicar artefactos generados al workspace de ejecución sin corromper el snapsho
 
 - Soportar CREATED y MODIFIED.
 - Rutas siempre relativas y validadas.
-- El snapshot original de Object Storage nunca se modifica.
+- El snapshot original administrado por RAG Core nunca se modifica.
 - Para batch, aplicar el conjunto final de artefactos del run.
-- Cada artefacto llega como metadata + `StorageObjectRef`; el request no incluye contenido arbitrario inline ni una ruta absoluta.
+- Cada artefacto llega como metadata + `EphemeralDownloadRef`; el host lo descarga y verifica antes de escribir una ruta relativa validada. El request no incluye contenido arbitrario inline ni una ruta absoluta.
 
 ## Fuera de alcance
 

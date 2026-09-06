@@ -7,7 +7,7 @@
 
 ## Diseño técnico
 
-`ObjectStorageService` actúa como puerto interno inyectable para snapshots, artefactos y evidencia sin filtrar tipos del SDK. Un adaptador usa Supabase Storage mediante `@supabase/supabase-js`. Las credenciales viven en el host/service y jamás se inyectan al container. El adapter traduce `StorageObjectRef.role` al bucket configurado y verifica integridad.
+`ExecutionInputDownloadService` actúa como puerto interno inyectable para snapshots y artefactos sin conocer el proveedor. El adaptador HTTP valida HTTPS/allowlist/expiración, limita la descarga, verifica tamaño y SHA-256, y entrega bytes al `WorkspaceManager`. La referencia no llega al container ni se conserva en estado/logs.
 
 ## Validación
 

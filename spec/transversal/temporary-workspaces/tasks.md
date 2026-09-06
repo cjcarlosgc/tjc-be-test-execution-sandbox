@@ -1,8 +1,10 @@
 # temporary-workspaces — Tareas
 
-- [ ] root/permissions.
-- [ ] safe path helpers.
-- [ ] TTL sweeper.
+- [ ] Raíz configurada, directorios aleatorios y permisos mínimos.
+- [ ] Helpers de rutas seguras, rechazo de enlaces/colisiones y defensas Zip Slip.
+- [ ] Límites de entradas, bytes y relación de expansión.
+- [ ] Montaje mínimo en container y cleanup idempotente.
+- [ ] Sweeper por TTL limitado a la raíz administrada.
 
 ## Calidad
 

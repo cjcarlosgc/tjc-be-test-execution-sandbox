@@ -3,11 +3,11 @@
 ## Dependencias
 
 - Constitución y transversales aplicables.
-- `spec/contracts/interoperability-contract.md` para `StorageObjectRef`.
+- `spec/contracts/interoperability-contract.md` para `EphemeralDownloadRef`.
 
 ## Diseño técnico
 
-WorkspaceManager crea directorio aleatorio bajo root controlado, obtiene snapshot mediante `ObjectStorageService`, verifica integridad, extrae y registra lifecycle. Usar finally + sweeper de residuos huérfanos.
+`WorkspaceManager` crea un directorio aleatorio bajo una raíz controlada. Un `ExecutionInputDownloadService` inyectable descarga la URL firmada sin exponer detalles de Supabase, aplica límites y verifica integridad antes de una extracción segura. Usar `finally` y un sweeper para residuos huérfanos.
 
 ## Validación
 

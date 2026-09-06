@@ -6,7 +6,7 @@
 
 ## Diseño técnico
 
-Configurar memory, CPU shares/quotas, pids y deadline global. Valores concretos por entorno, no hardcodeados.
+Definir un esquema de configuración validado para CPU shares/quotas, RAM, PIDs, almacenamiento temporal, stdout/stderr, tamaño/expansión del ZIP y deadlines global/por etapa. Aplicarlo tanto al downloader/extractor como a Docker y convertir cada agotamiento en un resultado terminal verificable. Valores concretos por entorno, no hardcodeados.
 
 ## Validación
 

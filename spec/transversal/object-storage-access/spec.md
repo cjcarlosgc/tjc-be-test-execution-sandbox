@@ -1,20 +1,20 @@
-# object-storage-access — Especificación
+# object-storage-access — Especificación de acceso efímero
 
 **Estado:** aprobado para SDD 1.1 salvo elementos marcados PENDING/PROPOSED.
 **Historias:** capacidad técnica transversal
 
 ## Objetivo
 
-Descargar snapshots exactos sin exponer credenciales al proyecto ejecutado.
+Descargar entradas exactas mediante capacidades temporales sin acoplar Sandbox a Supabase ni exponer secretos al código ejecutado.
 
 ## Reglas y comportamiento
 
-- El proveedor de objetos aprobado es Supabase Storage mediante `@supabase/supabase-js`.
-- La lógica de aplicación consume exclusivamente una abstracción interna `ObjectStorageService`; no importa tipos ni clientes de Supabase fuera del adaptador de infraestructura.
-- El servicio obtiene la `ProjectVersion` inmutable y los artefactos autorizados requeridos por una ejecución; no selecciona otra versión ni usa nombres de archivo como identidad.
-- Keys, buckets y credenciales permanecen internos. Las credenciales viven en el host/service Sandbox y nunca se inyectan al container.
-- Validar tamaño, integridad y formato antes de extraer el snapshot; aplicar timeout, retries acotados y errores normalizados.
-- Core referencia snapshots/artefactos mediante `StorageObjectRef` de `INTEROP-1.0`: role lógico, key opaca, SHA-256 y tamaño. El role se mapea por configuración al bucket real y no expone tipos de Supabase.
+- RAG Core es el único componente que conoce Supabase Storage y genera `EphemeralDownloadRef` según `INTEROP-1.1`.
+- La aplicación consume un puerto interno `ExecutionInputDownloadService` —nombre orientativo, no proveedor— que descarga HTTPS sin tipos ni SDK de Supabase.
+- El host acepta exclusivamente las referencias declaradas y autorizadas de la ejecución, verifica role, expiración, host permitido, tamaño y SHA-256; no selecciona otra versión ni usa nombres de archivo como identidad.
+- La URL firmada se considera secreta efímera: no se persiste, no se registra completa, no se reenvía al navegador/container y se descarta al terminar la adquisición.
+- Aplicar límite de bytes, timeout, redirects/retries acotados y errores `INPUT_URL_EXPIRED`, `INPUT_DOWNLOAD_FAILED` o `INTEGRITY_CHECK_FAILED`.
+- El Sandbox no recibe por defecto `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL` ni `DATABASE_PASSWORD`.
 - El navegador no accede a Storage a través de este servicio.
 
 ## Fuera de alcance

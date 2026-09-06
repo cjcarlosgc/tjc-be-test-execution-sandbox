@@ -9,15 +9,16 @@ Devolver evidencia estructurada de compilación, ejecución y casos de prueba.
 
 ## Reglas y comportamiento
 
-- `SandboxExecutionStatusResponse` y `SandboxExecutionResultResponse` siguen `INTEROP-1.0`.
+- `SandboxExecutionStatusResponse` y `SandboxExecutionResultResponse` siguen `INTEROP-1.1`.
 - `RunnerFacts` conserva compiled, executed, passed, totalTests, passedTests, failedTests, skippedTests y testCases.
 - TestCaseResult conserva nombre/status/duration/error resumido.
 - stdout/stderr se demultiplexan y acotan; evitar payloads ilimitados.
 - Resultado indica stage y duraciones.
 - Core interpreta `valid` y FailureType final.
+- Sandbox retorna el resultado a Core; RAG Core conserva el estado/resultado autoritativo y lo persiste en PostgreSQL.
 - El resultado ordinario no incluye mutation score. `DEC-MET-001` permanece PENDING y solo bloquea una futura extensión coordinada para mutation testing/StrykerJS.
 - La evidencia empresarial debe acotar y sanear logs, rutas y errores para no filtrar código o secretos innecesarios.
-- Evidencia extensa se persiste como `StorageObjectRef` con role `EXECUTION_EVIDENCE`; el response no embebe logs ilimitados.
+- `ExecutionEvidenceFact` se devuelve inline con límites y marca `truncated`. Si se necesita evidencia extensa, requiere un mecanismo futuro aprobado y gestionado por Core; Sandbox no accede a Storage para publicarla.
 
 ## Fuera de alcance
 

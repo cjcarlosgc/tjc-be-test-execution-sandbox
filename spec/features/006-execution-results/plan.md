@@ -7,7 +7,7 @@
 
 ## Diseño técnico
 
-ResultNormalizer combina stage outcomes, runner JSON y referencias de evidencia. Logs grandes se almacenan mediante `ObjectStorageService` y se devuelven como `StorageObjectRef`; Sandbox conserva hechos y Core interpreta `valid`.
+`ResultNormalizer` combina resultados de etapas y JSON del runner con `ExecutionEvidenceFact` acotados. Sandbox conserva hechos operativos solo lo necesario para `202 + polling`, los devuelve a Core y limpia el workspace; Core interpreta `valid` y persiste el resultado.
 
 ## Validación
 

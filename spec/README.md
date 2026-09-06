@@ -6,13 +6,13 @@ Orden de lectura: `contracts/system-contract.md` -> `contracts/interoperability-
 
 ## Contrato entre componentes
 
-[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-1.1` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
+[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-1.3` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
 
-[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-1.0` con rutas, DTOs, estados, errores y transporte universales.
+[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-1.1` con rutas, DTOs, estados, errores y transporte universales.
 
 ## Versionado
 
-La especificación vigente se consolida; no se acumulan enmiendas. Los cambios se registran en `CHANGELOG.md` y en Git.
+La especificación vigente se consolida; no se acumulan enmiendas. Los cambios se registran en `CHANGELOG.md` y en Git. `sddVersion` representa la línea base conjunta de los tres repositorios.
 
 ## Estados de decisión
 
