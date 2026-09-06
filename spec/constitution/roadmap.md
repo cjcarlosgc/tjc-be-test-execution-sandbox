@@ -11,7 +11,7 @@ Meta acumulada: 80%. Integración real con RAG Core, materialización CREATE/MER
 Mutation score/StrykerJS (`DEC-MET-001`) es una mejora próxima deseada, pero permanece PENDING hasta investigar aislamiento, costo, tiempo y contrato de resultados coordinado. No bloquea el núcleo de Sprint 2; solo bloquea el work item futuro que intente ejecutar mutation testing.
 
 ## Sprint 3
-Meta acumulada: 90%. Endurecimiento de límites, soporte de ciclos de autorreparación del RAG Core sin conocer su semántica, observabilidad y confiabilidad.
+Meta acumulada: 90%. Endurecimiento de límites, observabilidad y confiabilidad. HU23/autorreparación está descartada; un retry manual de Core es simplemente una nueva ejecución neutral con identidad propia.
 
 ## Sprint 4
 Meta: 100%. Estabilización, rendimiento, pruebas de estrés acotadas, políticas de cleanup y soporte opcional de coverage si se aprueba como métrica secundaria.

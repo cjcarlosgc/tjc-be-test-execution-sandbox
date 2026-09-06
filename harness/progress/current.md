@@ -1,5 +1,7 @@
 # Progreso actual
 
+SDD 1.14 / SYSTEM-1.4 / INTEROP-1.5 sincroniza la especificación con la implementación real del Sandbox: `/executions` ya exige Bearer mediante el secreto opaco `SANDBOX_SERVICE_TOKEN`, valida que `Idempotency-Key` coincida con `requestId` y deduplica replays; health sigue público. La restricción pnpm + `pnpm-lock.yaml` pasa a ser consecuencia compartida. HU23/autorreparación está descartada y HU24 llega como otra ejecución neutral. Falta la prueba real Core↔Sandbox después de que Core implemente su lado; no se tocó `app/`.
+
 SDD 1.2 / SYSTEM-1.1 / INTEROP-1.0 sincronizada. No existe implementación en `app/` todavía.
 
 SDD 1.6 queda homologada como línea base conjunta de los tres repositorios y formaliza la entrega Git común: cada commit es un cambio coherente con `Refs: HU...`; cada work item conserva su revisión y, antes del push de cierre de sprint, el reviewer debe aprobar y documentar el rango acumulado exacto que se publicará. `SYSTEM-*` e `INTEROP-*` conservan versionado propio. Commit y push continúan requiriendo solicitud humana explícita.

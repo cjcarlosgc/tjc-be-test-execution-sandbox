@@ -1,9 +1,10 @@
 # 001-execution-api — Tareas
 
-- [x] DTOs validados de `INTEROP-1.1` y rechazo de campos desconocidos.
+- [x] DTOs validados de `INTEROP-1.5` y rechazo de campos desconocidos.
 - [x] `POST /executions`, status y result con persistencia de `executionId`.
 - [x] Idempotency-Key/requestId y detección de conflicto.
-- [x] Auth Bearer interna y propagación de correlationId.
+- [x] Auth Bearer interna con `SANDBOX_SERVICE_TOKEN`, protección de todo `/executions`, health público y propagación de correlationId.
+- [ ] Contract/e2e test contra el cliente real de RAG Core cuando ese repositorio implemente Bearer e identidad UUID v5 estable.
 - [x] Response DTOs y `ErrorEnvelope` centralizado.
 
 ## Calidad

@@ -9,7 +9,7 @@ Devolver evidencia estructurada de compilación, ejecución y casos de prueba.
 
 ## Reglas y comportamiento
 
-- `SandboxExecutionStatusResponse` y `SandboxExecutionResultResponse` siguen `INTEROP-1.1`.
+- `SandboxExecutionStatusResponse` y `SandboxExecutionResultResponse` siguen `INTEROP-1.5`.
 - `RunnerFacts` conserva compiled, executed, passed, totalTests, passedTests, failedTests, skippedTests y testCases.
 - TestCaseResult conserva nombre/status/duration/error resumido.
 - stdout/stderr se demultiplexan y acotan; evitar payloads ilimitados.
