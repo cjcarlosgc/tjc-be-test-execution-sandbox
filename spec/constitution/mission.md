@@ -2,7 +2,7 @@
 
 **Estado:** aprobado
 
-Ejecutar y observar pruebas generadas en un entorno temporal y aislado. El Sandbox no conoce ni decide si una generación proviene de RAG o baseline; recibe una solicitud de ejecución, reconstruye la versión exacta del proyecto desde Object Storage, materializa los artefactos, ejecuta el runner y devuelve hechos estructurados.
+Ejecutar y observar pruebas generadas para proyectos TypeScript en un entorno temporal y aislado. El Sandbox no conoce ni decide si una generación proviene de RAG, de un agente generalista o de cualquier estrategia comparativa; recibe una solicitud neutral, reconstruye la versión exacta del proyecto desde Supabase Storage mediante `ObjectStorageService`, materializa los artefactos, ejecuta el runner y devuelve hechos estructurados.
 
 ## Consumidor
 

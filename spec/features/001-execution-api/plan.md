@@ -3,10 +3,12 @@
 ## Dependencias
 
 - Constitución y transversales aplicables.
+- `spec/contracts/system-contract.md`, donde `DEC-INT-001` está aprobado.
+- `spec/contracts/interoperability-contract.md`.
 
 ## Diseño técnico
 
-Controller interno + ExecutionService. Definir request/response versionados. Puede ser síncrono respecto del RAG Core si duración/límites lo permiten o asíncrono interno si se decide; el contrato debe conservar executionId.
+Módulo de feature con controller y DTOs explícitos, `ExecutionService` y repositorio de estado. Implementar `202 + polling`, idempotencia, auth/correlación y filtros de error según `INTEROP-1.0`; no retornar entidades internas directamente.
 
 ## Validación
 

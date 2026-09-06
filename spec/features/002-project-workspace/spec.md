@@ -9,7 +9,8 @@ Reconstruir un workspace temporal desde el snapshot exacto de ProjectVersion.
 
 ## Reglas y comportamiento
 
-- Descargar `source.zip` desde storage usando identificador/key autorizada.
+- Descargar `source.zip` mediante `StorageObjectRef` (`PROJECT_SNAPSHOT`) y `ObjectStorageService`.
+- Verificar SHA-256 y tamaño antes de extraer.
 - Extraer de forma segura; bloquear Zip Slip y paths fuera del workspace.
 - Workspace efímero por executionId.
 - Cleanup obligatorio incluso en excepciones.

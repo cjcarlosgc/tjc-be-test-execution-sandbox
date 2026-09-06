@@ -3,10 +3,11 @@
 ## Dependencias
 
 - Constitución y transversales aplicables.
+- `spec/contracts/interoperability-contract.md`.
 
 ## Diseño técnico
 
-ResultNormalizer combina stage outcomes, runner JSON y log references. Logs grandes pueden almacenarse y devolverse por referencia si se adopta storage de evidencia.
+ResultNormalizer combina stage outcomes, runner JSON y referencias de evidencia. Logs grandes se almacenan mediante `ObjectStorageService` y se devuelven como `StorageObjectRef`; Sandbox conserva hechos y Core interpreta `valid`.
 
 ## Validación
 

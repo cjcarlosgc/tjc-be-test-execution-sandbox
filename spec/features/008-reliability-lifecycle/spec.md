@@ -13,6 +13,7 @@ Garantizar cleanup y límites confiables bajo fallos de dependencias, test, time
 - Un fallo en cleanup se registra y activa sweeper; no oculta el resultado principal.
 - Evitar containers/workspaces huérfanos.
 - Health/readiness separa Docker unavailable de app unavailable.
+- `GET /health/live` verifica proceso; `GET /health/ready` verifica capacidad de aceptar ejecuciones y reporta dependencias sin revelar configuración sensible.
 
 ## Fuera de alcance
 

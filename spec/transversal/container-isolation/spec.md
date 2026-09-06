@@ -9,7 +9,12 @@ Aislar cada ejecución y limitar impacto sobre host/otras ejecuciones.
 
 ## Reglas y comportamiento
 
-
+- Tratar snapshots y artefactos como entrada no confiable, incluso cuando provengan de un repositorio empresarial autorizado.
+- Crear container y workspace efímeros por `executionId`, sin modo privilegiado ni Docker socket dentro del container.
+- No montar credenciales, variables secretas ni directorios del host ajenos a la ejecución.
+- Aplicar límites configurables de CPU, memoria, procesos, salida y deadline global; cleanup en success, failure y timeout.
+- Reducir la red por etapa al mínimo necesario y no asumir acceso irrestricto durante la ejecución de tests.
+- Acotar stdout/stderr y evitar exponer innecesariamente contenido confidencial en logs o respuestas.
 
 ## Fuera de alcance
 
