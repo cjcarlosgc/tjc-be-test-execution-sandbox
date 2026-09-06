@@ -1,6 +1,6 @@
 # Contexto operativo del proyecto
 
-**Estado:** APROBADO  
+**Estado:** APROBADO
 **Alcance:** contexto mínimo para especificación, implementación y revisión; no agrega contratos funcionales.
 
 `tjc-be-test-execution-sandbox` es el segundo backend de una solución de tesis compuesta por dos backends y un frontend. Su único consumidor V1 es RAG Core; el frontend nunca lo llama directamente. Ejecuta código no confiable en aislamiento y devuelve hechos, sin generar pruebas ni interpretar estrategias experimentales.
