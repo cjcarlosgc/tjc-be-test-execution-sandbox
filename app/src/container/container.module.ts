@@ -12,6 +12,6 @@ import { DOCKER_CLIENT, dockerClientFactory } from './docker-client.provider.js'
     },
     ContainerRunner,
   ],
-  exports: [ContainerRunner],
+  exports: [ContainerRunner, DOCKER_CLIENT],
 })
 export class ContainerModule {}
