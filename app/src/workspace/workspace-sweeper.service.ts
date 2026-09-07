@@ -5,6 +5,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getNumberConfig } from '../common/config/get-number-config.js';
 import { WorkspaceManager } from './workspace-manager.js';
 
 const DEFAULT_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
@@ -26,7 +27,8 @@ export class WorkspaceSweeperService implements OnModuleInit, OnModuleDestroy {
     private readonly workspaceManager: WorkspaceManager,
     configService: ConfigService,
   ) {
-    this.intervalMs = configService.get<number>(
+    this.intervalMs = getNumberConfig(
+      configService,
       'SANDBOX_SWEEPER_INTERVAL_MS',
       DEFAULT_SWEEP_INTERVAL_MS,
     );

@@ -1,5 +1,6 @@
 import type { ConfigService } from '@nestjs/config';
 import Dockerode from 'dockerode';
+import { getNumberConfig } from '../common/config/get-number-config.js';
 
 export const DOCKER_CLIENT = Symbol('DOCKER_CLIENT');
 
@@ -14,7 +15,7 @@ export function dockerClientFactory(configService: ConfigService): Dockerode {
   if (host) {
     return new Dockerode({
       host,
-      port: configService.get<number>('SANDBOX_DOCKER_PORT', 2375),
+      port: getNumberConfig(configService, 'SANDBOX_DOCKER_PORT', 2375),
     });
   }
 

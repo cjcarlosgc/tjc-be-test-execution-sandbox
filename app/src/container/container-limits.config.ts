@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import { getNumberConfig } from '../common/config/get-number-config.js';
 
 export interface ContainerLimitsConfig {
   image: string;
@@ -31,28 +32,34 @@ export function resolveContainerLimits(
       'node:22-slim',
     ),
     user: configService.get<string>('SANDBOX_CONTAINER_USER', 'node'),
-    memoryBytes: configService.get<number>(
+    memoryBytes: getNumberConfig(
+      configService,
       'SANDBOX_CONTAINER_MEMORY_BYTES',
       256 * 1024 * 1024,
     ),
-    nanoCpus: configService.get<number>(
+    nanoCpus: getNumberConfig(
+      configService,
       'SANDBOX_CONTAINER_NANO_CPUS',
       1_000_000_000,
     ),
-    pidsLimit: configService.get<number>('SANDBOX_CONTAINER_PIDS_LIMIT', 128),
-    timeoutMs: configService.get<number>(
+    pidsLimit: getNumberConfig(configService, 'SANDBOX_CONTAINER_PIDS_LIMIT', 128),
+    timeoutMs: getNumberConfig(
+      configService,
       'SANDBOX_CONTAINER_TIMEOUT_MS',
       30_000,
     ),
-    installTimeoutMs: configService.get<number>(
+    installTimeoutMs: getNumberConfig(
+      configService,
       'SANDBOX_INSTALL_TIMEOUT_MS',
       180_000,
     ),
-    testTimeoutMs: configService.get<number>(
+    testTimeoutMs: getNumberConfig(
+      configService,
       'SANDBOX_TEST_TIMEOUT_MS',
       120_000,
     ),
-    maxCapturedOutputBytes: configService.get<number>(
+    maxCapturedOutputBytes: getNumberConfig(
+      configService,
       'SANDBOX_CONTAINER_MAX_OUTPUT_BYTES',
       64 * 1024,
     ),

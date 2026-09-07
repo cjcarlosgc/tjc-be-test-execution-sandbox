@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { getNumberConfig } from '../common/config/get-number-config.js';
 import { AppHttpException } from '../common/http/app-http-exception.js';
 import type { CreateSandboxExecutionRequestDto } from './dto/create-execution-request.dto.js';
 import type {
@@ -195,7 +196,8 @@ export class ExecutionsService {
   ): SandboxExecutionAcceptedResponse {
     return {
       status: 'PENDING',
-      pollAfterMs: this.configService.get<number>(
+      pollAfterMs: getNumberConfig(
+        this.configService,
         'SANDBOX_POLL_AFTER_MS',
         DEFAULT_POLL_AFTER_MS,
       ),
