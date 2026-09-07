@@ -53,6 +53,42 @@ export class WorkspaceManager {
     return resolved;
   }
 
+  /**
+   * Tamaño real en disco del workspace (recursivo). Docker no puede aplicar
+   * una cuota de disco por container con el storage driver `overlay2`
+   * (default de Docker Desktop, el entorno aprobado): `HostConfig.DiskQuota`
+   * solo funciona con `devicemapper`. Este es el sustituto a nivel de
+   * aplicación (resource-limits transversal). No sigue symlinks (evita
+   * ciclos y doble conteo del layout de `pnpm`, que enlaza dentro de
+   * `node_modules/.pnpm`, no fuera del workspace).
+   */
+  async calculateDirectorySize(dirPath: string): Promise<number> {
+    let total = 0;
+    let entries: import('node:fs').Dirent[];
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return 0;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+      const entryPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        total += await this.calculateDirectorySize(entryPath);
+      } else if (entry.isFile()) {
+        const stats = await fs.stat(entryPath).catch(() => null);
+        total += stats?.size ?? 0;
+      }
+    }
+    return total;
+  }
+
   async cleanup(workspacePath: string): Promise<void> {
     try {
       await fs.rm(workspacePath, { recursive: true, force: true });

@@ -83,4 +83,35 @@ describe('WorkspaceManager', () => {
     await expect(fs.stat(oldPath)).rejects.toThrow();
     await expect(fs.stat(freshPath)).resolves.toBeTruthy();
   });
+
+  it('calculates the recursive size of a directory tree', async () => {
+    const workspacePath = await manager.createWorkspace(EXECUTION_ID);
+    await fs.writeFile(path.join(workspacePath, 'a.txt'), Buffer.alloc(100));
+    await fs.mkdir(path.join(workspacePath, 'nested'));
+    await fs.writeFile(
+      path.join(workspacePath, 'nested', 'b.txt'),
+      Buffer.alloc(250),
+    );
+
+    await expect(manager.calculateDirectorySize(workspacePath)).resolves.toBe(
+      350,
+    );
+  });
+
+  it('does not follow symlinks when calculating directory size (no cycles)', async () => {
+    const workspacePath = await manager.createWorkspace(EXECUTION_ID);
+    await fs.writeFile(path.join(workspacePath, 'a.txt'), Buffer.alloc(100));
+    // Un symlink que apunta al propio workspace formaría un ciclo si se siguiera.
+    await fs.symlink(workspacePath, path.join(workspacePath, 'self-link'));
+
+    await expect(manager.calculateDirectorySize(workspacePath)).resolves.toBe(
+      100,
+    );
+  });
+
+  it('returns 0 for a directory that no longer exists', async () => {
+    await expect(
+      manager.calculateDirectorySize(path.join(root, 'does-not-exist')),
+    ).resolves.toBe(0);
+  });
 });

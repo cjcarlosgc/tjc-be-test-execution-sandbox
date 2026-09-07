@@ -92,3 +92,14 @@ export class OomKilledError extends SandboxFactError {
     super('OOM_KILLED', 'INFRASTRUCTURE', message);
   }
 }
+
+/**
+ * Sustituto a nivel de aplicación de una cuota de disco por container:
+ * Docker no puede aplicarla con el storage driver `overlay2` (default de
+ * Docker Desktop). Ver `resource-limits` transversal.
+ */
+export class WorkspaceDiskLimitExceededError extends SandboxFactError {
+  constructor(message: string) {
+    super('WORKSPACE_DISK_LIMIT_EXCEEDED', 'INFRASTRUCTURE', message);
+  }
+}

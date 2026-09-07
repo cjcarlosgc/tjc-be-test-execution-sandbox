@@ -13,7 +13,7 @@ import type {
 } from '../container/container-runner.service.js';
 import type { ExecutionInputDownloadService } from '../workspace/execution-input-download.service.js';
 import type { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
-import type { WorkspaceManager } from '../workspace/workspace-manager.js';
+import { WorkspaceManager } from '../workspace/workspace-manager.js';
 import {
   InputDownloadFailedError,
   UnsupportedRunnerError,
@@ -112,7 +112,7 @@ describe('ExecutionPipelineService', () => {
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
     resolveRunner?: () => Promise<unknown>;
-    installDependencies?: () => Promise<ContainerRunResult>;
+    installDependencies?: (workspacePath: string) => Promise<ContainerRunResult>;
     runTestCommand?: (resultsFilePath: string) => Promise<ContainerRunResult>;
     configOverrides?: Record<string, unknown>;
   }) {
@@ -129,9 +129,16 @@ describe('ExecutionPipelineService', () => {
 
     const repository = new InMemoryExecutionRepository();
 
+    // Reutiliza el cálculo real de tamaño de directorio; solo se fakean
+    // createWorkspace/cleanup para no depender de la raíz configurada real.
+    const realWorkspaceManager = new WorkspaceManager(
+      fakeConfigService({ SANDBOX_WORKSPACE_ROOT: workspaceDir }),
+    );
     const workspaceManager = {
       createWorkspace: async () => workspaceDir,
       cleanup: options.cleanup ?? vi.fn(async () => {}),
+      calculateDirectorySize: (dirPath: string) =>
+        realWorkspaceManager.calculateDirectorySize(dirPath),
     } as unknown as WorkspaceManager;
 
     const downloadService = {
@@ -169,7 +176,8 @@ describe('ExecutionPipelineService', () => {
     // mismo bind mount); el fake escribe directo en la ruta del host.
     const hostResultsFilePath = path.join(workspaceDir, '.sandbox-results.json');
     const containerRunner = {
-      installDependencies: options.installDependencies ?? (async () => okContainerResult()),
+      installDependencies: (_executionId: string, wp: string) =>
+        (options.installDependencies ?? (async () => okContainerResult()))(wp),
       runTestCommand: () =>
         options.runTestCommand?.(hostResultsFilePath) ??
         fs
@@ -400,6 +408,31 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.failureCode).toBe('OOM_KILLED');
     expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
     expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+  });
+
+  it('fails with WORKSPACE_DISK_LIMIT_EXCEEDED when the workspace grows past the configured limit after install', async () => {
+    const record = baseRecord();
+    const runTestCommand = vi.fn(async () => okContainerResult());
+    const { pipeline, repository } = await build({
+      configOverrides: { SANDBOX_MAX_WORKSPACE_BYTES: 1024 },
+      installDependencies: async (workspacePath) => {
+        // Simula que `pnpm install` escribió un node_modules grande.
+        await fs.writeFile(path.join(workspacePath, 'big.bin'), Buffer.alloc(2048));
+        return okContainerResult();
+      },
+      runTestCommand,
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('WORKSPACE_DISK_LIMIT_EXCEEDED');
+    expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
+    expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
+    // Nunca llega a correr tests: el guard corta justo después de instalar.
+    expect(runTestCommand).not.toHaveBeenCalled();
   });
 
   it('reports TIMED_OUT/EXECUTION_DEADLINE_EXCEEDED when the global deadline is already spent after PREPARING', async () => {

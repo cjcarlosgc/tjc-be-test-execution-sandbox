@@ -18,6 +18,7 @@ import {
   SandboxTimeoutError,
   TestExecutionFailedError,
   UnsupportedPackageManagerError,
+  WorkspaceDiskLimitExceededError,
 } from '../common/errors/sandbox-fact-error.js';
 import { ContainerRunner } from '../container/container-runner.service.js';
 import { hasPnpmLockfile } from '../container/package-manager-detection.js';
@@ -51,6 +52,7 @@ const MAX_EVIDENCE_BYTES = 8 * 1024;
 export class ExecutionPipelineService {
   private readonly logger = new Logger(ExecutionPipelineService.name);
   private readonly executionDeadlineMs: number;
+  private readonly maxWorkspaceBytes: number;
 
   constructor(
     @Inject(EXECUTION_REPOSITORY)
@@ -64,7 +66,9 @@ export class ExecutionPipelineService {
     private readonly containerRunner: ContainerRunner,
     configService: ConfigService,
   ) {
-    this.executionDeadlineMs = resolveSandboxLimits(configService).executionDeadlineMs;
+    const limits = resolveSandboxLimits(configService);
+    this.executionDeadlineMs = limits.executionDeadlineMs;
+    this.maxWorkspaceBytes = limits.maxWorkspaceBytes;
   }
 
   /**
@@ -170,6 +174,14 @@ export class ExecutionPipelineService {
             installResult.stderr || installResult.stdout,
             500,
           )}`,
+        );
+      }
+
+      const workspaceBytes =
+        await this.workspaceManager.calculateDirectorySize(workspacePath);
+      if (workspaceBytes > this.maxWorkspaceBytes) {
+        throw new WorkspaceDiskLimitExceededError(
+          `workspace grew to ${workspaceBytes} bytes after installing dependencies, exceeding the ${this.maxWorkspaceBytes} byte limit`,
         );
       }
 
