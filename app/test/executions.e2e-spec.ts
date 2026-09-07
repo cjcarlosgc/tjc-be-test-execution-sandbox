@@ -132,6 +132,29 @@ describe('Executions API (e2e)', () => {
       .send(validExecutionPayload());
 
     expect(response.status).toBe(400);
+    expect(response.body.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+  });
+
+  it('rejects an Idempotency-Key that is not a valid UUID', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', 'not-a-uuid')
+      .send(validExecutionPayload());
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('INVALID_IDEMPOTENCY_KEY');
+  });
+
+  it('rejects an Idempotency-Key that does not match requestId', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', '99999999-9999-4999-8999-999999999999')
+      .send(validExecutionPayload());
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('IDEMPOTENCY_KEY_MISMATCH');
   });
 
   it('rejects unknown fields in the request body', async () => {

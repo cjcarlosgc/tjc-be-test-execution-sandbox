@@ -12,6 +12,7 @@ import { BearerAuthGuard } from '../common/auth/bearer-auth.guard.js';
 import { AppHttpException } from '../common/http/app-http-exception.js';
 import { CorrelationId } from '../common/http/correlation-id.decorator.js';
 import { IdempotencyKey } from '../common/http/idempotency-key.decorator.js';
+import { isUuid } from '../common/validation/uuid.js';
 import { CreateSandboxExecutionRequestDto } from './dto/create-execution-request.dto.js';
 import type {
   SandboxExecutionAcceptedResponse,
@@ -35,8 +36,15 @@ export class ExecutionsController {
     if (!idempotencyKey) {
       throw new AppHttpException(
         400,
-        'VALIDATION_ERROR',
+        'IDEMPOTENCY_KEY_REQUIRED',
         'Idempotency-Key header is required.',
+      );
+    }
+    if (!isUuid(idempotencyKey)) {
+      throw new AppHttpException(
+        400,
+        'INVALID_IDEMPOTENCY_KEY',
+        'Idempotency-Key header must be a valid UUID.',
       );
     }
     return this.executionsService.create(dto, idempotencyKey, correlationId);
