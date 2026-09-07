@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { resolveSandboxLimits } from '../common/config/sandbox-limits.config.js';
 import type {
   ExecutionEvidenceFact,
   RunnerFacts,
@@ -11,6 +13,7 @@ import type {
 } from '../common/contracts/sandbox-execution.contract.js';
 import {
   DependencyInstallFailedError,
+  OomKilledError,
   SandboxFactError,
   SandboxTimeoutError,
   TestExecutionFailedError,
@@ -47,6 +50,7 @@ const MAX_EVIDENCE_BYTES = 8 * 1024;
 @Injectable()
 export class ExecutionPipelineService {
   private readonly logger = new Logger(ExecutionPipelineService.name);
+  private readonly executionDeadlineMs: number;
 
   constructor(
     @Inject(EXECUTION_REPOSITORY)
@@ -58,7 +62,10 @@ export class ExecutionPipelineService {
     private readonly artifactMaterializer: ArtifactMaterializer,
     private readonly runnerAdapterRegistry: RunnerAdapterRegistry,
     private readonly containerRunner: ContainerRunner,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.executionDeadlineMs = resolveSandboxLimits(configService).executionDeadlineMs;
+  }
 
   /**
    * Ejecuta el pipeline. El controller la dispara sin `await` (`void`)
@@ -80,6 +87,9 @@ export class ExecutionPipelineService {
 
     const startedAt = record.startedAt ?? new Date().toISOString();
     this.transitionTo(executionId, 'PREPARING', { startedAt });
+    // Deadline global de la ejecución (timeouts-cleanup): ninguna etapa
+    // individual puede, sumada a las anteriores, exceder este presupuesto.
+    const deadlineAt = Date.now() + this.executionDeadlineMs;
 
     let workspacePath: string | undefined;
     let currentStage: SandboxStage = 'PREPARING';
@@ -128,17 +138,25 @@ export class ExecutionPipelineService {
         );
       }
 
+      this.assertWithinDeadline(deadlineAt, 'INSTALLING_DEPENDENCIES');
+
       currentStage = 'INSTALLING_DEPENDENCIES';
       this.transitionTo(executionId, currentStage);
       const installStartedAt = Date.now();
       const installResult = await this.containerRunner.installDependencies(
         executionId,
         workspacePath,
+        deadlineAt - Date.now(),
       );
       stageDurations.push({
         stage: currentStage,
         durationMs: Date.now() - installStartedAt,
       });
+      if (installResult.oomKilled) {
+        throw new OomKilledError(
+          'dependency installation was killed for exceeding the memory limit',
+        );
+      }
       if (installResult.timedOut) {
         throw new SandboxTimeoutError(
           'INSTALL_TIMEOUT',
@@ -155,6 +173,8 @@ export class ExecutionPipelineService {
         );
       }
 
+      this.assertWithinDeadline(deadlineAt, 'RUNNING_TESTS');
+
       currentStage = 'RUNNING_TESTS';
       this.transitionTo(executionId, currentStage);
       const command = adapter.buildCommand({ workspacePath, resultsFilePath });
@@ -163,11 +183,17 @@ export class ExecutionPipelineService {
         executionId,
         workspacePath,
         command,
+        deadlineAt - Date.now(),
       );
       stageDurations.push({
         stage: currentStage,
         durationMs: Date.now() - testStartedAt,
       });
+      if (testResult.oomKilled) {
+        throw new OomKilledError(
+          'test execution was killed for exceeding the memory limit',
+        );
+      }
       evidence.push(
         {
           kind: 'TEST_STDOUT',
@@ -262,6 +288,17 @@ export class ExecutionPipelineService {
       if (workspacePath) {
         await this.workspaceManager.cleanup(workspacePath);
       }
+    }
+  }
+
+  /** Corta antes de iniciar una etapa si ya no queda presupuesto del deadline global. */
+  private assertWithinDeadline(deadlineAt: number, nextStage: SandboxStage): void {
+    if (Date.now() >= deadlineAt) {
+      throw new SandboxTimeoutError(
+        'EXECUTION_DEADLINE_EXCEEDED',
+        'INFRASTRUCTURE',
+        `execution exceeded its global deadline before starting ${nextStage}`,
+      );
     }
   }
 

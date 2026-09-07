@@ -1,3 +1,4 @@
+import type { ConfigService } from '@nestjs/config';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -58,6 +59,7 @@ function okContainerResult(
 ): ContainerRunResult {
   return {
     exitCode: 0,
+    oomKilled: false,
     stdout: '',
     stdoutTruncated: false,
     stdoutOriginalBytes: 0,
@@ -87,6 +89,13 @@ const PASSING_REPORT = JSON.stringify({
   ],
 });
 
+function fakeConfigService(overrides: Record<string, unknown> = {}): ConfigService {
+  return {
+    get: (key: string, defaultValue?: unknown) =>
+      key in overrides ? overrides[key] : defaultValue,
+  } as unknown as ConfigService;
+}
+
 describe('ExecutionPipelineService', () => {
   const createdDirs: string[] = [];
 
@@ -105,6 +114,7 @@ describe('ExecutionPipelineService', () => {
     resolveRunner?: () => Promise<unknown>;
     installDependencies?: () => Promise<ContainerRunResult>;
     runTestCommand?: (resultsFilePath: string) => Promise<ContainerRunResult>;
+    configOverrides?: Record<string, unknown>;
   }) {
     const workspaceDir = await fs.mkdtemp(
       path.join(os.tmpdir(), 'pipeline-test-'),
@@ -175,6 +185,7 @@ describe('ExecutionPipelineService', () => {
       artifactMaterializer,
       runnerAdapterRegistry,
       containerRunner,
+      fakeConfigService(options.configOverrides ?? {}),
     );
 
     return { pipeline, repository, workspaceManager, workspaceDir, containerRunner };
@@ -357,6 +368,57 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.status).toBe('TIMED_OUT');
     expect(updated?.failureCode).toBe('TEST_TIMEOUT');
     expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+  });
+
+  it('reports OOM_KILLED/INFRASTRUCTURE when dependency installation is OOM-killed', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      installDependencies: async () => okContainerResult({ oomKilled: true, exitCode: 137 }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('OOM_KILLED');
+    expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
+    expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
+  });
+
+  it('reports OOM_KILLED/INFRASTRUCTURE when the test run is OOM-killed', async () => {
+    const record = baseRecord();
+    const { pipeline, repository } = await build({
+      runTestCommand: async () => okContainerResult({ oomKilled: true, exitCode: 137 }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('OOM_KILLED');
+    expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
+    expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+  });
+
+  it('reports TIMED_OUT/EXECUTION_DEADLINE_EXCEEDED when the global deadline is already spent after PREPARING', async () => {
+    const record = baseRecord();
+    const installDependencies = vi.fn(async () => okContainerResult());
+    const { pipeline, repository } = await build({
+      installDependencies,
+      configOverrides: { SANDBOX_EXECUTION_DEADLINE_MS: 0 },
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('TIMED_OUT');
+    expect(updated?.failureCode).toBe('EXECUTION_DEADLINE_EXCEEDED');
+    expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
+    // Nunca llega a instalar: el deadline ya estaba agotado.
+    expect(installDependencies).not.toHaveBeenCalled();
   });
 
   it('fails with TEST_EXECUTION_FAILED when the runner produced no results file', async () => {

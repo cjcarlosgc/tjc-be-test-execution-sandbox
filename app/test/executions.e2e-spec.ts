@@ -168,6 +168,23 @@ describe('Executions API (e2e)', () => {
     expect(response.body.code).toBe('VALIDATION_ERROR');
   });
 
+  it('rejects a request that tries to elevate resource limits (resource-limits transversal)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', '11111111-1111-4111-8111-111111111111')
+      .send(
+        validExecutionPayload({
+          timeoutMs: 999_999_999,
+          memoryBytes: 999_999_999,
+          cpuLimit: 64,
+        }),
+      );
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('VALIDATION_ERROR');
+  });
+
   it('rejects a traversal path in an artifact relativePath', async () => {
     const response = await request(app.getHttpServer())
       .post('/executions')

@@ -81,3 +81,14 @@ export class TestExecutionFailedError extends SandboxFactError {
  * `'FAILED'` (resource-limits: "Exceder tiempo produce TIMED_OUT").
  */
 export class SandboxTimeoutError extends SandboxFactError {}
+
+/**
+ * El container fue terminado por exceder el límite de memoria configurado
+ * (`State.OOMKilled`, resource-limits: "Normalización de OOM"). Es un límite
+ * de plataforma, no un problema lógico de la dependencia/prueba en sí.
+ */
+export class OomKilledError extends SandboxFactError {
+  constructor(message: string) {
+    super('OOM_KILLED', 'INFRASTRUCTURE', message);
+  }
+}

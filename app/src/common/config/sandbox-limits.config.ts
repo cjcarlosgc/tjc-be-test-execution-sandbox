@@ -5,6 +5,7 @@ import * as path from 'node:path';
 export interface SandboxLimitsConfig {
   workspaceRoot: string;
   workspaceTtlMs: number;
+  executionDeadlineMs: number;
   allowedDownloadHosts: string[];
   downloadTimeoutMs: number;
   downloadMaxRedirects: number;
@@ -34,6 +35,10 @@ export function resolveSandboxLimits(
     workspaceTtlMs: configService.get<number>(
       'SANDBOX_WORKSPACE_TTL_MS',
       30 * 60 * 1000,
+    ),
+    executionDeadlineMs: configService.get<number>(
+      'SANDBOX_EXECUTION_DEADLINE_MS',
+      10 * 60 * 1000,
     ),
     allowedDownloadHosts: allowedHostsRaw
       .split(',')

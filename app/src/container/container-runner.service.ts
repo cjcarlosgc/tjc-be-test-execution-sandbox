@@ -10,6 +10,7 @@ import { DOCKER_CLIENT } from './docker-client.provider.js';
 
 export interface ContainerRunResult {
   exitCode: number | null;
+  oomKilled: boolean;
   stdout: string;
   stdoutTruncated: boolean;
   stdoutOriginalBytes: number;
@@ -76,9 +77,15 @@ export class ContainerRunner {
    * no ser semver exacto, así que la versión la fija la configuración del
    * Sandbox, no el proyecto ejecutado.
    */
+  /**
+   * `maxTimeoutMs`, si se da, acota el timeout configurado sin poder
+   * ampliarlo — lo usa `ExecutionPipelineService` para que ninguna etapa
+   * exceda el deadline global de la ejecución (timeouts-cleanup).
+   */
   async installDependencies(
     executionId: string,
     workspacePath: string,
+    maxTimeoutMs?: number,
   ): Promise<ContainerRunResult> {
     const result = await this.run({
       executionId,
@@ -92,10 +99,10 @@ export class ContainerRunner {
       ],
       network: true,
       readOnlyWorkspace: false,
-      timeoutMs: this.limits.installTimeoutMs,
+      timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
     });
     this.logger.log(
-      `install dependencies executionId=${executionId} exitCode=${result.exitCode} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
+      `install dependencies executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
     );
     return result;
   }
@@ -104,6 +111,7 @@ export class ContainerRunner {
     executionId: string,
     workspacePath: string,
     command: string[],
+    maxTimeoutMs?: number,
   ): Promise<ContainerRunResult> {
     const result = await this.run({
       executionId,
@@ -112,10 +120,10 @@ export class ContainerRunner {
       command,
       network: false,
       readOnlyWorkspace: false,
-      timeoutMs: this.limits.testTimeoutMs,
+      timeoutMs: clampTimeout(this.limits.testTimeoutMs, maxTimeoutMs),
     });
     this.logger.log(
-      `run tests executionId=${executionId} exitCode=${result.exitCode} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
+      `run tests executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
     );
     return result;
   }
@@ -166,10 +174,12 @@ export class ContainerRunner {
       }
 
       const logs = await this.collectLogs(container);
-      const exitCode = timedOut ? null : await this.readExitCode(container);
+      const { exitCode, oomKilled } = timedOut
+        ? { exitCode: null, oomKilled: false }
+        : await this.readOutcome(container);
       const durationMs = Date.now() - startedAt;
 
-      return { exitCode, timedOut, durationMs, ...logs };
+      return { exitCode, oomKilled, timedOut, durationMs, ...logs };
     } finally {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
@@ -182,11 +192,14 @@ export class ContainerRunner {
     }
   }
 
-  private async readExitCode(
+  private async readOutcome(
     container: Dockerode.Container,
-  ): Promise<number | null> {
+  ): Promise<{ exitCode: number | null; oomKilled: boolean }> {
     const inspected = await container.inspect();
-    return inspected.State.ExitCode ?? null;
+    return {
+      exitCode: inspected.State.ExitCode ?? null,
+      oomKilled: inspected.State.OOMKilled === true,
+    };
   }
 
   private async collectLogs(container: Dockerode.Container): Promise<{
@@ -265,4 +278,12 @@ export class ContainerRunner {
       );
     });
   }
+}
+
+/** Nunca amplía el timeout configurado, solo puede acotarlo más. */
+function clampTimeout(configuredMs: number, maxMs: number | undefined): number {
+  if (maxMs === undefined) {
+    return configuredMs;
+  }
+  return Math.max(0, Math.min(configuredMs, maxMs));
 }

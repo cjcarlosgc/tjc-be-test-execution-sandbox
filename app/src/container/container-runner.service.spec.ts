@@ -13,6 +13,7 @@ function fakeConfigService(overrides: Record<string, unknown> = {}): ConfigServi
 interface FakeContainerOptions {
   wait?: () => Promise<{ StatusCode: number }>;
   exitCode?: number;
+  oomKilled?: boolean;
   start?: () => Promise<void>;
 }
 
@@ -22,7 +23,9 @@ function buildFakeDocker(options: FakeContainerOptions = {}) {
     start: vi.fn(options.start ?? (async () => {})),
     wait: vi.fn(options.wait ?? (async () => ({ StatusCode: options.exitCode ?? 0 }))),
     kill: vi.fn(async () => {}),
-    inspect: vi.fn(async () => ({ State: { ExitCode: options.exitCode ?? 0 } })),
+    inspect: vi.fn(async () => ({
+      State: { ExitCode: options.exitCode ?? 0, OOMKilled: options.oomKilled ?? false },
+    })),
     remove: vi.fn(async () => {}),
     logs: vi.fn(async () => new PassThrough()),
   };
@@ -261,5 +264,43 @@ describe('ContainerRunner', () => {
     expect(result.stdout).toHaveLength(10);
     expect(result.stdoutTruncated).toBe(true);
     expect(result.stdoutOriginalBytes).toBe(50);
+  });
+
+  it('reports oomKilled from the container inspect result', async () => {
+    const { docker } = buildFakeDocker({ oomKilled: true, exitCode: 137 });
+    const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+    const result = await runner.installDependencies(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+    );
+
+    expect(result.oomKilled).toBe(true);
+    expect(result.exitCode).toBe(137);
+  });
+
+  it('clamps the effective timeout to maxTimeoutMs without exceeding it (global deadline)', async () => {
+    let resolveWait: ((value: { StatusCode: number }) => void) | undefined;
+    const waitPromise = new Promise<{ StatusCode: number }>((resolve) => {
+      resolveWait = resolve;
+    });
+    const { docker, container } = buildFakeDocker({ wait: () => waitPromise });
+    // En Docker real, matar el container hace que wait() se resuelva solo.
+    container.kill = vi.fn(async () => {
+      resolveWait?.({ StatusCode: 137 });
+    });
+    const runner = new ContainerRunner(
+      docker as never,
+      fakeConfigService({ SANDBOX_INSTALL_TIMEOUT_MS: 100_000 }),
+    );
+
+    const result = await runner.installDependencies(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+      10,
+    );
+
+    expect(result.timedOut).toBe(true);
+    expect(container.kill).toHaveBeenCalledTimes(1);
   });
 });
