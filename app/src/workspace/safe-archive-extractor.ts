@@ -28,7 +28,9 @@ export class SafeArchiveExtractor {
   /**
    * Extrae `zipPath` dentro de `destinationRoot` aplicando defensas contra
    * Zip Slip, entradas absolutas, symlinks y zip bombs (temporary-workspaces
-   * / resource-limits transversal specs).
+   * / resource-limits transversal specs). Si el archivo entero vive bajo una
+   * única carpeta contenedora de nivel superior, esa carpeta se aplana al
+   * terminar la extracción — ver `flattenSingleTopLevelDirectory`.
    */
   async extract(zipPath: string, destinationRoot: string): Promise<void> {
     const resolvedRoot = path.resolve(destinationRoot);
@@ -94,6 +96,37 @@ export class SafeArchiveExtractor {
         zip.close();
       }
     }
+
+    await this.flattenSingleTopLevelDirectory(resolvedRoot);
+  }
+
+  /**
+   * Muchos snapshots reales (exports de GitHub, `zip -r carpeta/`, etc.)
+   * envuelven todo el proyecto en una única carpeta contenedora de nivel
+   * superior (`mi-proyecto/package.json` en vez de `package.json`). Sin
+   * aplanar esa carpeta, todo chequeo downstream que asume el proyecto en la
+   * raíz del workspace (`readPackageJson`, `hasAnyConfigFile`,
+   * `hasPnpmLockfile`, y la resolución de `relativePath` de artefactos en
+   * `ArtifactMaterializer`) fallaría en encontrar cualquier archivo. Se
+   * detecta y aplana aquí, una sola vez, para que todos esos consumidores
+   * puedan seguir asumiendo una estructura plana sin cada uno tener que
+   * reimplementar la detección.
+   */
+  private async flattenSingleTopLevelDirectory(root: string): Promise<void> {
+    const topLevelEntries = await fs.readdir(root, { withFileTypes: true });
+    if (topLevelEntries.length !== 1 || !topLevelEntries[0].isDirectory()) {
+      return;
+    }
+
+    const wrapperPath = path.join(root, topLevelEntries[0].name);
+    const wrappedEntries = await fs.readdir(wrapperPath);
+    for (const wrappedEntry of wrappedEntries) {
+      await fs.rename(
+        path.join(wrapperPath, wrappedEntry),
+        path.join(root, wrappedEntry),
+      );
+    }
+    await fs.rmdir(wrapperPath);
   }
 
   private resolveEntryPath(root: string, entryName: string): string {
