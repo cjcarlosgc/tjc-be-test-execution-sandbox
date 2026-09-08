@@ -3,6 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ZipFile } from 'yazl';
 import type { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
 import type { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
 import { parseJestCompatibleJson } from '../runner-adapters/jest-compatible-result-parser.js';
@@ -11,13 +12,17 @@ import type {
   ContainerRunner,
   ContainerRunResult,
 } from '../container/container-runner.service.js';
-import type { ExecutionInputDownloadService } from '../workspace/execution-input-download.service.js';
-import type { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
+import type {
+  DownloadedFile,
+  ExecutionInputDownloadService,
+} from '../workspace/execution-input-download.service.js';
+import { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
 import {
   InputDownloadFailedError,
   UnsupportedRunnerError,
 } from '../common/errors/sandbox-fact-error.js';
+import type { EphemeralDownloadRef } from '../common/contracts/sandbox-execution.contract.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import { InMemoryExecutionRepository } from './execution.repository.js';
@@ -89,6 +94,20 @@ const PASSING_REPORT = JSON.stringify({
   ],
 });
 
+function buildZip(files: Record<string, string>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const zip = new ZipFile();
+    for (const [entryPath, content] of Object.entries(files)) {
+      zip.addBuffer(Buffer.from(content, 'utf8'), entryPath);
+    }
+    const chunks: Buffer[] = [];
+    zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
+    zip.outputStream.on('error', reject);
+    zip.end();
+  });
+}
+
 function fakeConfigService(overrides: Record<string, unknown> = {}): ConfigService {
   return {
     get: (key: string, defaultValue?: unknown) =>
@@ -107,8 +126,11 @@ describe('ExecutionPipelineService', () => {
 
   async function build(options: {
     withPnpmLockfile?: boolean;
-    downloadToFile?: () => Promise<void>;
-    extract?: () => Promise<void>;
+    downloadToFile?: (
+      ref: EphemeralDownloadRef,
+      destinationPath: string,
+    ) => Promise<DownloadedFile>;
+    extract?: (zipPath: string, destinationRoot: string) => Promise<void>;
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
     resolveRunner?: () => Promise<unknown>;
@@ -329,6 +351,46 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.status).toBe('FAILED');
     expect(updated?.failureCode).toBe('UNSUPPORTED_PACKAGE_MANAGER');
     expect(updated?.result?.failure?.stage).toBe('PREPARING');
+  });
+
+  it('finds pnpm-lock.yaml through a real download+extract even when the snapshot is wrapped in a single top-level folder', async () => {
+    // Regresión: el ZIP de staging solía descargarse dentro del propio
+    // workspacePath, de modo que cuando el proyecto real venía envuelto en
+    // una única carpeta contenedora, SafeArchiveExtractor veía DOS entradas
+    // de nivel superior (el ZIP + la carpeta) y nunca aplanaba. El fix
+    // descarga el ZIP a un staging fuera del workspace (`os.tmpdir()`); esta
+    // prueba ejercita el download real (que escribe en la ruta que le pasa
+    // el pipeline, no una fija) + el `SafeArchiveExtractor` real juntos,
+    // exactamente la combinación donde vivía el bug.
+    const record = baseRecord();
+    const wrappedZip = await buildZip({
+      'my-project/package.json': '{"name":"demo"}',
+      'my-project/pnpm-lock.yaml': "lockfileVersion: '9.0'\n",
+    });
+    const observedDownloadPaths: string[] = [];
+    const realExtractor = new SafeArchiveExtractor(fakeConfigService());
+
+    const { pipeline, repository, workspaceDir } = await build({
+      withPnpmLockfile: false,
+      downloadToFile: async (_ref, destinationPath) => {
+        observedDownloadPaths.push(destinationPath);
+        await fs.writeFile(destinationPath, wrappedZip);
+        return { path: destinationPath, sizeBytes: wrappedZip.length, sha256: 'x' };
+      },
+      extract: (zipPath, destinationRoot) =>
+        realExtractor.extract(zipPath, destinationRoot),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('COMPLETED');
+    expect(observedDownloadPaths).toHaveLength(1);
+    expect(observedDownloadPaths[0]!.startsWith(workspaceDir)).toBe(false);
+    expect(
+      await fs.readFile(path.join(workspaceDir, 'package.json'), 'utf8'),
+    ).toBe('{"name":"demo"}');
   });
 
   it('fails with DEPENDENCY category when pnpm install exits non-zero', async () => {

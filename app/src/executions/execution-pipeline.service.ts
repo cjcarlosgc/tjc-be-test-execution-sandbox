@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveSandboxLimits } from '../common/config/sandbox-limits.config.js';
 import type {
@@ -36,7 +37,7 @@ import {
   type ExecutionRepository,
 } from './execution.repository.js';
 
-const SNAPSHOT_STAGING_FILENAME = '__snapshot__.zip';
+const SNAPSHOT_STAGING_PREFIX = 'sandbox-snapshot-';
 const RESULTS_FILENAME = '.sandbox-results.json';
 /** El workspace siempre se monta en `/app` dentro del container (container-runner.service.ts). */
 const CONTAINER_WORKSPACE_MOUNT = '/app';
@@ -103,16 +104,26 @@ export class ExecutionPipelineService {
     try {
       const preparingStartedAt = Date.now();
       workspacePath = await this.workspaceManager.createWorkspace(executionId);
+      // El ZIP se descarga fuera de workspacePath (nunca dentro): si
+      // conviviera con el contenido extraído, SafeArchiveExtractor lo
+      // contaría como una segunda entrada de nivel superior y nunca
+      // detectaría/aplanaría una única carpeta contenedora real del
+      // proyecto. `os.tmpdir()` es un scratch por ejecución (nombrado por
+      // executionId, único), no el workspace persistente/limpiable del
+      // request.
       const snapshotZipPath = path.join(
-        workspacePath,
-        SNAPSHOT_STAGING_FILENAME,
+        os.tmpdir(),
+        `${SNAPSHOT_STAGING_PREFIX}${executionId}.zip`,
       );
-      await this.downloadService.downloadToFile(
-        record.snapshot,
-        snapshotZipPath,
-      );
-      await this.archiveExtractor.extract(snapshotZipPath, workspacePath);
-      await fs.rm(snapshotZipPath, { force: true });
+      try {
+        await this.downloadService.downloadToFile(
+          record.snapshot,
+          snapshotZipPath,
+        );
+        await this.archiveExtractor.extract(snapshotZipPath, workspacePath);
+      } finally {
+        await fs.rm(snapshotZipPath, { force: true });
+      }
 
       const appliedArtifactIds = await this.artifactMaterializer.applyArtifacts(
         workspacePath,
