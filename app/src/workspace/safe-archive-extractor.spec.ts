@@ -91,57 +91,6 @@ describe('SafeArchiveExtractor', () => {
     ).toBe('export const x = 1;');
   });
 
-  it('flattens a single top-level containing folder so the project lands at the workspace root', async () => {
-    const buffer = await buildZip([
-      { path: 'my-project/package.json', content: '{"name":"demo"}' },
-      { path: 'my-project/src/index.ts', content: 'export const x = 1;' },
-    ]);
-    await fs.writeFile(zipPath, buffer);
-
-    const extractor = new SafeArchiveExtractor(fakeConfigService());
-    await extractor.extract(zipPath, destination);
-
-    expect(await fs.readFile(path.join(destination, 'package.json'), 'utf8')).toBe(
-      '{"name":"demo"}',
-    );
-    expect(
-      await fs.readFile(path.join(destination, 'src', 'index.ts'), 'utf8'),
-    ).toBe('export const x = 1;');
-    await expect(
-      fs.access(path.join(destination, 'my-project')),
-    ).rejects.toThrow();
-  });
-
-  it('does not flatten when there are multiple top-level entries', async () => {
-    const buffer = await buildZip([
-      { path: 'package.json', content: '{"name":"demo"}' },
-      { path: 'README.md', content: 'hello' },
-    ]);
-    await fs.writeFile(zipPath, buffer);
-
-    const extractor = new SafeArchiveExtractor(fakeConfigService());
-    await extractor.extract(zipPath, destination);
-
-    expect(await fs.readFile(path.join(destination, 'package.json'), 'utf8')).toBe(
-      '{"name":"demo"}',
-    );
-    expect(await fs.readFile(path.join(destination, 'README.md'), 'utf8')).toBe(
-      'hello',
-    );
-  });
-
-  it('does not flatten a single top-level file', async () => {
-    const buffer = await buildZip([{ path: 'package.json', content: '{}' }]);
-    await fs.writeFile(zipPath, buffer);
-
-    const extractor = new SafeArchiveExtractor(fakeConfigService());
-    await extractor.extract(zipPath, destination);
-
-    expect(await fs.readFile(path.join(destination, 'package.json'), 'utf8')).toBe(
-      '{}',
-    );
-  });
-
   it('rejects a Zip Slip entry that escapes the destination', async () => {
     const raw = await buildZip([{ path: 'zzzescape.txt' }]);
     const buffer = patchEntryName(raw, 'zzzescape.txt', '../escape.txt');

@@ -198,6 +198,42 @@ describe('ContainerRunner', () => {
     );
   });
 
+  it('uses the given workingDir as the container cwd, without changing the mount', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+    await runner.installDependencies(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+      undefined,
+      '/app/my-project',
+    );
+
+    expect(docker.createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        WorkingDir: '/app/my-project',
+        HostConfig: expect.objectContaining({
+          Binds: ['/tmp/workspace:/app'],
+        }),
+      }),
+    );
+  });
+
+  it('defaults the container cwd to /app when no workingDir is given', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+    await runner.runTestCommand(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+      ['node_modules/.bin/vitest', 'run'],
+    );
+
+    expect(docker.createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({ WorkingDir: '/app' }),
+    );
+  });
+
   it('runs the test command without network on a writable mount', async () => {
     const { docker } = buildFakeDocker();
     const runner = new ContainerRunner(docker as never, fakeConfigService());

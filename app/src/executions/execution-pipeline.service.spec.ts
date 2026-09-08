@@ -5,9 +5,14 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZipFile } from 'yazl';
 import type { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
-import type { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
+import { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
+import { JestTestRunnerAdapter } from '../runner-adapters/jest-test-runner.adapter.js';
+import { VitestTestRunnerAdapter } from '../runner-adapters/vitest-test-runner.adapter.js';
 import { parseJestCompatibleJson } from '../runner-adapters/jest-compatible-result-parser.js';
-import type { TestRunnerAdapter } from '../runner-adapters/test-runner-adapter.js';
+import type {
+  ProjectRunnerContext,
+  TestRunnerAdapter,
+} from '../runner-adapters/test-runner-adapter.js';
 import type {
   ContainerRunner,
   ContainerRunResult,
@@ -22,7 +27,10 @@ import {
   InputDownloadFailedError,
   UnsupportedRunnerError,
 } from '../common/errors/sandbox-fact-error.js';
-import type { EphemeralDownloadRef } from '../common/contracts/sandbox-execution.contract.js';
+import type {
+  EphemeralDownloadRef,
+  RunnerHint,
+} from '../common/contracts/sandbox-execution.contract.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import { InMemoryExecutionRepository } from './execution.repository.js';
@@ -133,7 +141,10 @@ describe('ExecutionPipelineService', () => {
     extract?: (zipPath: string, destinationRoot: string) => Promise<void>;
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
-    resolveRunner?: () => Promise<unknown>;
+    resolveRunner?: (
+      runnerHint: RunnerHint,
+      context: ProjectRunnerContext,
+    ) => Promise<TestRunnerAdapter>;
     installDependencies?: (workspacePath: string) => Promise<ContainerRunResult>;
     runTestCommand?: (resultsFilePath: string) => Promise<ContainerRunResult>;
     configOverrides?: Record<string, unknown>;
@@ -353,32 +364,49 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.result?.failure?.stage).toBe('PREPARING');
   });
 
-  it('finds pnpm-lock.yaml through a real download+extract even when the snapshot is wrapped in a single top-level folder', async () => {
-    // Regresión: el ZIP de staging solía descargarse dentro del propio
-    // workspacePath, de modo que cuando el proyecto real venía envuelto en
-    // una única carpeta contenedora, SafeArchiveExtractor veía DOS entradas
-    // de nivel superior (el ZIP + la carpeta) y nunca aplanaba. El fix
-    // descarga el ZIP a un staging fuera del workspace (`os.tmpdir()`); esta
-    // prueba ejercita el download real (que escribe en la ruta que le pasa
-    // el pipeline, no una fija) + el `SafeArchiveExtractor` real juntos,
-    // exactamente la combinación donde vivía el bug.
+  it('resolves the runner and pnpm-lock.yaml through a real download+extract when the snapshot is wrapped in a single top-level folder, without moving anything on disk', async () => {
+    // Regresión (dos capítulos): (1) el ZIP de staging solía descargarse
+    // dentro del propio workspacePath, y con proyectos envueltos en una
+    // única carpeta contenedora la raíz quedaba con dos entradas de nivel
+    // superior en vez de una; (2) un primer fix aplanaba físicamente esa
+    // carpeta (mover/renombrar), lo que desalineaba `artifact.relativePath`
+    // (Core lo sigue enviando relativo a la estructura original, envoltorio
+    // incluido). La solución correcta: descargar el ZIP fuera del workspace
+    // (ya cubierto) + resolver el project root solo para los chequeos que
+    // lo necesitan, sin tocar el layout físico. Esta prueba usa un
+    // `SafeArchiveExtractor` real (descarga+extracción reales) y un
+    // `RunnerAdapterRegistry` real con `VitestTestRunnerAdapter` real (no
+    // fakes), para que `readPackageJson`/`hasAnyConfigFile` — invocados
+    // dentro de `supports()` — se ejerciten de verdad contra la ruta
+    // resuelta, no una fake que ignora el contexto.
     const record = baseRecord();
     const wrappedZip = await buildZip({
-      'my-project/package.json': '{"name":"demo"}',
+      'my-project/package.json':
+        '{"name":"demo","devDependencies":{"vitest":"^3.0.0"}}',
       'my-project/pnpm-lock.yaml': "lockfileVersion: '9.0'\n",
     });
     const observedDownloadPaths: string[] = [];
     const realExtractor = new SafeArchiveExtractor(fakeConfigService());
+    const realRunnerAdapterRegistry = new RunnerAdapterRegistry(
+      new JestTestRunnerAdapter(),
+      new VitestTestRunnerAdapter(),
+    );
 
     const { pipeline, repository, workspaceDir } = await build({
       withPnpmLockfile: false,
       downloadToFile: async (_ref, destinationPath) => {
         observedDownloadPaths.push(destinationPath);
         await fs.writeFile(destinationPath, wrappedZip);
-        return { path: destinationPath, sizeBytes: wrappedZip.length, sha256: 'x' };
+        return {
+          path: destinationPath,
+          sizeBytes: wrappedZip.length,
+          sha256: 'x',
+        };
       },
       extract: (zipPath, destinationRoot) =>
         realExtractor.extract(zipPath, destinationRoot),
+      resolveRunner: (runnerHint, context) =>
+        realRunnerAdapterRegistry.resolve(runnerHint, context),
     });
     repository.save(record);
 
@@ -388,9 +416,18 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.status).toBe('COMPLETED');
     expect(observedDownloadPaths).toHaveLength(1);
     expect(observedDownloadPaths[0]!.startsWith(workspaceDir)).toBe(false);
+    // El aplanado es solo lógico: el archivo real sigue exactamente donde
+    // la extracción lo dejó, envoltorio incluido, tal como Core lo espera
+    // para resolver `artifact.relativePath`.
     expect(
-      await fs.readFile(path.join(workspaceDir, 'package.json'), 'utf8'),
-    ).toBe('{"name":"demo"}');
+      await fs.readFile(
+        path.join(workspaceDir, 'my-project', 'package.json'),
+        'utf8',
+      ),
+    ).toContain('"name":"demo"');
+    await expect(
+      fs.access(path.join(workspaceDir, 'package.json')),
+    ).rejects.toThrow();
   });
 
   it('fails with DEPENDENCY category when pnpm install exits non-zero', async () => {

@@ -76,6 +76,8 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
   let workspaceRoot: string;
   let projectZip: Buffer;
   let projectSha256: string;
+  let wrappedProjectZip: Buffer;
+  let wrappedProjectSha256: string;
 
   beforeAll(async () => {
     process.env.SANDBOX_SERVICE_TOKEN = SERVICE_TOKEN;
@@ -87,8 +89,20 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
     projectZip = await buildZipFixtureFromDir(FIXTURE_DIR);
     projectSha256 = createHash('sha256').update(projectZip).digest('hex');
 
+    // Mismo proyecto, envuelto en una única carpeta contenedora de nivel
+    // superior (patrón real de exports de GitHub) — prueba que
+    // `resolveProjectRoot` + el `workingDir` del container encuentran y
+    // ejecutan el proyecto real dentro del container, con Docker real.
+    wrappedProjectZip = await buildZipFixtureFromDir(FIXTURE_DIR, {
+      wrapInFolder: 'my-project',
+    });
+    wrappedProjectSha256 = createHash('sha256')
+      .update(wrappedProjectZip)
+      .digest('hex');
+
     fixtureServer = await startFixtureServer({
       '/project.zip': () => projectZip,
+      '/wrapped-project.zip': () => wrappedProjectZip,
     });
     process.env.SANDBOX_ALLOWED_DOWNLOAD_HOSTS = fixtureServer.host;
 
@@ -236,6 +250,50 @@ describe('add', () => {
       expect(result.body.appliedArtifactIds).toEqual([
         'ffffffff-ffff-4fff-8fff-ffffffffffff',
       ]);
+    },
+    150_000,
+  );
+
+  it(
+    'installs and runs the real project when the snapshot is wrapped in a single top-level folder (Docker real)',
+    async () => {
+      const accepted = await request(app.getHttpServer())
+        .post('/executions')
+        .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+        .set('Idempotency-Key', 'ffffffff-ffff-4fff-8fff-ffffffffffff')
+        .send({
+          requestId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          testRunId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          projectVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          snapshot: {
+            role: 'PROJECT_SNAPSHOT',
+            url: `${fixtureServer.baseUrl}/wrapped-project.zip`,
+            expiresAt: '2099-01-01T00:00:00.000Z',
+            sha256: wrappedProjectSha256,
+            sizeBytes: wrappedProjectZip.length,
+          },
+          artifacts: [],
+          scope: 'BATCH',
+          targetIds: [],
+          runnerHint: 'VITEST',
+        });
+
+      expect(accepted.status).toBe(202);
+      const executionId = accepted.body.executionId;
+
+      const finalStatus = await pollExecution(app, executionId, 120_000);
+      expect(finalStatus.status).toBe('COMPLETED');
+
+      const result = await request(app.getHttpServer())
+        .get(`/executions/${executionId}/result`)
+        .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
+
+      expect(result.status).toBe(200);
+      expect(result.body.status).toBe('COMPLETED');
+      expect(result.body.failure).toBeNull();
+      expect(result.body.facts.runner).toBe('VITEST');
+      expect(result.body.facts.passed).toBe(true);
+      expect(result.body.facts.totalTests).toBe(1);
     },
     150_000,
   );

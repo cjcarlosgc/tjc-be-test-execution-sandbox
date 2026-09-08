@@ -29,6 +29,7 @@ import {
   EXECUTION_INPUT_DOWNLOAD_SERVICE,
   type ExecutionInputDownloadService,
 } from '../workspace/execution-input-download.service.js';
+import { resolveProjectRoot } from '../workspace/project-root-resolver.js';
 import { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
@@ -125,14 +126,30 @@ export class ExecutionPipelineService {
         await fs.rm(snapshotZipPath, { force: true });
       }
 
+      // `projectRoot` es una detección de solo lectura (nunca mueve/renombra
+      // nada en disco): si el snapshot vino envuelto en una única carpeta
+      // contenedora de nivel superior, resuelve a esa carpeta; si no, es el
+      // propio `workspacePath`. Un aplanado físico desalinearía
+      // `artifact.relativePath` — Core lo sigue enviando relativo a la
+      // estructura original, envoltorio incluido — así que
+      // `applyArtifacts` se resuelve siempre contra `workspacePath` en
+      // crudo, nunca contra `projectRoot`.
+      const projectRoot = await resolveProjectRoot(workspacePath);
+      const containerWorkingDir = this.toContainerWorkingDir(
+        workspacePath,
+        projectRoot,
+      );
+
       const appliedArtifactIds = await this.artifactMaterializer.applyArtifacts(
         workspacePath,
         record.artifacts,
       );
 
-      // `resultsFilePath` es la ruta que verá el comando dentro del
-      // container (workspace montado en `/app`); para leer el archivo desde
-      // el host se usa `hostResultsFilePath`, la misma ruta pero en disco.
+      // `resultsFilePath` es una ruta absoluta dentro del container (el
+      // workspace montado en `/app`); al ser absoluta, el runner la escribe
+      // ahí sin importar el working directory del comando. Para leerla
+      // desde el host se usa `hostResultsFilePath`, la misma ruta pero en
+      // disco.
       const resultsFilePath = path.posix.join(
         CONTAINER_WORKSPACE_MOUNT,
         RESULTS_FILENAME,
@@ -140,14 +157,14 @@ export class ExecutionPipelineService {
       const hostResultsFilePath = path.join(workspacePath, RESULTS_FILENAME);
       const adapter = await this.runnerAdapterRegistry.resolve(
         record.runnerHint,
-        { workspacePath, resultsFilePath },
+        { workspacePath: projectRoot, resultsFilePath },
       );
       stageDurations.push({
         stage: 'PREPARING',
         durationMs: Date.now() - preparingStartedAt,
       });
 
-      if (!(await hasPnpmLockfile(workspacePath))) {
+      if (!(await hasPnpmLockfile(projectRoot))) {
         throw new UnsupportedPackageManagerError(
           'project does not declare a pnpm-lock.yaml (V1 only supports pnpm, DEC-SBX-002)',
         );
@@ -162,6 +179,7 @@ export class ExecutionPipelineService {
         executionId,
         workspacePath,
         deadlineAt - Date.now(),
+        containerWorkingDir,
       );
       stageDurations.push({
         stage: currentStage,
@@ -200,13 +218,17 @@ export class ExecutionPipelineService {
 
       currentStage = 'RUNNING_TESTS';
       this.transitionTo(executionId, currentStage);
-      const command = adapter.buildCommand({ workspacePath, resultsFilePath });
+      const command = adapter.buildCommand({
+        workspacePath: projectRoot,
+        resultsFilePath,
+      });
       const testStartedAt = Date.now();
       const testResult = await this.containerRunner.runTestCommand(
         executionId,
         workspacePath,
         command,
         deadlineAt - Date.now(),
+        containerWorkingDir,
       );
       stageDurations.push({
         stage: currentStage,
@@ -312,6 +334,22 @@ export class ExecutionPipelineService {
         await this.workspaceManager.cleanup(workspacePath);
       }
     }
+  }
+
+  /**
+   * Traduce `projectRoot` (ruta absoluta en el host, igual a `workspacePath`
+   * o un subdirectorio directo suyo) al working directory equivalente
+   * dentro del container, donde todo `workspacePath` está montado en
+   * `/app`. El mount nunca cambia — solo el cwd del comando.
+   */
+  private toContainerWorkingDir(
+    workspacePath: string,
+    projectRoot: string,
+  ): string {
+    const relativeDir = path.relative(workspacePath, projectRoot);
+    return relativeDir === ''
+      ? CONTAINER_WORKSPACE_MOUNT
+      : path.posix.join(CONTAINER_WORKSPACE_MOUNT, relativeDir);
   }
 
   /** Corta antes de iniciar una etapa si ya no queda presupuesto del deadline global. */

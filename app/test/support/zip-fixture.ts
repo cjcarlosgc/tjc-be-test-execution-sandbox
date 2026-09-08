@@ -35,14 +35,24 @@ async function listFilesRecursively(dir: string, base = dir): Promise<string[]> 
 /**
  * Construye un ZIP en memoria a partir de un directorio real en disco
  * (fixtures de proyectos reales committeados, p. ej. para el pipeline
- * completo con `pnpm install`/`vitest` reales).
+ * completo con `pnpm install`/`vitest` reales). `wrapInFolder`, si se da,
+ * envuelve cada entrada bajo esa carpeta (simula el patrón real de exports
+ * de GitHub/`zip -r carpeta/`, una única carpeta contenedora de nivel
+ * superior).
  */
-export async function buildZipFixtureFromDir(dir: string): Promise<Buffer> {
+export async function buildZipFixtureFromDir(
+  dir: string,
+  options: { wrapInFolder?: string } = {},
+): Promise<Buffer> {
   const relativeFiles = await listFilesRecursively(dir);
   const zip = new ZipFile();
   for (const relativePath of relativeFiles) {
     const content = await fs.readFile(path.join(dir, relativePath));
-    zip.addBuffer(content, relativePath.split(path.sep).join('/'));
+    const entryPath = relativePath.split(path.sep).join('/');
+    zip.addBuffer(
+      content,
+      options.wrapInFolder ? `${options.wrapInFolder}/${entryPath}` : entryPath,
+    );
   }
 
   return new Promise((resolve, reject) => {

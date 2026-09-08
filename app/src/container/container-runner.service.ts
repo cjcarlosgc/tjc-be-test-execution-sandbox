@@ -21,6 +21,8 @@ export interface ContainerRunResult {
   durationMs: number;
 }
 
+const DEFAULT_CONTAINER_WORKING_DIR = '/app';
+
 interface RunContainerOptions {
   executionId: string;
   nameSuffix: string;
@@ -29,6 +31,7 @@ interface RunContainerOptions {
   network: boolean;
   readOnlyWorkspace: boolean;
   timeoutMs: number;
+  workingDir: string;
 }
 
 /**
@@ -63,6 +66,7 @@ export class ContainerRunner {
       network: false,
       readOnlyWorkspace: true,
       timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
     });
     this.logger.log(
       `smoke check executionId=${executionId} image=${this.limits.image} exitCode=${result.exitCode} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
@@ -82,10 +86,19 @@ export class ContainerRunner {
    * ampliarlo — lo usa `ExecutionPipelineService` para que ninguna etapa
    * exceda el deadline global de la ejecución (timeouts-cleanup).
    */
+  /**
+   * `workingDir` (ruta absoluta dentro del container, p. ej. `/app` o
+   * `/app/mi-proyecto`) es el directorio real del proyecto cuando el
+   * snapshot vino envuelto en una única carpeta contenedora de nivel
+   * superior — ver `resolveProjectRoot`. El bind mount siempre expone todo
+   * `workspacePath` en `/app`; solo cambia el cwd del comando, nunca qué se
+   * monta.
+   */
   async installDependencies(
     executionId: string,
     workspacePath: string,
     maxTimeoutMs?: number,
+    workingDir: string = DEFAULT_CONTAINER_WORKING_DIR,
   ): Promise<ContainerRunResult> {
     const result = await this.run({
       executionId,
@@ -100,6 +113,7 @@ export class ContainerRunner {
       network: true,
       readOnlyWorkspace: false,
       timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
+      workingDir,
     });
     this.logger.log(
       `install dependencies executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
@@ -112,6 +126,7 @@ export class ContainerRunner {
     workspacePath: string,
     command: string[],
     maxTimeoutMs?: number,
+    workingDir: string = DEFAULT_CONTAINER_WORKING_DIR,
   ): Promise<ContainerRunResult> {
     const result = await this.run({
       executionId,
@@ -121,6 +136,7 @@ export class ContainerRunner {
       network: false,
       readOnlyWorkspace: false,
       timeoutMs: clampTimeout(this.limits.testTimeoutMs, maxTimeoutMs),
+      workingDir,
     });
     this.logger.log(
       `run tests executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
@@ -135,7 +151,7 @@ export class ContainerRunner {
       name: `sandbox-${options.executionId}-${options.nameSuffix}`,
       Image: this.limits.image,
       Cmd: options.command,
-      WorkingDir: '/app',
+      WorkingDir: options.workingDir,
       User: this.limits.user,
       Tty: false,
       HostConfig: {
