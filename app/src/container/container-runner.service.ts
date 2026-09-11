@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
+import { randomUUID } from 'node:crypto';
 import { PassThrough } from 'node:stream';
 import {
   resolveContainerLimits,
@@ -22,16 +23,29 @@ export interface ContainerRunResult {
 }
 
 const DEFAULT_CONTAINER_WORKING_DIR = '/app';
+const PNPM_STORE_CONTAINER_PATH = '/pnpm-store';
 
 interface RunContainerOptions {
   executionId: string;
   nameSuffix: string;
-  workspacePath: string;
+  /** Omitido para containers que no necesitan el bind mount del workspace. */
+  workspacePath?: string;
   command: string[];
   network: boolean;
   readOnlyWorkspace: boolean;
   timeoutMs: number;
   workingDir: string;
+  extraBinds?: string[];
+  /** Por defecto `this.limits.user`; solo el bootstrap del store de pnpm lo eleva a `root`. */
+  user?: string;
+  /**
+   * Capacidades a restaurar por encima del `CapDrop: ['ALL']` de base. Solo
+   * el bootstrap del store de pnpm la usa (`CHOWN`): con todas las
+   * capacidades dropeadas, ni siquiera `root` puede hacer `chown` — falla
+   * con `Operation not permitted` aunque el usuario sea root (confirmado
+   * contra el Docker Engine real).
+   */
+  capAdd?: string[];
 }
 
 /**
@@ -46,6 +60,7 @@ interface RunContainerOptions {
 export class ContainerRunner {
   private readonly logger = new Logger(ContainerRunner.name);
   private readonly limits: ContainerLimitsConfig;
+  private pnpmStoreVolumeReady?: Promise<void>;
 
   constructor(
     @Inject(DOCKER_CLIENT) private readonly docker: Dockerode,
@@ -80,6 +95,14 @@ export class ContainerRunner {
    * proyecto: en la práctica trae rangos (`^9.0.0`) que corepack rechaza por
    * no ser semver exacto, así que la versión la fija la configuración del
    * Sandbox, no el proyecto ejecutado.
+   *
+   * `--store-dir` apunta a un named volume Docker (lectura-escritura)
+   * compartido entre ejecuciones — ver `pnpmStoreVolumeName` en
+   * `ContainerLimitsConfig` — para no volver a descargar dependencias ya
+   * cacheadas de un run al siguiente. El store es content-addressable y
+   * tolera escritura concurrente, así que compartirlo no reintroduce
+   * estado acumulado entre repeticiones: el workspace en sí sigue siendo
+   * fresco por ejecución.
    */
   /**
    * `maxTimeoutMs`, si se da, acota el timeout configurado sin poder
@@ -100,6 +123,8 @@ export class ContainerRunner {
     maxTimeoutMs?: number,
     workingDir: string = DEFAULT_CONTAINER_WORKING_DIR,
   ): Promise<ContainerRunResult> {
+    await this.ensurePnpmStoreVolumeOwnership();
+
     const result = await this.run({
       executionId,
       nameSuffix: 'install',
@@ -109,11 +134,16 @@ export class ContainerRunner {
         `pnpm@${this.limits.pnpmVersion}`,
         'install',
         '--frozen-lockfile',
+        '--store-dir',
+        PNPM_STORE_CONTAINER_PATH,
       ],
       network: true,
       readOnlyWorkspace: false,
       timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
       workingDir,
+      extraBinds: [
+        `${this.limits.pnpmStoreVolumeName}:${PNPM_STORE_CONTAINER_PATH}`,
+      ],
     });
     this.logger.log(
       `install dependencies executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
@@ -144,6 +174,52 @@ export class ContainerRunner {
     return result;
   }
 
+  /**
+   * Un volumen Docker named nuevo se crea `root:root` (0755): el proceso de
+   * instalación, que corre como `this.limits.user` (no root, por diseño),
+   * no podría escribir ahí. Este bootstrap corre una única vez por proceso
+   * (memoizado) un container efímero *como root* que solo hace `chown` del
+   * punto de montaje vacío antes de que exista ningún contenido — nunca
+   * ejecuta código del proyecto ni el propio `pnpm install`, que sigue
+   * corriendo como `this.limits.user` sin cambios. Una vez el directorio es
+   * de ese usuario, todo lo que pnpm cree debajo hereda su ownership, así
+   * que no hace falta repetir el chown (ni recursivo) en runs posteriores.
+   */
+  private async ensurePnpmStoreVolumeOwnership(): Promise<void> {
+    if (!this.pnpmStoreVolumeReady) {
+      this.pnpmStoreVolumeReady = this.runPnpmStoreVolumeBootstrap().catch(
+        (error: unknown) => {
+          this.pnpmStoreVolumeReady = undefined;
+          throw error;
+        },
+      );
+    }
+    return this.pnpmStoreVolumeReady;
+  }
+
+  private async runPnpmStoreVolumeBootstrap(): Promise<void> {
+    const bootstrapId = `pnpm-store-init-${randomUUID()}`;
+    const result = await this.run({
+      executionId: bootstrapId,
+      nameSuffix: 'bootstrap',
+      command: ['chown', this.limits.user, PNPM_STORE_CONTAINER_PATH],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+      extraBinds: [
+        `${this.limits.pnpmStoreVolumeName}:${PNPM_STORE_CONTAINER_PATH}`,
+      ],
+      user: 'root',
+      capAdd: ['CHOWN'],
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(
+        `pnpm store volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
+      );
+    }
+  }
+
   private async run(options: RunContainerOptions): Promise<ContainerRunResult> {
     await this.ensureImage(this.limits.image);
 
@@ -152,11 +228,16 @@ export class ContainerRunner {
       Image: this.limits.image,
       Cmd: options.command,
       WorkingDir: options.workingDir,
-      User: this.limits.user,
+      User: options.user ?? this.limits.user,
       Tty: false,
       HostConfig: {
         Binds: [
-          `${options.workspacePath}:/app${options.readOnlyWorkspace ? ':ro' : ''}`,
+          ...(options.workspacePath
+            ? [
+                `${options.workspacePath}:/app${options.readOnlyWorkspace ? ':ro' : ''}`,
+              ]
+            : []),
+          ...(options.extraBinds ?? []),
         ],
         Memory: this.limits.memoryBytes,
         NanoCpus: this.limits.nanoCpus,
@@ -165,6 +246,7 @@ export class ContainerRunner {
         Privileged: false,
         ReadonlyRootfs: false,
         CapDrop: ['ALL'],
+        CapAdd: options.capAdd,
         SecurityOpt: ['no-new-privileges'],
         AutoRemove: false,
       },

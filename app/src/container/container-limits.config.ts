@@ -12,6 +12,7 @@ export interface ContainerLimitsConfig {
   testTimeoutMs: number;
   maxCapturedOutputBytes: number;
   pnpmVersion: string;
+  pnpmStoreVolumeName: string;
 }
 
 /**
@@ -22,6 +23,13 @@ export interface ContainerLimitsConfig {
  * siempre `corepack pnpm@<pnpmVersion>` en vez de confiar en el campo
  * `packageManager` del proyecto, que en la práctica suele traer rangos
  * (`^9.0.0`) que corepack rechaza por no ser un semver exacto.
+ * `pnpmStoreVolumeName` es un named volume Docker (lectura-escritura,
+ * compartido entre ejecuciones) montado solo en la etapa de instalación
+ * para evitar re-descargar dependencias ya cacheadas de un run al
+ * siguiente. El store de pnpm es content-addressable y soporta escritura
+ * concurrente entre procesos, así que no compromete el aislamiento por
+ * repetición que sí exige un workspace fresco sin estado acumulado — el
+ * store de paquetes no es el estado que ese aislamiento protege.
  */
 export function resolveContainerLimits(
   configService: ConfigService,
@@ -64,5 +72,9 @@ export function resolveContainerLimits(
       64 * 1024,
     ),
     pnpmVersion: configService.get<string>('SANDBOX_PNPM_VERSION', '9'),
+    pnpmStoreVolumeName: configService.get<string>(
+      'SANDBOX_PNPM_STORE_VOLUME',
+      'sandbox-pnpm-store',
+    ),
   };
 }

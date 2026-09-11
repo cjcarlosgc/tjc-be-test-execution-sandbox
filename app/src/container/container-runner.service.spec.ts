@@ -17,8 +17,8 @@ interface FakeContainerOptions {
   start?: () => Promise<void>;
 }
 
-function buildFakeDocker(options: FakeContainerOptions = {}) {
-  const container = {
+function buildFakeContainer(options: FakeContainerOptions = {}) {
+  return {
     id: 'fake-container-id',
     start: vi.fn(options.start ?? (async () => {})),
     wait: vi.fn(options.wait ?? (async () => ({ StatusCode: options.exitCode ?? 0 }))),
@@ -29,9 +29,24 @@ function buildFakeDocker(options: FakeContainerOptions = {}) {
     remove: vi.fn(async () => {}),
     logs: vi.fn(async () => new PassThrough()),
   };
+}
+
+/**
+ * El bootstrap del store de pnpm (ver container-runner.service.ts) crea un
+ * container `*-bootstrap` propio antes del container "principal" de cada
+ * test. Le damos su propio fake siempre exitoso para no acoplar el
+ * `FakeContainerOptions` de cada test (pensado para el container principal:
+ * smoke/install/test) al resultado del bootstrap.
+ */
+function buildFakeDocker(options: FakeContainerOptions = {}) {
+  const container = buildFakeContainer(options);
+  const bootstrapContainer = buildFakeContainer();
 
   const docker = {
-    createContainer: vi.fn(async () => container),
+    createContainer: vi.fn(
+      async (config: { name: string }) =>
+        config.name.includes('bootstrap') ? bootstrapContainer : container,
+    ),
     getImage: vi.fn(() => ({ inspect: vi.fn(async () => ({})) })),
     pull: vi.fn(async () => new PassThrough()),
     modem: {
@@ -53,7 +68,7 @@ function buildFakeDocker(options: FakeContainerOptions = {}) {
     },
   };
 
-  return { docker, container };
+  return { docker, container, bootstrapContainer };
 }
 
 describe('ContainerRunner', () => {
@@ -174,11 +189,14 @@ describe('ContainerRunner', () => {
     expect(container.remove).toHaveBeenCalledWith({ force: true });
   });
 
-  it('installs dependencies via corepack pnpm@<version> with network and a writable mount', async () => {
+  it('installs dependencies via corepack pnpm@<version> with network, a writable mount and the shared pnpm store', async () => {
     const { docker } = buildFakeDocker();
     const runner = new ContainerRunner(
       docker as never,
-      fakeConfigService({ SANDBOX_PNPM_VERSION: '9' }),
+      fakeConfigService({
+        SANDBOX_PNPM_VERSION: '9',
+        SANDBOX_PNPM_STORE_VOLUME: 'sandbox-pnpm-store',
+      }),
     );
 
     await runner.installDependencies(
@@ -189,10 +207,52 @@ describe('ContainerRunner', () => {
     expect(docker.createContainer).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'sandbox-11111111-1111-4111-8111-111111111111-install',
-        Cmd: ['corepack', 'pnpm@9', 'install', '--frozen-lockfile'],
+        Cmd: [
+          'corepack',
+          'pnpm@9',
+          'install',
+          '--frozen-lockfile',
+          '--store-dir',
+          '/pnpm-store',
+        ],
         HostConfig: expect.objectContaining({
-          Binds: ['/tmp/workspace:/app'],
+          Binds: ['/tmp/workspace:/app', 'sandbox-pnpm-store:/pnpm-store'],
           NetworkMode: 'bridge',
+        }),
+      }),
+    );
+  });
+
+  it('bootstraps the pnpm store volume ownership as root before the first install, once per runner instance', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(
+      docker as never,
+      fakeConfigService({ SANDBOX_CONTAINER_USER: 'node' }),
+    );
+
+    await runner.installDependencies(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+    );
+    await runner.installDependencies(
+      '22222222-2222-4222-8222-222222222222',
+      '/tmp/workspace',
+    );
+
+    const bootstrapCalls = (
+      docker.createContainer as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(
+      (call: unknown[]) =>
+        (call[0] as { name: string }).name.includes('bootstrap'),
+    );
+    expect(bootstrapCalls).toHaveLength(1);
+    expect(bootstrapCalls[0][0]).toEqual(
+      expect.objectContaining({
+        Cmd: ['chown', 'node', '/pnpm-store'],
+        User: 'root',
+        HostConfig: expect.objectContaining({
+          Binds: ['sandbox-pnpm-store:/pnpm-store'],
+          NetworkMode: 'none',
         }),
       }),
     );
@@ -213,7 +273,7 @@ describe('ContainerRunner', () => {
       expect.objectContaining({
         WorkingDir: '/app/my-project',
         HostConfig: expect.objectContaining({
-          Binds: ['/tmp/workspace:/app'],
+          Binds: ['/tmp/workspace:/app', 'sandbox-pnpm-store:/pnpm-store'],
         }),
       }),
     );
