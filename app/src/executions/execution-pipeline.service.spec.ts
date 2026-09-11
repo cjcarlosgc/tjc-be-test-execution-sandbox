@@ -568,6 +568,39 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
   });
 
+  it('fails with TEST_ENVIRONMENT_CONFIGURATION_INVALID/CONFIGURATION when the runner crashes on a fatal jest-validate error before writing a results file', async () => {
+    const record = baseRecord();
+    const jestValidateStderr = [
+      'Validation Error:',
+      '',
+      '  Test environment jest-environment-jsdom cannot be found. Make sure the',
+      "  testEnvironment configuration option points to an existing node module.",
+      '',
+      '  As of Jest 28 "jest-environment-jsdom" is no longer shipped by default,',
+      '  make sure to install it separately.',
+      '',
+      '  Configuration Documentation:',
+      '  https://jestjs.io/docs/configuration',
+      '',
+    ].join('\n');
+    const { pipeline, repository } = await build({
+      runTestCommand: async () =>
+        okContainerResult({ exitCode: 1, stderr: jestValidateStderr }),
+    });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('TEST_ENVIRONMENT_CONFIGURATION_INVALID');
+    expect(updated?.result?.failure?.category).toBe('CONFIGURATION');
+    expect(updated?.result?.failure?.stage).toBe('RUNNING_TESTS');
+    expect(updated?.result?.failure?.message).toContain(
+      'jest-environment-jsdom cannot be found',
+    );
+  });
+
   it('completes with facts.passed=false when tests ran but some failed (not a Sandbox failure)', async () => {
     const record = baseRecord();
     const failingReport = JSON.stringify({

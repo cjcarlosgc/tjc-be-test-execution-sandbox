@@ -17,6 +17,7 @@ import {
   OomKilledError,
   SandboxFactError,
   SandboxTimeoutError,
+  TestEnvironmentConfigurationError,
   TestExecutionFailedError,
   UnsupportedPackageManagerError,
   WorkspaceDiskLimitExceededError,
@@ -271,6 +272,12 @@ export class ExecutionPipelineService {
       try {
         rawResults = await fs.readFile(hostResultsFilePath, 'utf8');
       } catch (error) {
+        const configurationCrash = extractFatalConfigurationError(
+          testResult.stderr,
+        );
+        if (configurationCrash) {
+          throw new TestEnvironmentConfigurationError(configurationCrash);
+        }
         throw new TestExecutionFailedError(
           `runner did not produce a results file (exitCode=${testResult.exitCode}): ${(error as Error).message}`,
         );
@@ -408,6 +415,25 @@ export class ExecutionPipelineService {
       message: error instanceof Error ? error.message : 'unknown error',
     };
   }
+}
+
+/**
+ * `jest-validate` (Jest CLI) siempre abre sus errores fatales de
+ * configuración con este preámbulo fijo, antes de que corra ningún test
+ * (p.ej. `testEnvironment: jsdom` sin `jest-environment-jsdom` instalado
+ * tras Jest 28 — el pitfall más común de esa migración). Un proyecto real
+ * puede desencadenarlo con cualquier test, incluso uno vacío; no es un
+ * fallo del test generado, así que se distingue de un `TEST_RUNTIME`
+ * genérico devolviendo el mensaje real capturado en TEST_STDERR.
+ */
+const FATAL_CONFIGURATION_ERROR_MARKER = 'Validation Error:';
+
+function extractFatalConfigurationError(stderr: string): string | null {
+  const markerIndex = stderr.indexOf(FATAL_CONFIGURATION_ERROR_MARKER);
+  if (markerIndex === -1) {
+    return null;
+  }
+  return truncate(stderr.slice(markerIndex).trim(), MAX_EVIDENCE_BYTES);
 }
 
 function truncate(content: string, maxBytes: number): string {

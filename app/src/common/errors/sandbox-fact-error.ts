@@ -76,6 +76,20 @@ export class TestExecutionFailedError extends SandboxFactError {
 }
 
 /**
+ * El runner abortó por una configuración inválida del proyecto (p.ej.
+ * `testEnvironment: jsdom` sin declarar `jest-environment-jsdom` como
+ * devDependency tras Jest 28) antes de ejecutar ningún test: no escribe
+ * `.sandbox-results.json`, pero a diferencia de `TestExecutionFailedError`
+ * le pasaría a cualquier test, incluso uno vacío, así que no es un fallo del
+ * test generado.
+ */
+export class TestEnvironmentConfigurationError extends SandboxFactError {
+  constructor(message: string) {
+    super('TEST_ENVIRONMENT_CONFIGURATION_INVALID', 'CONFIGURATION', message);
+  }
+}
+
+/**
  * Marca un `SandboxFactError` cuya causa es un timeout de etapa: el
  * pipeline usa `instanceof` para reportar `status: 'TIMED_OUT'` en vez de
  * `'FAILED'` (resource-limits: "Exceder tiempo produce TIMED_OUT").
