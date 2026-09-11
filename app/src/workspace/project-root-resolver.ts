@@ -16,12 +16,22 @@ import * as path from 'node:path';
  * `hasAnyConfigFile` vía los adapters de runner, y el working directory del
  * container de instalación/ejecución) — nunca para resolver artefactos.
  */
+/**
+ * Entradas espurias que macOS agrega a los ZIP creados con `zip`/Finder
+ * (`__MACOSX/`, `.DS_Store`). Se ignoran solo para *decidir* si hay una
+ * única carpeta contenedora — no se tocan en disco.
+ */
+const MACOS_ARCHIVE_ARTIFACTS = new Set(['__MACOSX', '.DS_Store']);
+
 export async function resolveProjectRoot(workspacePath: string): Promise<string> {
   const topLevelEntries = await fs.readdir(workspacePath, {
     withFileTypes: true,
   });
-  if (topLevelEntries.length !== 1 || !topLevelEntries[0].isDirectory()) {
+  const relevantEntries = topLevelEntries.filter(
+    (entry) => !MACOS_ARCHIVE_ARTIFACTS.has(entry.name),
+  );
+  if (relevantEntries.length !== 1 || !relevantEntries[0].isDirectory()) {
     return workspacePath;
   }
-  return path.join(workspacePath, topLevelEntries[0].name);
+  return path.join(workspacePath, relevantEntries[0].name);
 }
