@@ -16,6 +16,4 @@ Meta acumulada: 90%. Endurecimiento de límites, observabilidad y confiabilidad.
 ## Sprint 4
 Meta: 100%. Estabilización, rendimiento, pruebas de estrés acotadas, políticas de cleanup y soporte opcional de coverage si se aprueba como métrica secundaria.
 
-HU27-HU29 no requieren cambios funcionales en el Sandbox: trazas, autenticación por propietario y experiencia GitHub mock pertenecen a Core/Developer Console. La demo GitHub no está bloqueada por este servicio y no invoca `/executions`; cualquier ejecución futura originada por GitHub mantendrá el contrato neutral vigente.
-
 La validación final en empresa queda sujeta a `DEC-VAL-001`; ninguna prueba local o simulada sustituye esa ejecución real.

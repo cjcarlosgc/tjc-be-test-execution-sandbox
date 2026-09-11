@@ -8,7 +8,7 @@
 
 ## Diseño técnico
 
-Módulo de feature con controller y DTOs explícitos, `ExecutionService` y repositorio de estado operativo. Implementar `202 + polling`, idempotencia, auth/correlación y filtros de error según `INTEROP-1.6`; no retornar entidades internas directamente ni convertir ese estado local en persistencia autoritativa del producto.
+Módulo de feature con controller y DTOs explícitos, `ExecutionService` y repositorio de estado operativo. Implementar `202 + polling`, idempotencia, auth/correlación y filtros de error según `INTEROP-1.5`; no retornar entidades internas directamente ni convertir ese estado local en persistencia autoritativa del producto.
 
 ## Validación
 

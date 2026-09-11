@@ -6,9 +6,9 @@ Orden de lectura: `contracts/system-contract.md` -> `contracts/interoperability-
 
 ## Contrato entre componentes
 
-[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-1.6` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
+[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-1.4` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
 
-[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-1.6` con rutas, DTOs, estados, errores y transporte universales.
+[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-1.5` con rutas, DTOs, estados, errores y transporte universales.
 
 ## Versionado
 

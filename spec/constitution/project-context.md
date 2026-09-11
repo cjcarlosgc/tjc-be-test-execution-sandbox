@@ -11,8 +11,6 @@ La validación final ocurrirá en el área de desarrollo de una empresa real. Sn
 
 El Sandbox permanece ciego a `RAG`, `GENERALIST_AGENT` y cualquier baseline: recibe una solicitud de ejecución neutral y no registra conclusiones experimentales.
 
-HU27/HU28 persisten y muestran trazas exclusivamente entre RAG Core y Developer Console. HU29 autentica al usuario en Core. La maqueta GitHub de HU26 no llama al Sandbox; una integración GitHub futura tampoco amplía su contrato neutral por sí sola.
-
 No incorporar aquí papers, marco teórico, nombres académicos, estructura de capítulos ni roles organizativos que no cambien un contrato implementable.
 
 Las condiciones todavía pendientes para la validación empresarial se rigen por `DEC-VAL-001` en `spec/contracts/system-contract.md`.
