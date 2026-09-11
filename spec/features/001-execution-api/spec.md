@@ -5,7 +5,7 @@
 
 ## Objetivo
 
-Aceptar solicitudes internas neutrales de ejecución y devolver un identificador/resultado trazable conforme a `INTEROP-1.5`.
+Aceptar solicitudes internas neutrales de ejecución y devolver un identificador/resultado trazable conforme a `INTEROP-1.6`.
 
 ## Reglas y comportamiento
 

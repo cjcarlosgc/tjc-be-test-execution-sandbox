@@ -1,18 +1,20 @@
 # Arquitectura
 
-**Contratos compartidos:** SYSTEM-1.4 / INTEROP-1.5
+**Contratos compartidos:** SYSTEM-1.6 / INTEROP-1.6
 
 `POST /executions -> validate request -> download ProjectVersion source.zip -> temp workspace -> safe extract -> write/merge generated tests -> detect runner/runtime -> Docker -> install deps -> compile/run tests -> capture structured JSON + stdout/stderr -> normalize -> cleanup container/workspace -> ExecutionResult`.
 
 ## Frontera
 
-El Sandbox no consulta PostgreSQL/pgvector, no accede directamente a Supabase Storage, no hace retrieval, no llama al LLM y no recibe ningún campo de estrategia experimental (`RAG`, `GENERALIST_AGENT`, `BASELINE` u otro). Solo ejecuta el mismo contrato neutral para cualquier origen.
+El Sandbox no consulta PostgreSQL/pgvector, no accede directamente a Supabase Storage, no hace retrieval, no llama al LLM y no recibe ningún campo de estrategia experimental (`RAG`, `GENERALIST_AGENT`, `BASELINE` u otro). Tampoco recibe identidad ni access tokens del usuario, trazas de contexto o datos GitHub. Solo ejecuta el mismo contrato neutral para cualquier origen.
 
 RAG Core le entrega `EphemeralDownloadRef` de vida corta. El proceso host descarga por HTTPS, verifica tamaño/hash y descarta la URL antes de iniciar el container. Ninguna signed URL, key, bucket o credencial entra al container. Sandbox devuelve el resultado por la API y Core lo persiste.
 
 Todos los endpoints `/executions` están protegidos por `Authorization: Bearer` con un secreto opaco precompartido `SANDBOX_SERVICE_TOKEN`. La misma variable se inyecta en Core y Sandbox mediante configuración segura de host; no es JWT, no requiere proveedor de identidad y nunca entra al container. `/health/live` y `/health/ready` permanecen públicos.
 
 `Idempotency-Key` debe ser UUID e igual a `requestId`. El Sandbox deduplica por identidad y huella lógica ignorando cambios de firma/expiración de la URL temporal: replay equivalente devuelve la ejecución original y payload distinto produce `409 IDEMPOTENCY_CONFLICT`.
+
+Supabase Auth termina en RAG Core y no modifica esta frontera. Tanto el recorrido GitHub mock como una futura integración real solo pueden llegar al Sandbox, si corresponde validar tests, mediante el mismo `ExecutionRequest` neutral ya aprobado.
 
 ## Docker
 
