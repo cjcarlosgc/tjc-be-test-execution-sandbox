@@ -205,12 +205,21 @@ export class ContainerRunner {
       image: profile.image,
       user: profile.user,
       workspacePath,
+      // `php:*-cli` (Debian) no trae `unzip` ni la extensión `zip`; sin
+      // ninguno de los dos, Composer no puede extraer los paquetes
+      // descargados de Packagist (confirmado contra Docker real: falla con
+      // "the zip extension and unzip/7z commands are both missing"). Se
+      // instala `unzip` en cada instalación en vez de depender de una
+      // imagen custom — mismo principio de "sin `docker build`" que el
+      // resto del profile PHP. `APT::Sandbox::User=root` evita que apt
+      // intente bajar privilegios (setuid/setgid) para la descarga, algo
+      // que igual fallaría bajo `CapDrop: ['ALL']`; `capAdd` de abajo cubre
+      // solo lo que apt necesita para preparar sus directorios como root
+      // sin esa sandboxed-user feature (confirmado contra Docker real).
       command: [
-        'php',
-        COMPOSER_BINARY_CONTAINER_PATH,
-        'install',
-        '--no-interaction',
-        '--prefer-dist',
+        'sh',
+        '-c',
+        `apt-get -o APT::Sandbox::User=root update -qq && apt-get -o APT::Sandbox::User=root install -y -qq --no-install-recommends unzip >/dev/null && php ${COMPOSER_BINARY_CONTAINER_PATH} install --no-interaction --prefer-dist`,
       ],
       network: true,
       readOnlyWorkspace: false,
@@ -220,11 +229,13 @@ export class ContainerRunner {
         COMPOSER_ALLOW_SUPERUSER: '1',
         COMPOSER_HOME: '/tmp',
         COMPOSER_CACHE_DIR: COMPOSER_CACHE_CONTAINER_PATH,
+        DEBIAN_FRONTEND: 'noninteractive',
       },
       extraBinds: [
         `${this.limits.composerBinaryVolumeName}:${COMPOSER_BINARY_CONTAINER_DIR}:ro`,
         `${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`,
       ],
+      capAdd: ['CHOWN', 'FOWNER', 'DAC_OVERRIDE'],
     };
   }
 
