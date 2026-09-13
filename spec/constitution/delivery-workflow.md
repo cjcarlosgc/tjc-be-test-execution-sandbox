@@ -15,6 +15,7 @@
 - Un commit representa un cambio coherente, revisable y verificable; no equivale mecánicamente a una HU.
 - Una HU puede requerir varios commits y un commit puede abarcar varias HU cuando el corte sea realmente transversal.
 - El commit no debe mezclar cambios independientes solo para reducir la cantidad de commits y debe dejar el repositorio en un estado verificable.
+- Un agente autónomo commitea por su cuenta al cerrar cada corte lógico (sin pedir autorización previa para ese acto), siempre que el corte esté verificado (pruebas/lint/build aplicables en verde) y cumpla `Trazabilidad obligatoria`. Esta autonomía cubre únicamente `git commit`; no se extiende a `git push` (ver `Puerta de push`).
 
 ## Trazabilidad obligatoria
 
@@ -57,4 +58,4 @@ El reporte puede incorporarse después de la aprobación mediante un commit excl
 - Solo puede publicarse el commit final exacto que recibió veredicto `APPROVED`, salvo el commit exclusivo de evidencia definido arriba; cualquier otro cambio posterior invalida la aprobación y requiere una nueva revisión.
 - No se hace push con hallazgos abiertos, verificaciones requeridas fallidas ni cambios relevantes sin revisar.
 - Un push extraordinario antes del cierre del sprint requiere autorización humana explícita y debe superar la misma revisión previa.
-- Esta política no autoriza automáticamente a un agente a crear commits o hacer push: ambas acciones siguen requiriendo una solicitud explícita del usuario.
+- A diferencia del commit (ver `Unidad de commit`), el push nunca es autónomo: todo push, sea de cierre de sprint o extraordinario, requiere una solicitud explícita del usuario en esa instancia concreta; una autorización previa no cubre pushes futuros.
