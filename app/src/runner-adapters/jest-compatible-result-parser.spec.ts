@@ -17,7 +17,7 @@ async function loadFixture(name: string): Promise<string> {
 describe('parseJestCompatibleJson', () => {
   it('parses a real Jest run with a mix of passed/failed assertions', async () => {
     const raw = await loadFixture('jest-mixed.json');
-    const facts = parseJestCompatibleJson('JEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST',raw);
 
     expect(facts.runner).toBe('JEST');
     expect(facts.compiled).toBe(true);
@@ -40,7 +40,7 @@ describe('parseJestCompatibleJson', () => {
 
   it('parses a real Jest run where everything passes', async () => {
     const raw = await loadFixture('jest-passing.json');
-    const facts = parseJestCompatibleJson('JEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST',raw);
 
     expect(facts.passed).toBe(true);
     expect(facts.failedTests).toBe(0);
@@ -49,7 +49,7 @@ describe('parseJestCompatibleJson', () => {
 
   it('marks compiled=false and executed=false for a real Jest syntax error', async () => {
     const raw = await loadFixture('jest-syntax-error.json');
-    const facts = parseJestCompatibleJson('JEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST',raw);
 
     expect(facts.compiled).toBe(false);
     expect(facts.executed).toBe(false);
@@ -59,7 +59,7 @@ describe('parseJestCompatibleJson', () => {
 
   it('parses a real Vitest run with a mix of passed/failed assertions', async () => {
     const raw = await loadFixture('vitest-mixed.json');
-    const facts = parseJestCompatibleJson('VITEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST',raw);
 
     expect(facts.runner).toBe('VITEST');
     expect(facts.compiled).toBe(true);
@@ -74,14 +74,14 @@ describe('parseJestCompatibleJson', () => {
 
   it('parses a real Vitest run where everything passes', async () => {
     const raw = await loadFixture('vitest-passing.json');
-    const facts = parseJestCompatibleJson('VITEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST',raw);
 
     expect(facts.passed).toBe(true);
     expect(facts.failedTests).toBe(0);
   });
 
   it('throws InvalidArchiveError for output that is not JSON', () => {
-    expect(() => parseJestCompatibleJson('JEST', 'not json')).toThrow(
+    expect(() => parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST','not json')).toThrow(
       InvalidArchiveError,
     );
   });
@@ -104,7 +104,7 @@ describe('parseJestCompatibleJson', () => {
       ],
     });
 
-    const facts = parseJestCompatibleJson('JEST', raw);
+    const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST',raw);
     expect(facts.testCases[0].status).toBe('FAILED');
   });
 });

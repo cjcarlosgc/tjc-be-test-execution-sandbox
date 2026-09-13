@@ -76,6 +76,7 @@ export class ExecutionsService {
       artifacts: dto.artifacts,
       scope: dto.scope,
       targetIds: dto.targetIds,
+      executionProfile: dto.executionProfile,
       runnerHint: dto.runnerHint,
       status: 'PENDING',
       stage: null,

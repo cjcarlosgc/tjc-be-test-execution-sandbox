@@ -21,6 +21,7 @@ const CONFIG_FILE_NAMES = [
 
 @Injectable()
 export class JestTestRunnerAdapter implements TestRunnerAdapter {
+  readonly executionProfile = 'NODE_TYPESCRIPT' as const;
   readonly runner = 'JEST' as const;
 
   async supports(context: ProjectRunnerContext): Promise<boolean> {
@@ -44,6 +45,6 @@ export class JestTestRunnerAdapter implements TestRunnerAdapter {
   }
 
   parseResult(rawOutput: string): RunnerFacts {
-    return parseJestCompatibleJson('JEST', rawOutput);
+    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST', rawOutput);
   }
 }

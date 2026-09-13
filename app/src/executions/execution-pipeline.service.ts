@@ -157,6 +157,7 @@ export class ExecutionPipelineService {
       );
       const hostResultsFilePath = path.join(workspacePath, RESULTS_FILENAME);
       const adapter = await this.runnerAdapterRegistry.resolve(
+        record.executionProfile,
         record.runnerHint,
         { workspacePath: projectRoot, resultsFilePath },
       );

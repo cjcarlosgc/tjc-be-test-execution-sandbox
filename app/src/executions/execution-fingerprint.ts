@@ -28,6 +28,7 @@ export function computeRequestFingerprint(
       .sort((a, b) => a.artifactId.localeCompare(b.artifactId)),
     scope: dto.scope,
     targetIds: [...dto.targetIds].sort(),
+    executionProfile: dto.executionProfile,
     runnerHint: dto.runnerHint,
   };
   return createHash('sha256')

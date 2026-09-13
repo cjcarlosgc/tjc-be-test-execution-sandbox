@@ -1,8 +1,9 @@
 import type {
+  ExecutionProfile,
   RunnerFacts,
-  RunnerHint,
   TestCaseFact,
   TestCaseFactStatus,
+  TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import { InvalidArchiveError } from '../common/errors/sandbox-fact-error.js';
 
@@ -37,7 +38,8 @@ interface JestCompatibleReport {
  * cubre ambos; "no inferir success solo por texto si existe JSON" (spec).
  */
 export function parseJestCompatibleJson(
-  runner: RunnerHint,
+  executionProfile: ExecutionProfile,
+  runner: TestRunner,
   rawOutput: string,
 ): RunnerFacts {
   let report: JestCompatibleReport;
@@ -80,6 +82,7 @@ export function parseJestCompatibleJson(
   }
 
   return {
+    executionProfile,
     runner,
     compiled,
     executed,

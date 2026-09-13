@@ -1,4 +1,8 @@
-import type { RunnerFacts, RunnerHint } from '../common/contracts/sandbox-execution.contract.js';
+import type {
+  ExecutionProfile,
+  RunnerFacts,
+  TestRunner,
+} from '../common/contracts/sandbox-execution.contract.js';
 
 export interface ProjectRunnerContext {
   workspacePath: string;
@@ -13,7 +17,8 @@ export interface ProjectRunnerContext {
  * `DEC-SBX-002` permita instalar dependencias.
  */
 export interface TestRunnerAdapter {
-  readonly runner: RunnerHint;
+  readonly executionProfile: ExecutionProfile;
+  readonly runner: TestRunner;
   supports(context: ProjectRunnerContext): Promise<boolean>;
   buildCommand(context: ProjectRunnerContext): string[];
   parseResult(rawOutput: string): RunnerFacts;

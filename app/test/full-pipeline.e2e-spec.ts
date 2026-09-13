@@ -148,6 +148,7 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
           artifacts: [],
           scope: 'BATCH',
           targetIds: [],
+          executionProfile: 'NODE_TYPESCRIPT',
           runnerHint: 'VITEST',
         });
 
@@ -230,6 +231,7 @@ describe('add', () => {
           ],
           scope: 'BATCH',
           targetIds: [],
+          executionProfile: 'NODE_TYPESCRIPT',
           runnerHint: 'VITEST',
         });
 
@@ -275,6 +277,7 @@ describe('add', () => {
           artifacts: [],
           scope: 'BATCH',
           targetIds: [],
+          executionProfile: 'NODE_TYPESCRIPT',
           runnerHint: 'VITEST',
         });
 

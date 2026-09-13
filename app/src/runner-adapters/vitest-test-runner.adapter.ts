@@ -22,6 +22,7 @@ const CONFIG_FILE_NAMES = [
 
 @Injectable()
 export class VitestTestRunnerAdapter implements TestRunnerAdapter {
+  readonly executionProfile = 'NODE_TYPESCRIPT' as const;
   readonly runner = 'VITEST' as const;
 
   async supports(context: ProjectRunnerContext): Promise<boolean> {
@@ -42,6 +43,6 @@ export class VitestTestRunnerAdapter implements TestRunnerAdapter {
   }
 
   parseResult(rawOutput: string): RunnerFacts {
-    return parseJestCompatibleJson('VITEST', rawOutput);
+    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', rawOutput);
   }
 }

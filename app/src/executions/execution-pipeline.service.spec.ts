@@ -29,7 +29,8 @@ import {
 } from '../common/errors/sandbox-fact-error.js';
 import type {
   EphemeralDownloadRef,
-  RunnerHint,
+  ExecutionProfile,
+  TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
@@ -52,6 +53,7 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
     artifacts: [],
     scope: 'BATCH',
     targetIds: [],
+    executionProfile: 'NODE_TYPESCRIPT',
     runnerHint: 'VITEST',
     status: 'PENDING',
     stage: null,
@@ -142,7 +144,8 @@ describe('ExecutionPipelineService', () => {
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
     resolveRunner?: (
-      runnerHint: RunnerHint,
+      executionProfile: ExecutionProfile,
+      runnerHint: TestRunner,
       context: ProjectRunnerContext,
     ) => Promise<TestRunnerAdapter>;
     installDependencies?: (workspacePath: string) => Promise<ContainerRunResult>;
@@ -189,6 +192,7 @@ describe('ExecutionPipelineService', () => {
     } as unknown as ArtifactMaterializer;
 
     const fakeAdapter: TestRunnerAdapter = {
+      executionProfile: 'NODE_TYPESCRIPT',
       runner: 'VITEST',
       supports: async () => true,
       buildCommand: (context) => [
@@ -197,7 +201,7 @@ describe('ExecutionPipelineService', () => {
         '--reporter=json',
         `--outputFile=${context.resultsFilePath}`,
       ],
-      parseResult: (raw) => parseJestCompatibleJson('VITEST', raw),
+      parseResult: (raw) => parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', raw),
     };
 
     const runnerAdapterRegistry = {
@@ -405,8 +409,8 @@ describe('ExecutionPipelineService', () => {
       },
       extract: (zipPath, destinationRoot) =>
         realExtractor.extract(zipPath, destinationRoot),
-      resolveRunner: (runnerHint, context) =>
-        realRunnerAdapterRegistry.resolve(runnerHint, context),
+      resolveRunner: (executionProfile, runnerHint, context) =>
+        realRunnerAdapterRegistry.resolve(executionProfile, runnerHint, context),
     });
     repository.save(record);
 

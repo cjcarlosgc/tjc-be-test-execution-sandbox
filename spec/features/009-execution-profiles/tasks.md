@@ -8,7 +8,7 @@
 
 ## Implementación posterior — requiere selección humana
 
-- [ ] HU43: DTO y resolución estricta del profile.
+- [x] HU43: DTO y resolución estricta del profile.
 - [ ] HU43: imagen PHP/Composer y adapter PHPUnit.
 - [ ] HU43: contract, integration y security tests.
 - [ ] HU47: proveedor remoto, después de resolver `DEC-INF-001`.

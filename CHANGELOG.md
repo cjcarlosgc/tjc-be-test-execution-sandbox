@@ -5,6 +5,7 @@ Todos los cambios notables de la línea base SDD se registran aquí. El contenid
 ## [Unreleased]
 
 - **T-001 / SDD 2.0 / SYSTEM-2.0 / INTEROP-2.0 (2026-09-13, solo especificación):** se sincroniza la arquitectura PR-driven preservando la frontera ciega y se definen profiles `NODE_TYPESCRIPT` y `PHP_LARAVEL_PHPUNIT`. PHP/Composer/PHPUnit queda planificado para HU43; no se modifica `app/`.
+- **HU43 (corte 1, Test Execution Sandbox):** `app/` incorpora `executionProfile`/`runnerHint: TestRunner` en el contrato, DTO y `ExecutionRecord`, y `RunnerAdapterRegistry.resolve` exige la combinación profile/runner de `EXECUTION_PROFILE_RUNNERS` antes de buscar adapter, fallando explícitamente como `UNSUPPORTED_EXECUTION_PROFILE`/`CONFIGURATION` sin fallback. `NODE_TYPESCRIPT`/Jest/Vitest queda preservado; `PHP_LARAVEL_PHPUNIT` queda declarado en el contrato pero sin adapter (falla explícito hasta el corte PHP/Composer/PHPUnit).
 
 - **SDD 1.16 / SYSTEM-1.6 / INTEROP-1.6 (2026-09-11, solo especificación):** se sincronizan HU27-HU29, autenticación por propietario, contratos de trazas y la separación entre GitHub real pendiente y demo mock no bloqueada. Se confirma que el Sandbox no recibe identidad del usuario, trazas ni datos GitHub y no requiere cambios funcionales: cualquier validación sigue entrando por el mismo `ExecutionRequest` neutral. No se modifica código ni configuración.
 

@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import type { RunnerHint } from '../common/contracts/sandbox-execution.contract.js';
-import { UnsupportedRunnerError } from '../common/errors/sandbox-fact-error.js';
+import {
+  EXECUTION_PROFILE_RUNNERS,
+  type ExecutionProfile,
+  type TestRunner,
+} from '../common/contracts/sandbox-execution.contract.js';
+import {
+  UnsupportedExecutionProfileError,
+  UnsupportedRunnerError,
+} from '../common/errors/sandbox-fact-error.js';
 import { JestTestRunnerAdapter } from './jest-test-runner.adapter.js';
 import type {
   ProjectRunnerContext,
@@ -17,18 +24,29 @@ export class RunnerAdapterRegistry {
   }
 
   /**
-   * INTEROP-1.1 §7.2: `runnerHint` se verifica contra el proyecto; una
-   * incompatibilidad se persiste como `UNSUPPORTED_RUNNER`/`CONFIGURATION`,
-   * nunca ejecuta el comando de otro runner por conveniencia.
+   * INTEROP-2.0 §7.2/009: `executionProfile` fija el conjunto de runners
+   * válidos; una combinación fuera de tabla, o un profile sin adapter
+   * implementado (`PHP_LARAVEL_PHPUNIT`), falla explícitamente como
+   * `UNSUPPORTED_EXECUTION_PROFILE`/`CONFIGURATION`, sin fallback a otro
+   * runtime. `runnerHint` se verifica además contra el proyecto real.
    */
   async resolve(
-    runnerHint: RunnerHint,
+    executionProfile: ExecutionProfile,
+    runnerHint: TestRunner,
     context: ProjectRunnerContext,
   ): Promise<TestRunnerAdapter> {
-    const adapter = this.adapters.find((a) => a.runner === runnerHint);
+    const supportedRunners = EXECUTION_PROFILE_RUNNERS[executionProfile];
+    if (!supportedRunners.includes(runnerHint)) {
+      throw new UnsupportedExecutionProfileError(
+        `execution profile ${executionProfile} does not support runner ${runnerHint}`,
+      );
+    }
+    const adapter = this.adapters.find(
+      (a) => a.executionProfile === executionProfile && a.runner === runnerHint,
+    );
     if (!adapter) {
-      throw new UnsupportedRunnerError(
-        `no adapter registered for runner ${runnerHint}`,
+      throw new UnsupportedExecutionProfileError(
+        `no adapter registered for profile ${executionProfile} / runner ${runnerHint}`,
       );
     }
     if (!(await adapter.supports(context))) {
