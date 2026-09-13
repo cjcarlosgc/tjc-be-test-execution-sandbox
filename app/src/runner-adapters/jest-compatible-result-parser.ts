@@ -6,8 +6,7 @@ import type {
   TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import { InvalidArchiveError } from '../common/errors/sandbox-fact-error.js';
-
-const MAX_TEST_CASES = 500;
+import { MAX_TEST_CASES } from './runner-result-limits.js';
 
 interface JestCompatibleAssertion {
   title: string;

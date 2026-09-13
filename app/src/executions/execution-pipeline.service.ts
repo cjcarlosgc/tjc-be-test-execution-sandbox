@@ -19,11 +19,10 @@ import {
   SandboxTimeoutError,
   TestEnvironmentConfigurationError,
   TestExecutionFailedError,
-  UnsupportedPackageManagerError,
   WorkspaceDiskLimitExceededError,
 } from '../common/errors/sandbox-fact-error.js';
 import { ContainerRunner } from '../container/container-runner.service.js';
-import { hasPnpmLockfile } from '../container/package-manager-detection.js';
+import { assertSupportedManifest } from '../container/package-manager-detection.js';
 import { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
 import { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
 import {
@@ -166,11 +165,7 @@ export class ExecutionPipelineService {
         durationMs: Date.now() - preparingStartedAt,
       });
 
-      if (!(await hasPnpmLockfile(projectRoot))) {
-        throw new UnsupportedPackageManagerError(
-          'project does not declare a pnpm-lock.yaml (V1 only supports pnpm, DEC-SBX-002)',
-        );
-      }
+      await assertSupportedManifest(record.executionProfile, projectRoot);
 
       this.assertWithinDeadline(deadlineAt, 'INSTALLING_DEPENDENCIES');
 
@@ -180,6 +175,7 @@ export class ExecutionPipelineService {
       const installResult = await this.containerRunner.installDependencies(
         executionId,
         workspacePath,
+        record.executionProfile,
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
@@ -201,7 +197,7 @@ export class ExecutionPipelineService {
       }
       if (installResult.exitCode !== 0) {
         throw new DependencyInstallFailedError(
-          `pnpm install failed with exit code ${installResult.exitCode}: ${truncate(
+          `dependency installation failed with exit code ${installResult.exitCode}: ${truncate(
             installResult.stderr || installResult.stdout,
             500,
           )}`,
@@ -229,6 +225,7 @@ export class ExecutionPipelineService {
         executionId,
         workspacePath,
         command,
+        record.executionProfile,
         deadlineAt - Date.now(),
         containerWorkingDir,
       );

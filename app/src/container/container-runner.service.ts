@@ -3,9 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
 import { randomUUID } from 'node:crypto';
 import { PassThrough } from 'node:stream';
+import type { ExecutionProfile } from '../common/contracts/sandbox-execution.contract.js';
 import {
   resolveContainerLimits,
   type ContainerLimitsConfig,
+  type ProfileContainerConfig,
 } from './container-limits.config.js';
 import { DOCKER_CLIENT } from './docker-client.provider.js';
 
@@ -24,10 +26,14 @@ export interface ContainerRunResult {
 
 const DEFAULT_CONTAINER_WORKING_DIR = '/app';
 const PNPM_STORE_CONTAINER_PATH = '/pnpm-store';
+const COMPOSER_BINARY_CONTAINER_DIR = '/opt/sandbox-composer';
+const COMPOSER_BINARY_CONTAINER_PATH = `${COMPOSER_BINARY_CONTAINER_DIR}/composer`;
+const COMPOSER_CACHE_CONTAINER_PATH = '/composer-cache';
 
 interface RunContainerOptions {
   executionId: string;
   nameSuffix: string;
+  image: string;
   /** Omitido para containers que no necesitan el bind mount del workspace. */
   workspacePath?: string;
   command: string[];
@@ -36,8 +42,8 @@ interface RunContainerOptions {
   timeoutMs: number;
   workingDir: string;
   extraBinds?: string[];
-  /** Por defecto `this.limits.user`; solo el bootstrap del store de pnpm lo eleva a `root`. */
-  user?: string;
+  env?: Record<string, string>;
+  user: string;
   /**
    * Capacidades a restaurar por encima del `CapDrop: ['ALL']` de base. Solo
    * el bootstrap del store de pnpm la usa (`CHOWN`): con todas las
@@ -61,6 +67,7 @@ export class ContainerRunner {
   private readonly logger = new Logger(ContainerRunner.name);
   private readonly limits: ContainerLimitsConfig;
   private pnpmStoreVolumeReady?: Promise<void>;
+  private composerBinaryVolumeReady?: Promise<void>;
 
   constructor(
     @Inject(DOCKER_CLIENT) private readonly docker: Dockerode,
@@ -69,13 +76,17 @@ export class ContainerRunner {
     this.limits = resolveContainerLimits(configService);
   }
 
+  /** Legacy: sin uso en el pipeline real (`ExecutionPipelineService` no la invoca). Solo NODE_TYPESCRIPT. */
   async runSmokeCheck(
     executionId: string,
     workspacePath: string,
   ): Promise<ContainerRunResult> {
+    const profile = this.limits.profiles.NODE_TYPESCRIPT;
     const result = await this.run({
       executionId,
       nameSuffix: 'smoke',
+      image: profile.image,
+      user: profile.user,
       workspacePath,
       command: ['node', '--version'],
       network: false,
@@ -84,7 +95,7 @@ export class ContainerRunner {
       workingDir: DEFAULT_CONTAINER_WORKING_DIR,
     });
     this.logger.log(
-      `smoke check executionId=${executionId} image=${this.limits.image} exitCode=${result.exitCode} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
+      `smoke check executionId=${executionId} image=${profile.image} exitCode=${result.exitCode} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
     );
     return result;
   }
@@ -120,14 +131,47 @@ export class ContainerRunner {
   async installDependencies(
     executionId: string,
     workspacePath: string,
+    executionProfile: ExecutionProfile,
     maxTimeoutMs?: number,
     workingDir: string = DEFAULT_CONTAINER_WORKING_DIR,
   ): Promise<ContainerRunResult> {
-    await this.ensurePnpmStoreVolumeOwnership();
+    const profile = this.limits.profiles[executionProfile];
+    const result = await this.run(
+      executionProfile === 'NODE_TYPESCRIPT'
+        ? await this.buildNodeInstallOptions(
+            executionId,
+            workspacePath,
+            profile,
+            maxTimeoutMs,
+            workingDir,
+          )
+        : await this.buildPhpInstallOptions(
+            executionId,
+            workspacePath,
+            profile,
+            maxTimeoutMs,
+            workingDir,
+          ),
+    );
+    this.logger.log(
+      `install dependencies executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
+    );
+    return result;
+  }
 
-    const result = await this.run({
+  private async buildNodeInstallOptions(
+    executionId: string,
+    workspacePath: string,
+    profile: ProfileContainerConfig,
+    maxTimeoutMs: number | undefined,
+    workingDir: string,
+  ): Promise<RunContainerOptions> {
+    await this.ensurePnpmStoreVolumeOwnership();
+    return {
       executionId,
       nameSuffix: 'install',
+      image: profile.image,
+      user: profile.user,
       workspacePath,
       command: [
         'corepack',
@@ -144,23 +188,60 @@ export class ContainerRunner {
       extraBinds: [
         `${this.limits.pnpmStoreVolumeName}:${PNPM_STORE_CONTAINER_PATH}`,
       ],
-    });
-    this.logger.log(
-      `install dependencies executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
-    );
-    return result;
+    };
+  }
+
+  private async buildPhpInstallOptions(
+    executionId: string,
+    workspacePath: string,
+    profile: ProfileContainerConfig,
+    maxTimeoutMs: number | undefined,
+    workingDir: string,
+  ): Promise<RunContainerOptions> {
+    await this.ensureComposerBinaryVolume();
+    return {
+      executionId,
+      nameSuffix: 'install',
+      image: profile.image,
+      user: profile.user,
+      workspacePath,
+      command: [
+        'php',
+        COMPOSER_BINARY_CONTAINER_PATH,
+        'install',
+        '--no-interaction',
+        '--prefer-dist',
+      ],
+      network: true,
+      readOnlyWorkspace: false,
+      timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
+      workingDir,
+      env: {
+        COMPOSER_ALLOW_SUPERUSER: '1',
+        COMPOSER_HOME: '/tmp',
+        COMPOSER_CACHE_DIR: COMPOSER_CACHE_CONTAINER_PATH,
+      },
+      extraBinds: [
+        `${this.limits.composerBinaryVolumeName}:${COMPOSER_BINARY_CONTAINER_DIR}:ro`,
+        `${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`,
+      ],
+    };
   }
 
   async runTestCommand(
     executionId: string,
     workspacePath: string,
     command: string[],
+    executionProfile: ExecutionProfile,
     maxTimeoutMs?: number,
     workingDir: string = DEFAULT_CONTAINER_WORKING_DIR,
   ): Promise<ContainerRunResult> {
+    const profile = this.limits.profiles[executionProfile];
     const result = await this.run({
       executionId,
       nameSuffix: 'test',
+      image: profile.image,
+      user: profile.user,
       workspacePath,
       command,
       network: false,
@@ -176,14 +257,15 @@ export class ContainerRunner {
 
   /**
    * Un volumen Docker named nuevo se crea `root:root` (0755): el proceso de
-   * instalación, que corre como `this.limits.user` (no root, por diseño),
-   * no podría escribir ahí. Este bootstrap corre una única vez por proceso
-   * (memoizado) un container efímero *como root* que solo hace `chown` del
-   * punto de montaje vacío antes de que exista ningún contenido — nunca
-   * ejecuta código del proyecto ni el propio `pnpm install`, que sigue
-   * corriendo como `this.limits.user` sin cambios. Una vez el directorio es
-   * de ese usuario, todo lo que pnpm cree debajo hereda su ownership, así
-   * que no hace falta repetir el chown (ni recursivo) en runs posteriores.
+   * instalación, que corre como `profiles.NODE_TYPESCRIPT.user` (no root,
+   * por diseño), no podría escribir ahí. Este bootstrap corre una única vez
+   * por proceso (memoizado) un container efímero *como root* que solo hace
+   * `chown` del punto de montaje vacío antes de que exista ningún
+   * contenido — nunca ejecuta código del proyecto ni el propio
+   * `pnpm install`, que sigue corriendo como ese usuario sin cambios. Una
+   * vez el directorio es de ese usuario, todo lo que pnpm cree debajo
+   * hereda su ownership, así que no hace falta repetir el chown (ni
+   * recursivo) en runs posteriores.
    */
   private async ensurePnpmStoreVolumeOwnership(): Promise<void> {
     if (!this.pnpmStoreVolumeReady) {
@@ -202,7 +284,8 @@ export class ContainerRunner {
     const result = await this.run({
       executionId: bootstrapId,
       nameSuffix: 'bootstrap',
-      command: ['chown', this.limits.user, PNPM_STORE_CONTAINER_PATH],
+      image: this.limits.profiles.NODE_TYPESCRIPT.image,
+      command: ['chown', this.limits.profiles.NODE_TYPESCRIPT.user, PNPM_STORE_CONTAINER_PATH],
       network: false,
       readOnlyWorkspace: false,
       timeoutMs: this.limits.timeoutMs,
@@ -220,15 +303,65 @@ export class ContainerRunner {
     }
   }
 
+  /**
+   * Análogo a `ensurePnpmStoreVolumeOwnership`, pero en vez de solo un
+   * `chown` copia el binario real: la imagen completa `composer:2` (con
+   * shell/coreutils) corre una única vez por proceso para sembrar
+   * `composerBinaryVolumeName` con `/usr/bin/composer`. Las instalaciones
+   * reales nunca usan la imagen `composer:2`; corren sobre la imagen PHP
+   * pinneada por config, montando este volumen read-only.
+   */
+  private async ensureComposerBinaryVolume(): Promise<void> {
+    if (!this.composerBinaryVolumeReady) {
+      this.composerBinaryVolumeReady = this.runComposerBinaryVolumeBootstrap().catch(
+        (error: unknown) => {
+          this.composerBinaryVolumeReady = undefined;
+          throw error;
+        },
+      );
+    }
+    return this.composerBinaryVolumeReady;
+  }
+
+  private async runComposerBinaryVolumeBootstrap(): Promise<void> {
+    const bootstrapId = `composer-bin-init-${randomUUID()}`;
+    const result = await this.run({
+      executionId: bootstrapId,
+      nameSuffix: 'bootstrap',
+      image: this.limits.composerBinaryImage,
+      command: [
+        'sh',
+        '-c',
+        `cp /usr/bin/composer ${COMPOSER_BINARY_CONTAINER_PATH} && chmod +x ${COMPOSER_BINARY_CONTAINER_PATH}`,
+      ],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+      extraBinds: [
+        `${this.limits.composerBinaryVolumeName}:${COMPOSER_BINARY_CONTAINER_DIR}`,
+      ],
+      user: 'root',
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(
+        `composer binary volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
+      );
+    }
+  }
+
   private async run(options: RunContainerOptions): Promise<ContainerRunResult> {
-    await this.ensureImage(this.limits.image);
+    await this.ensureImage(options.image);
 
     const container = await this.docker.createContainer({
       name: `sandbox-${options.executionId}-${options.nameSuffix}`,
-      Image: this.limits.image,
+      Image: options.image,
       Cmd: options.command,
       WorkingDir: options.workingDir,
-      User: options.user ?? this.limits.user,
+      User: options.user,
+      Env: options.env
+        ? Object.entries(options.env).map(([key, value]) => `${key}=${value}`)
+        : undefined,
       Tty: false,
       HostConfig: {
         Binds: [

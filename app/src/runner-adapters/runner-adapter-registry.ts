@@ -9,6 +9,7 @@ import {
   UnsupportedRunnerError,
 } from '../common/errors/sandbox-fact-error.js';
 import { JestTestRunnerAdapter } from './jest-test-runner.adapter.js';
+import { PhpunitTestRunnerAdapter } from './phpunit-test-runner.adapter.js';
 import type {
   ProjectRunnerContext,
   TestRunnerAdapter,
@@ -19,8 +20,12 @@ import { VitestTestRunnerAdapter } from './vitest-test-runner.adapter.js';
 export class RunnerAdapterRegistry {
   private readonly adapters: TestRunnerAdapter[];
 
-  constructor(jest: JestTestRunnerAdapter, vitest: VitestTestRunnerAdapter) {
-    this.adapters = [jest, vitest];
+  constructor(
+    jest: JestTestRunnerAdapter,
+    vitest: VitestTestRunnerAdapter,
+    phpunit: PhpunitTestRunnerAdapter,
+  ) {
+    this.adapters = [jest, vitest, phpunit];
   }
 
   /**

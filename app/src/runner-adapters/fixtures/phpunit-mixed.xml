@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="MathTest" tests="2" assertions="2" errors="0" failures="1" skipped="0" time="0.012345">
+    <testcase name="testAddWorks" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="10" assertions="1" time="0.001200"/>
+    <testcase name="testSubIsBroken" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="16" assertions="1" time="0.000800">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">MathTest::testSubIsBroken
+Failed asserting that 2 is identical to 3.
+
+/app/tests/MathTest.php:18</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

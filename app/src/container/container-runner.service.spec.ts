@@ -202,6 +202,7 @@ describe('ContainerRunner', () => {
     await runner.installDependencies(
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
     );
 
     expect(docker.createContainer).toHaveBeenCalledWith(
@@ -233,10 +234,12 @@ describe('ContainerRunner', () => {
     await runner.installDependencies(
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
     );
     await runner.installDependencies(
       '22222222-2222-4222-8222-222222222222',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
     );
 
     const bootstrapCalls = (
@@ -265,6 +268,7 @@ describe('ContainerRunner', () => {
     await runner.installDependencies(
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
       undefined,
       '/app/my-project',
     );
@@ -287,6 +291,7 @@ describe('ContainerRunner', () => {
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
       ['node_modules/.bin/vitest', 'run'],
+      'NODE_TYPESCRIPT',
     );
 
     expect(docker.createContainer).toHaveBeenCalledWith(
@@ -302,6 +307,7 @@ describe('ContainerRunner', () => {
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
       ['node_modules/.bin/vitest', 'run', '--reporter=json'],
+      'NODE_TYPESCRIPT',
     );
 
     expect(docker.createContainer).toHaveBeenCalledWith(
@@ -369,6 +375,7 @@ describe('ContainerRunner', () => {
     const result = await runner.installDependencies(
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
     );
 
     expect(result.oomKilled).toBe(true);
@@ -393,6 +400,7 @@ describe('ContainerRunner', () => {
     const result = await runner.installDependencies(
       '11111111-1111-4111-8111-111111111111',
       '/tmp/workspace',
+      'NODE_TYPESCRIPT',
       10,
     );
 
