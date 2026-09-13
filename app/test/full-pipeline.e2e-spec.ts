@@ -21,6 +21,11 @@ const FIXTURE_DIR = path.join(
   'fixtures',
   'vitest-sample-project',
 );
+const PHP_FIXTURE_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'fixtures',
+  'phpunit-sample-project',
+);
 
 async function isDockerAvailable(): Promise<boolean> {
   try {
@@ -78,6 +83,8 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
   let projectSha256: string;
   let wrappedProjectZip: Buffer;
   let wrappedProjectSha256: string;
+  let phpProjectZip: Buffer;
+  let phpProjectSha256: string;
 
   beforeAll(async () => {
     process.env.SANDBOX_SERVICE_TOKEN = SERVICE_TOKEN;
@@ -100,9 +107,13 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
       .update(wrappedProjectZip)
       .digest('hex');
 
+    phpProjectZip = await buildZipFixtureFromDir(PHP_FIXTURE_DIR);
+    phpProjectSha256 = createHash('sha256').update(phpProjectZip).digest('hex');
+
     fixtureServer = await startFixtureServer({
       '/project.zip': () => projectZip,
       '/wrapped-project.zip': () => wrappedProjectZip,
+      '/php-project.zip': () => phpProjectZip,
     });
     process.env.SANDBOX_ALLOWED_DOWNLOAD_HOSTS = fixtureServer.host;
 
@@ -299,5 +310,62 @@ describe('add', () => {
       expect(result.body.facts.totalTests).toBe(1);
     },
     150_000,
+  );
+
+  /**
+   * Corte 3 de HU43 (009-execution-profiles): `composer install` real (con
+   * red, imagen pinneada por `SANDBOX_DEFAULT_PHP_IMAGE`) + PHPUnit real
+   * (`--log-junit`) dentro de un container Docker real. Requiere descargar
+   * `phpunit/phpunit` de Packagist durante `INSTALLING_DEPENDENCIES`; a
+   * diferencia de los casos Node de arriba, esta prueba no se ha corrido
+   * aún contra un daemon Docker real (no disponible en el entorno en el que
+   * se escribió) — confirmar en un entorno con Docker antes de confiar en
+   * que quede en verde.
+   */
+  it(
+    'installs real Composer dependencies and runs real PHPUnit tests, reaching COMPLETED with facts',
+    async () => {
+      const accepted = await request(app.getHttpServer())
+        .post('/executions')
+        .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+        .set('Idempotency-Key', '99999999-9999-4999-8999-999999999999')
+        .send({
+          requestId: '99999999-9999-4999-8999-999999999999',
+          testRunId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          projectVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          snapshot: {
+            role: 'PROJECT_SNAPSHOT',
+            url: `${fixtureServer.baseUrl}/php-project.zip`,
+            expiresAt: '2099-01-01T00:00:00.000Z',
+            sha256: phpProjectSha256,
+            sizeBytes: phpProjectZip.length,
+          },
+          artifacts: [],
+          scope: 'BATCH',
+          targetIds: [],
+          executionProfile: 'PHP_LARAVEL_PHPUNIT',
+          runnerHint: 'PHPUNIT',
+        });
+
+      expect(accepted.status).toBe(202);
+      const executionId = accepted.body.executionId;
+
+      const finalStatus = await pollExecution(app, executionId, 180_000);
+      expect(finalStatus.status).toBe('COMPLETED');
+
+      const result = await request(app.getHttpServer())
+        .get(`/executions/${executionId}/result`)
+        .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
+
+      expect(result.status).toBe(200);
+      expect(result.body.status).toBe('COMPLETED');
+      expect(result.body.failure).toBeNull();
+      expect(result.body.facts.executionProfile).toBe('PHP_LARAVEL_PHPUNIT');
+      expect(result.body.facts.runner).toBe('PHPUNIT');
+      expect(result.body.facts.passed).toBe(true);
+      expect(result.body.facts.totalTests).toBe(1);
+      expect(result.body.facts.testCases[0].name).toBe('testAddWorks');
+    },
+    210_000,
   );
 });
