@@ -1,21 +1,13 @@
-# Roadmap
+# Roadmap SDD 2.0
 
-## Sprint 1
-Meta acumulada aproximada: 35%. Esqueleto NestJS, Execution API, Object Storage access, workspace seguro, Docker smoke execution y primer adapter Jest/Vitest.
+## T-001 — Baseline
 
-## Sprint 2 / PI1
-Meta acumulada: 80%. Integración real con RAG Core, materialización CREATE/MERGE, instalación, compilación, Jest/Vitest estructurado, failure evidence, batch validation y cleanup robusto. Soporta HU08-HU19.
+Adoptar contratos 2.0, preservar la frontera ciega y definir execution profiles. No incluye implementación productiva.
 
-## Puerta de investigación posterior al núcleo de Sprint 2
+## Próximos cortes sujetos a selección humana
 
-Mutation score/StrykerJS (`DEC-MET-001`) es una mejora próxima deseada, pero permanece PENDING hasta investigar aislamiento, costo, tiempo y contrato de resultados coordinado. No bloquea el núcleo de Sprint 2; solo bloquea el work item futuro que intente ejecutar mutation testing.
+1. HU43: contrato y adapter real PHP/Laravel/PHPUnit.
+2. HU43: seguridad, reproducibilidad y contract tests de ambos profiles.
+3. HU47: proveedor remoto después de resolver `DEC-INF-001`.
 
-## Sprint 3
-Meta acumulada: 90%. Endurecimiento de límites, observabilidad y confiabilidad. HU23/autorreparación está descartada; un retry manual de Core es simplemente una nueva ejecución neutral con identidad propia.
-
-## Sprint 4
-Meta: 100%. Estabilización, rendimiento, pruebas de estrés acotadas, políticas de cleanup y soporte opcional de coverage si se aprueba como métrica secundaria.
-
-HU27-HU29 no requieren cambios funcionales en el Sandbox: trazas, autenticación por propietario y experiencia GitHub mock pertenecen a Core/Developer Console. La demo GitHub no está bloqueada por este servicio y no invoca `/executions`; cualquier ejecución futura originada por GitHub mantendrá el contrato neutral vigente.
-
-La validación final en empresa queda sujeta a `DEC-VAL-001`; ninguna prueba local o simulada sustituye esa ejecución real.
+Mutation testing y condiciones de validación empresarial conservan sus decisiones `PENDING` acotadas.

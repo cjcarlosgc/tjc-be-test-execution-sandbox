@@ -9,7 +9,7 @@ Descargar entradas exactas mediante capacidades temporales sin acoplar Sandbox a
 
 ## Reglas y comportamiento
 
-- RAG Core es el único componente que conoce Supabase Storage y genera `EphemeralDownloadRef` según `INTEROP-1.6`.
+- RAG Core es el único componente que conoce Supabase Storage y genera `EphemeralDownloadRef` según `INTEROP-2.0`.
 - La aplicación consume un puerto interno `ExecutionInputDownloadService` —nombre orientativo, no proveedor— que descarga HTTPS sin tipos ni SDK de Supabase.
 - El host acepta exclusivamente las referencias declaradas y autorizadas de la ejecución, verifica role, expiración, host permitido, tamaño y SHA-256; no selecciona otra versión ni usa nombres de archivo como identidad.
 - La URL firmada se considera secreta efímera: no se persiste, no se registra completa, no se reenvía al navegador/container y se descarta al terminar la adquisición.

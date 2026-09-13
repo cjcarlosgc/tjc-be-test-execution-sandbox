@@ -4,6 +4,8 @@ Todos los cambios notables de la línea base SDD se registran aquí. El contenid
 
 ## [Unreleased]
 
+- **T-001 / SDD 2.0 / SYSTEM-2.0 / INTEROP-2.0 (2026-09-13, solo especificación):** se sincroniza la arquitectura PR-driven preservando la frontera ciega y se definen profiles `NODE_TYPESCRIPT` y `PHP_LARAVEL_PHPUNIT`. PHP/Composer/PHPUnit queda planificado para HU43; no se modifica `app/`.
+
 - **SDD 1.16 / SYSTEM-1.6 / INTEROP-1.6 (2026-09-11, solo especificación):** se sincronizan HU27-HU29, autenticación por propietario, contratos de trazas y la separación entre GitHub real pendiente y demo mock no bloqueada. Se confirma que el Sandbox no recibe identidad del usuario, trazas ni datos GitHub y no requiere cambios funcionales: cualquier validación sigue entrando por el mismo `ExecutionRequest` neutral. No se modifica código ni configuración.
 
 - **SDD 1.14 / SYSTEM-1.4 / INTEROP-1.5 (solo especificación):** se sincronizan los contratos finales de historial/WebSockets/retry y se incorporan `DEC-AUTH-001`/`DEC-IDEMP-001`. Se documenta la implementación Sandbox vigente: Bearer opaco mediante `SANDBOX_SERVICE_TOKEN`, deduplicación por header=`requestId`, health público y pnpm + `pnpm-lock.yaml`; Core todavía debe completar su lado antes de una prueba integrada. HU23/autorreparación queda descartada y HU24 se trata como otra ejecución neutral. No se modificó código ni configuración.
