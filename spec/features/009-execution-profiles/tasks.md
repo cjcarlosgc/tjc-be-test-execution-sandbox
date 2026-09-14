@@ -2,7 +2,7 @@
 
 ## Baseline T-001
 
-- [x] Adoptar SYSTEM-2.0 e INTEROP-2.0.
+- [x] Adoptar SYSTEM-2.1 e INTEROP-2.1.
 - [x] Definir profiles Node y PHP/PHPUnit manteniendo la frontera ciega.
 - [x] Registrar backlog, state, changelog y reporte de revisión.
 

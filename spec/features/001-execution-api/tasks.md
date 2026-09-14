@@ -1,6 +1,6 @@
 # 001-execution-api — Tareas
 
-- [x] DTOs validados de `INTEROP-2.0` y rechazo de campos desconocidos.
+- [x] DTOs validados de `INTEROP-2.1` y rechazo de campos desconocidos.
 - [x] `POST /executions`, status y result con persistencia de `executionId`.
 - [x] Idempotency-Key/requestId y detección de conflicto.
 - [x] Auth Bearer interna con `SANDBOX_SERVICE_TOKEN`, protección de todo `/executions`, health público y propagación de correlationId.

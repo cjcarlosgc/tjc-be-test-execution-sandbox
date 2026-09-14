@@ -1,4 +1,4 @@
-# SDD 2.0 — Test Execution Sandbox
+# SDD 2.1 — Test Execution Sandbox
 
 `spec/` es la fuente de verdad del proyecto.
 
@@ -6,9 +6,9 @@ Orden de lectura: `contracts/system-contract.md` -> `contracts/interoperability-
 
 ## Contrato entre componentes
 
-[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-2.0` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
+[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-2.1` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
 
-[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-2.0` con rutas, DTOs, estados, errores y transporte universales.
+[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-2.1` con rutas, DTOs, estados, errores y transporte universales.
 
 ## Versionado
 
