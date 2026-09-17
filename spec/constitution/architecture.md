@@ -1,6 +1,6 @@
 # Arquitectura
 
-**Contratos compartidos:** SYSTEM-2.1 / INTEROP-2.1
+**Contratos compartidos:** SYSTEM-2.2 / INTEROP-2.2
 
 `POST /executions -> validar profile/request -> descargar snapshot -> workspace seguro -> materializar tests -> container aislado -> instalar -> compilar si aplica -> ejecutar runner -> normalizar evidencia -> cleanup`.
 

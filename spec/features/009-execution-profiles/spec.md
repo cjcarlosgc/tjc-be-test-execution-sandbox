@@ -2,7 +2,7 @@
 
 **Estado:** APROBADO
 **Story IDs:** HU43
-**Contrato:** SYSTEM-2.1 / INTEROP-2.1
+**Contrato:** SYSTEM-2.2 / INTEROP-2.2
 
 ## Objetivo
 
