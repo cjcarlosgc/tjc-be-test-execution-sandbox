@@ -30,6 +30,7 @@ function validExecutionPayload(overrides: Record<string, unknown> = {}) {
     artifacts: [],
     scope: 'BATCH',
     targetIds: [],
+    executionProfile: 'NODE_TYPESCRIPT',
     runnerHint: 'VITEST',
     ...overrides,
   };

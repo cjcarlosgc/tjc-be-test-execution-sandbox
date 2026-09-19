@@ -2,7 +2,11 @@ import { Type } from 'class-transformer';
 import { IsArray, IsIn, IsUUID, ValidateNested } from 'class-validator';
 import { EphemeralDownloadRefDto } from './ephemeral-download-ref.dto.js';
 import { ExecutionArtifactInputDto } from './execution-artifact-input.dto.js';
-import type { ExecutionScope, RunnerHint } from '../domain/execution-record.js';
+import type {
+  ExecutionProfile,
+  ExecutionScope,
+  TestRunner,
+} from '../domain/execution-record.js';
 
 export class CreateSandboxExecutionRequestDto {
   @IsUUID()
@@ -30,6 +34,9 @@ export class CreateSandboxExecutionRequestDto {
   @IsUUID('4', { each: true })
   targetIds!: string[];
 
-  @IsIn(['JEST', 'VITEST'])
-  runnerHint!: RunnerHint;
+  @IsIn(['NODE_TYPESCRIPT', 'PHP_LARAVEL_PHPUNIT'])
+  executionProfile!: ExecutionProfile;
+
+  @IsIn(['JEST', 'VITEST', 'PHPUNIT'])
+  runnerHint!: TestRunner;
 }

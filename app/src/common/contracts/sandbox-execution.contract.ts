@@ -19,7 +19,21 @@ export type SandboxExecutionStatus =
   | 'FAILED'
   | 'TIMED_OUT';
 export type ExecutionScope = 'TARGET' | 'BATCH';
-export type RunnerHint = 'JEST' | 'VITEST';
+export type ExecutionProfile = 'NODE_TYPESCRIPT' | 'PHP_LARAVEL_PHPUNIT';
+export type TestRunner = 'JEST' | 'VITEST' | 'PHPUNIT';
+
+/**
+ * INTEROP-2.0 §7.2: el profile fija el conjunto de runners aceptados; una
+ * combinación fuera de esta tabla falla explícitamente como `CONFIGURATION`,
+ * sin inferir ni degradar a otro runtime.
+ */
+export const EXECUTION_PROFILE_RUNNERS: Record<
+  ExecutionProfile,
+  readonly TestRunner[]
+> = {
+  NODE_TYPESCRIPT: ['JEST', 'VITEST'],
+  PHP_LARAVEL_PHPUNIT: ['PHPUNIT'],
+};
 
 export interface EphemeralDownloadRef {
   role: ExecutionInputRole;
@@ -47,7 +61,8 @@ export interface TestCaseFact {
 }
 
 export interface RunnerFacts {
-  runner: RunnerHint;
+  executionProfile: ExecutionProfile;
+  runner: TestRunner;
   compiled: boolean;
   executed: boolean;
   passed: boolean;

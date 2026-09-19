@@ -1,11 +1,12 @@
 import type {
   EphemeralDownloadRef,
   ExecutionArtifactInput,
+  ExecutionProfile,
   ExecutionResultFacts,
   ExecutionScope,
-  RunnerHint,
   SandboxExecutionStatus,
   SandboxStage,
+  TestRunner,
 } from '../../common/contracts/sandbox-execution.contract.js';
 
 export * from '../../common/contracts/sandbox-execution.contract.js';
@@ -19,7 +20,8 @@ export interface ExecutionRecord {
   artifacts: ExecutionArtifactInput[];
   scope: ExecutionScope;
   targetIds: string[];
-  runnerHint: RunnerHint;
+  executionProfile: ExecutionProfile;
+  runnerHint: TestRunner;
   status: SandboxExecutionStatus;
   stage: SandboxStage | null;
   failureCode: string | null;

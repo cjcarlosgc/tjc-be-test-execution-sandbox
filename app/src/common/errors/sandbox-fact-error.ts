@@ -56,6 +56,18 @@ export class UnsupportedRunnerError extends SandboxFactError {
   }
 }
 
+/**
+ * `executionProfile`/`runnerHint` no forman una combinación soportada (009,
+ * INTEROP-2.0 §7.2), o el profile todavía no tiene adapter implementado
+ * (p.ej. `PHP_LARAVEL_PHPUNIT` antes de HU43 corte PHP). Nunca cae de vuelta
+ * a otro runtime por conveniencia.
+ */
+export class UnsupportedExecutionProfileError extends SandboxFactError {
+  constructor(message: string) {
+    super('UNSUPPORTED_EXECUTION_PROFILE', 'CONFIGURATION', message);
+  }
+}
+
 /** `DEC-SBX-002` (APROBADO): V1 solo soporta pnpm. */
 export class UnsupportedPackageManagerError extends SandboxFactError {
   constructor(message: string) {

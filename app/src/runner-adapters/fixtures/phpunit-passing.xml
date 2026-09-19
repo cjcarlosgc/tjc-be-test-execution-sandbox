@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="MathTest" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.001100">
+    <testcase name="testAddWorks" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="10" assertions="1" time="0.001100"/>
+  </testsuite>
+</testsuites>

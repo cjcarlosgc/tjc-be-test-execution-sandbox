@@ -7,8 +7,10 @@ import { ZipFile } from 'yazl';
 import type { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
 import { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
 import { JestTestRunnerAdapter } from '../runner-adapters/jest-test-runner.adapter.js';
+import { PhpunitTestRunnerAdapter } from '../runner-adapters/phpunit-test-runner.adapter.js';
 import { VitestTestRunnerAdapter } from '../runner-adapters/vitest-test-runner.adapter.js';
 import { parseJestCompatibleJson } from '../runner-adapters/jest-compatible-result-parser.js';
+import { parsePhpunitJunitXml } from '../runner-adapters/phpunit-junit-result-parser.js';
 import type {
   ProjectRunnerContext,
   TestRunnerAdapter,
@@ -29,7 +31,8 @@ import {
 } from '../common/errors/sandbox-fact-error.js';
 import type {
   EphemeralDownloadRef,
-  RunnerHint,
+  ExecutionProfile,
+  TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
@@ -52,6 +55,7 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
     artifacts: [],
     scope: 'BATCH',
     targetIds: [],
+    executionProfile: 'NODE_TYPESCRIPT',
     runnerHint: 'VITEST',
     status: 'PENDING',
     stage: null,
@@ -102,6 +106,14 @@ const PASSING_REPORT = JSON.stringify({
   ],
 });
 
+const PHPUNIT_PASSING_REPORT = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="MathTest" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.001">
+    <testcase name="testAddWorks" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="10" assertions="1" time="0.001"/>
+  </testsuite>
+</testsuites>
+`;
+
 function buildZip(files: Record<string, string>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const zip = new ZipFile();
@@ -142,7 +154,8 @@ describe('ExecutionPipelineService', () => {
     applyArtifacts?: () => Promise<string[]>;
     cleanup?: () => Promise<void>;
     resolveRunner?: (
-      runnerHint: RunnerHint,
+      executionProfile: ExecutionProfile,
+      runnerHint: TestRunner,
       context: ProjectRunnerContext,
     ) => Promise<TestRunnerAdapter>;
     installDependencies?: (workspacePath: string) => Promise<ContainerRunResult>;
@@ -189,6 +202,7 @@ describe('ExecutionPipelineService', () => {
     } as unknown as ArtifactMaterializer;
 
     const fakeAdapter: TestRunnerAdapter = {
+      executionProfile: 'NODE_TYPESCRIPT',
       runner: 'VITEST',
       supports: async () => true,
       buildCommand: (context) => [
@@ -197,7 +211,7 @@ describe('ExecutionPipelineService', () => {
         '--reporter=json',
         `--outputFile=${context.resultsFilePath}`,
       ],
-      parseResult: (raw) => parseJestCompatibleJson('VITEST', raw),
+      parseResult: (raw) => parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', raw),
     };
 
     const runnerAdapterRegistry = {
@@ -254,6 +268,61 @@ describe('ExecutionPipelineService', () => {
       'TEST_STDERR',
       'RUNNER_REPORT',
     ]);
+  });
+
+  it('completes a PHP_LARAVEL_PHPUNIT execution end to end using the PHPUnit adapter', async () => {
+    const record = baseRecord({
+      executionProfile: 'PHP_LARAVEL_PHPUNIT',
+      runnerHint: 'PHPUNIT',
+    });
+    const phpFakeAdapter: TestRunnerAdapter = {
+      executionProfile: 'PHP_LARAVEL_PHPUNIT',
+      runner: 'PHPUNIT',
+      supports: async () => true,
+      buildCommand: (context) => [
+        'php',
+        'vendor/bin/phpunit',
+        '--log-junit',
+        context.resultsFilePath,
+      ],
+      parseResult: (raw) => parsePhpunitJunitXml(raw),
+    };
+    const { pipeline, repository, workspaceDir } = await build({
+      withPnpmLockfile: false,
+      resolveRunner: async () => phpFakeAdapter,
+      runTestCommand: async (resultsFilePath) => {
+        await fs.writeFile(resultsFilePath, PHPUNIT_PASSING_REPORT, 'utf8');
+        return okContainerResult();
+      },
+    });
+    await fs.writeFile(
+      path.join(workspaceDir, 'composer.json'),
+      JSON.stringify({ 'require-dev': { 'phpunit/phpunit': '^11.0' } }),
+    );
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('COMPLETED');
+    expect(updated?.result?.facts?.executionProfile).toBe('PHP_LARAVEL_PHPUNIT');
+    expect(updated?.result?.facts?.runner).toBe('PHPUNIT');
+    expect(updated?.result?.facts?.passed).toBe(true);
+  });
+
+  it('fails PHP_LARAVEL_PHPUNIT executions with UNSUPPORTED_PACKAGE_MANAGER when composer.json is missing', async () => {
+    const record = baseRecord({
+      executionProfile: 'PHP_LARAVEL_PHPUNIT',
+      runnerHint: 'PHPUNIT',
+    });
+    const { pipeline, repository } = await build({ withPnpmLockfile: false });
+    repository.save(record);
+
+    await pipeline.run(record.executionId);
+
+    const updated = repository.findById(record.executionId);
+    expect(updated?.status).toBe('FAILED');
+    expect(updated?.failureCode).toBe('UNSUPPORTED_PACKAGE_MANAGER');
   });
 
   it('marks the execution FAILED with a SandboxFailureFact when the download is rejected', async () => {
@@ -390,6 +459,7 @@ describe('ExecutionPipelineService', () => {
     const realRunnerAdapterRegistry = new RunnerAdapterRegistry(
       new JestTestRunnerAdapter(),
       new VitestTestRunnerAdapter(),
+      new PhpunitTestRunnerAdapter(),
     );
 
     const { pipeline, repository, workspaceDir } = await build({
@@ -405,8 +475,8 @@ describe('ExecutionPipelineService', () => {
       },
       extract: (zipPath, destinationRoot) =>
         realExtractor.extract(zipPath, destinationRoot),
-      resolveRunner: (runnerHint, context) =>
-        realRunnerAdapterRegistry.resolve(runnerHint, context),
+      resolveRunner: (executionProfile, runnerHint, context) =>
+        realRunnerAdapterRegistry.resolve(executionProfile, runnerHint, context),
     });
     repository.save(record);
 

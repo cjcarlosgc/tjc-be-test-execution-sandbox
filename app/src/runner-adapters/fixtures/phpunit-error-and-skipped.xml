@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Project Test Suite" tests="3" assertions="1" errors="1" failures="0" skipped="1" time="0.020000">
+    <testsuite name="MathTest" tests="3" assertions="1" errors="1" failures="0" skipped="1" time="0.020000">
+      <testcase name="testThrowsUnexpectedException" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="22" time="0.010000">
+        <error type="RuntimeException">MathTest::testThrowsUnexpectedException
+RuntimeException: division by zero
+
+/app/src/Math.php:9</error>
+      </testcase>
+      <testcase name="testIncompleteFeature" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="28" time="0.000000">
+        <skipped/>
+      </testcase>
+      <testcase name="testAddWorks" class="MathTest" classname="MathTest" file="/app/tests/MathTest.php" line="10" assertions="1" time="0.001000"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -2,8 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { UnsupportedRunnerError } from '../common/errors/sandbox-fact-error.js';
+import {
+  UnsupportedExecutionProfileError,
+  UnsupportedRunnerError,
+} from '../common/errors/sandbox-fact-error.js';
 import { JestTestRunnerAdapter } from './jest-test-runner.adapter.js';
+import { PhpunitTestRunnerAdapter } from './phpunit-test-runner.adapter.js';
 import { RunnerAdapterRegistry } from './runner-adapter-registry.js';
 import { VitestTestRunnerAdapter } from './vitest-test-runner.adapter.js';
 
@@ -12,6 +16,7 @@ describe('RunnerAdapterRegistry', () => {
   const registry = new RunnerAdapterRegistry(
     new JestTestRunnerAdapter(),
     new VitestTestRunnerAdapter(),
+    new PhpunitTestRunnerAdapter(),
   );
 
   beforeEach(async () => {
@@ -28,7 +33,7 @@ describe('RunnerAdapterRegistry', () => {
       JSON.stringify({ devDependencies: { jest: '^29.0.0' } }),
     );
 
-    const adapter = await registry.resolve('JEST', {
+    const adapter = await registry.resolve('NODE_TYPESCRIPT', 'JEST', {
       workspacePath,
       resultsFilePath: 'x',
     });
@@ -43,7 +48,47 @@ describe('RunnerAdapterRegistry', () => {
     );
 
     await expect(
-      registry.resolve('VITEST', { workspacePath, resultsFilePath: 'x' }),
+      registry.resolve('NODE_TYPESCRIPT', 'VITEST', {
+        workspacePath,
+        resultsFilePath: 'x',
+      }),
+    ).rejects.toThrow(UnsupportedRunnerError);
+  });
+
+  it('rejects with UNSUPPORTED_EXECUTION_PROFILE when the runner is not in the profile table, without falling back', async () => {
+    await expect(
+      registry.resolve('NODE_TYPESCRIPT', 'PHPUNIT', {
+        workspacePath,
+        resultsFilePath: 'x',
+      }),
+    ).rejects.toThrow(UnsupportedExecutionProfileError);
+  });
+
+  it('resolves the PHPUnit adapter when composer.json declares phpunit/phpunit', async () => {
+    await fs.writeFile(
+      path.join(workspacePath, 'composer.json'),
+      JSON.stringify({ 'require-dev': { 'phpunit/phpunit': '^11.0' } }),
+    );
+
+    const adapter = await registry.resolve('PHP_LARAVEL_PHPUNIT', 'PHPUNIT', {
+      workspacePath,
+      resultsFilePath: 'x',
+    });
+
+    expect(adapter.runner).toBe('PHPUNIT');
+  });
+
+  it('rejects PHPUnit with UNSUPPORTED_RUNNER when the project declares neither the dependency nor a config file', async () => {
+    await fs.writeFile(
+      path.join(workspacePath, 'composer.json'),
+      JSON.stringify({ require: {} }),
+    );
+
+    await expect(
+      registry.resolve('PHP_LARAVEL_PHPUNIT', 'PHPUNIT', {
+        workspacePath,
+        resultsFilePath: 'x',
+      }),
     ).rejects.toThrow(UnsupportedRunnerError);
   });
 });
