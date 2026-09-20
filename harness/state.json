@@ -1,9 +1,10 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "sddVersion": "2.1",
-  "allowedStatuses": ["SELECTED", "SPEC_VERIFIED", "AWAITING_APPROVAL", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE"],
+  "allowedStatuses": ["SELECTED", "SPEC_VERIFIED", "AWAITING_APPROVAL", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DECISION_REQUIRED", "DONE"],
   "activeWorkItem": {
     "id": "T-001-sdd-2-baseline",
+    "workItemType": "PRODUCT",
     "storyIds": ["HU43", "HU47"],
     "sprint": "T-001",
     "status": "IN_REVIEW",
@@ -26,7 +27,11 @@
     },
     "createdAt": "2026-09-13T03:00:00-05:00",
     "updatedAt": "2026-09-13T03:00:00-05:00",
-    "blockedReason": null
+    "blockedReason": null,
+    "execution": {"leaderAgent":"leader","analysisAgent":"sdd-analyst","implementationAgent":"implementer","contractReviewAgent":"contract-reviewer","reviewAgent":"reviewer","handoffs":[],"reviewCycles":0,"maxReviewCycles":2},
+    "gates": {"sddVerified":"PASSED","implementationCompleted":"NOT_RUN","independentReviewPassed":"NOT_RUN","technicalChecksPassed":"NOT_RUN","executionEvidencePassed":"NOT_APPLICABLE","contractReviewed":"NOT_APPLICABLE","interopSyncChecked":"PASSED","isolationChecksPassed":"NOT_APPLICABLE","noBlockingDecisions":"PASSED","retryLimitRespected":"PASSED"},
+    "coordination": {"contractImpact":false,"executionImpact":false,"pullCheckpoints":[{"checkpoint":"start","checkedAt":"2026-09-19T22:20:00-05:00","relevantPendingSyncIds":[]}],"publishedSyncIds":[],"pendingRelevantSyncIds":[]},
+    "evidence": ["Harness V2 fields added without changing the active product work item's scope."]
   },
   "lastUpdatedAt": "2026-09-13T03:00:00-05:00"
 }

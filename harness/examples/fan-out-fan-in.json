@@ -1,0 +1,8 @@
+{
+  "workItem": "HU43-profile-change",
+  "sequence": ["leader", "sdd-analyst", "implementer", ["reviewer", "contract-reviewer"], "leader"],
+  "contractReviewerCondition": ["executions", "dto", "phase", "executionProfile", "auth", "headers", "idempotency", "statuses", "evidence"],
+  "pullCheckpoints": ["start", "before-implementation-delivery", "before-review", "before-done"],
+  "handoffFields": ["status", "findings", "blockers", "filesAffected", "evidence", "recommendedNextStep"],
+  "retryPolicy": { "maxReviewCycles": 2, "onExceeded": ["BLOCKED", "DECISION_REQUIRED"] }
+}
