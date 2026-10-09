@@ -19,6 +19,13 @@ export type SandboxExecutionStatus =
   | 'FAILED'
   | 'TIMED_OUT';
 export type ExecutionScope = 'TARGET' | 'BATCH';
+/**
+ * INTEROP §7.2: `BASELINE` ejecuta la suite existente; `GENERATED_TESTS`
+ * ejecuta solo los artefactos materializados (009, corte T-003). Opcional en
+ * el request mientras Core no lo envíe; default `GENERATED_TESTS`.
+ */
+export type ExecutionPhase = 'BASELINE' | 'GENERATED_TESTS';
+export const DEFAULT_EXECUTION_PHASE: ExecutionPhase = 'GENERATED_TESTS';
 export type ExecutionProfile = 'NODE_TYPESCRIPT' | 'PHP_LARAVEL_PHPUNIT';
 export type TestRunner = 'JEST' | 'VITEST' | 'PHPUNIT';
 
@@ -52,12 +59,20 @@ export interface ExecutionArtifactInput {
 
 export type TestCaseFactStatus = 'PASSED' | 'FAILED' | 'SKIPPED' | 'TODO';
 
+/**
+ * Hecho del runner, no una clasificación: `ASSERTION` = la aserción no se
+ * cumplió; `ERROR` = el test lanzó antes o en vez de verificar (clase/método
+ * inexistente, TypeError, excepción). Null si el caso no falló.
+ */
+export type TestCaseFailureKind = 'ASSERTION' | 'ERROR';
+
 export interface TestCaseFact {
   suitePath: string | null;
   name: string;
   status: TestCaseFactStatus;
   durationMs: number | null;
   errorMessage: string | null;
+  failureKind: TestCaseFailureKind | null;
 }
 
 export interface RunnerFacts {

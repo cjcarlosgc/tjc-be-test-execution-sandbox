@@ -1,10 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { PassThrough } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import type { ExecutionProfile } from '../common/contracts/sandbox-execution.contract.js';
+import { ImageUnavailableError } from '../common/errors/sandbox-fact-error.js';
 import {
+  MANAGED_PHP_IMAGE,
   resolveContainerLimits,
   type ContainerLimitsConfig,
   type ProfileContainerConfig,
@@ -26,9 +29,11 @@ export interface ContainerRunResult {
 
 const DEFAULT_CONTAINER_WORKING_DIR = '/app';
 const PNPM_STORE_CONTAINER_PATH = '/pnpm-store';
-const COMPOSER_BINARY_CONTAINER_DIR = '/opt/sandbox-composer';
-const COMPOSER_BINARY_CONTAINER_PATH = `${COMPOSER_BINARY_CONTAINER_DIR}/composer`;
 const COMPOSER_CACHE_CONTAINER_PATH = '/composer-cache';
+/** `src/container` y `dist/container` resuelven ambos a `app/docker/php`. */
+const MANAGED_PHP_IMAGE_CONTEXT = fileURLToPath(
+  new URL('../../docker/php/', import.meta.url),
+);
 
 interface RunContainerOptions {
   executionId: string;
@@ -67,7 +72,7 @@ export class ContainerRunner {
   private readonly logger = new Logger(ContainerRunner.name);
   private readonly limits: ContainerLimitsConfig;
   private pnpmStoreVolumeReady?: Promise<void>;
-  private composerBinaryVolumeReady?: Promise<void>;
+  private readonly imageReady = new Map<string, Promise<void>>();
 
   constructor(
     @Inject(DOCKER_CLIENT) private readonly docker: Dockerode,
@@ -145,7 +150,7 @@ export class ContainerRunner {
             maxTimeoutMs,
             workingDir,
           )
-        : await this.buildPhpInstallOptions(
+        : this.buildPhpInstallOptions(
             executionId,
             workspacePath,
             profile,
@@ -191,35 +196,33 @@ export class ContainerRunner {
     };
   }
 
-  private async buildPhpInstallOptions(
+  /**
+   * Corre sobre la imagen PHP gestionada (Composer y `unzip` ya incluidos):
+   * sin `apt-get` en caliente ni capabilities por encima de `CapDrop: ['ALL']`.
+   * `--no-scripts`: la etapa tiene red y no ejecuta scripts del proyecto
+   * (Laravel regenera su manifest de paquetes al arrancar los tests).
+   * Respeta `composer.lock` cuando existe (009, corte T-003).
+   */
+  private buildPhpInstallOptions(
     executionId: string,
     workspacePath: string,
     profile: ProfileContainerConfig,
     maxTimeoutMs: number | undefined,
     workingDir: string,
-  ): Promise<RunContainerOptions> {
-    await this.ensureComposerBinaryVolume();
+  ): RunContainerOptions {
     return {
       executionId,
       nameSuffix: 'install',
       image: profile.image,
       user: profile.user,
       workspacePath,
-      // `php:*-cli` (Debian) no trae `unzip` ni la extensión `zip`; sin
-      // ninguno de los dos, Composer no puede extraer los paquetes
-      // descargados de Packagist (confirmado contra Docker real: falla con
-      // "the zip extension and unzip/7z commands are both missing"). Se
-      // instala `unzip` en cada instalación en vez de depender de una
-      // imagen custom — mismo principio de "sin `docker build`" que el
-      // resto del profile PHP. `APT::Sandbox::User=root` evita que apt
-      // intente bajar privilegios (setuid/setgid) para la descarga, algo
-      // que igual fallaría bajo `CapDrop: ['ALL']`; `capAdd` de abajo cubre
-      // solo lo que apt necesita para preparar sus directorios como root
-      // sin esa sandboxed-user feature (confirmado contra Docker real).
       command: [
-        'sh',
-        '-c',
-        `apt-get -o APT::Sandbox::User=root update -qq && apt-get -o APT::Sandbox::User=root install -y -qq --no-install-recommends unzip >/dev/null && php ${COMPOSER_BINARY_CONTAINER_PATH} install --no-interaction --prefer-dist`,
+        'composer',
+        'install',
+        '--no-interaction',
+        '--no-progress',
+        '--prefer-dist',
+        '--no-scripts',
       ],
       network: true,
       readOnlyWorkspace: false,
@@ -229,13 +232,10 @@ export class ContainerRunner {
         COMPOSER_ALLOW_SUPERUSER: '1',
         COMPOSER_HOME: '/tmp',
         COMPOSER_CACHE_DIR: COMPOSER_CACHE_CONTAINER_PATH,
-        DEBIAN_FRONTEND: 'noninteractive',
       },
       extraBinds: [
-        `${this.limits.composerBinaryVolumeName}:${COMPOSER_BINARY_CONTAINER_DIR}:ro`,
         `${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`,
       ],
-      capAdd: ['CHOWN', 'FOWNER', 'DAC_OVERRIDE'],
     };
   }
 
@@ -259,6 +259,10 @@ export class ContainerRunner {
       readOnlyWorkspace: false,
       timeoutMs: clampTimeout(this.limits.testTimeoutMs, maxTimeoutMs),
       workingDir,
+      env:
+        executionProfile === 'PHP_LARAVEL_PHPUNIT'
+          ? phpTestEnvironment()
+          : undefined,
     });
     this.logger.log(
       `run tests executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
@@ -310,53 +314,6 @@ export class ContainerRunner {
     if (result.timedOut || result.exitCode !== 0) {
       throw new Error(
         `pnpm store volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
-      );
-    }
-  }
-
-  /**
-   * Análogo a `ensurePnpmStoreVolumeOwnership`, pero en vez de solo un
-   * `chown` copia el binario real: la imagen completa `composer:2` (con
-   * shell/coreutils) corre una única vez por proceso para sembrar
-   * `composerBinaryVolumeName` con `/usr/bin/composer`. Las instalaciones
-   * reales nunca usan la imagen `composer:2`; corren sobre la imagen PHP
-   * pinneada por config, montando este volumen read-only.
-   */
-  private async ensureComposerBinaryVolume(): Promise<void> {
-    if (!this.composerBinaryVolumeReady) {
-      this.composerBinaryVolumeReady = this.runComposerBinaryVolumeBootstrap().catch(
-        (error: unknown) => {
-          this.composerBinaryVolumeReady = undefined;
-          throw error;
-        },
-      );
-    }
-    return this.composerBinaryVolumeReady;
-  }
-
-  private async runComposerBinaryVolumeBootstrap(): Promise<void> {
-    const bootstrapId = `composer-bin-init-${randomUUID()}`;
-    const result = await this.run({
-      executionId: bootstrapId,
-      nameSuffix: 'bootstrap',
-      image: this.limits.composerBinaryImage,
-      command: [
-        'sh',
-        '-c',
-        `cp /usr/bin/composer ${COMPOSER_BINARY_CONTAINER_PATH} && chmod +x ${COMPOSER_BINARY_CONTAINER_PATH}`,
-      ],
-      network: false,
-      readOnlyWorkspace: false,
-      timeoutMs: this.limits.timeoutMs,
-      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
-      extraBinds: [
-        `${this.limits.composerBinaryVolumeName}:${COMPOSER_BINARY_CONTAINER_DIR}`,
-      ],
-      user: 'root',
-    });
-    if (result.timedOut || result.exitCode !== 0) {
-      throw new Error(
-        `composer binary volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
       );
     }
   }
@@ -498,21 +455,50 @@ export class ContainerRunner {
     };
   }
 
-  private async ensureImage(image: string): Promise<void> {
+  /**
+   * Memoizado por imagen: ejecuciones concurrentes esperan el mismo
+   * pull/build en vez de lanzar uno cada una. Un fallo no queda cacheado.
+   */
+  private ensureImage(image: string): Promise<void> {
+    let ready = this.imageReady.get(image);
+    if (!ready) {
+      ready = this.provisionImage(image).catch((error: unknown) => {
+        this.imageReady.delete(image);
+        throw new ImageUnavailableError(
+          `image ${image} is not available: ${(error as Error).message}`,
+        );
+      });
+      this.imageReady.set(image, ready);
+    }
+    return ready;
+  }
+
+  private async provisionImage(image: string): Promise<void> {
     try {
       await this.docker.getImage(image).inspect();
       return;
     } catch {
-      // no está en caché local: se descarga a continuación.
+      // no está en caché local: se construye (gestionada) o se descarga.
     }
 
-    const stream = await this.docker.pull(image, {});
+    const stream =
+      image === MANAGED_PHP_IMAGE
+        ? await this.docker.buildImage(
+            { context: MANAGED_PHP_IMAGE_CONTEXT, src: ['Dockerfile'] },
+            { t: image },
+          )
+        : await this.docker.pull(image, {});
+    this.logger.log(
+      `${image === MANAGED_PHP_IMAGE ? 'building' : 'pulling'} image ${image}`,
+    );
     await new Promise<void>((resolve, reject) => {
       this.docker.modem.followProgress(
         stream,
-        (progressError: Error | null) => {
-          if (progressError) {
-            reject(progressError);
+        (progressError: Error | null, output: Array<{ error?: string }>) => {
+          // El build reporta sus fallos como eventos `{ error }`, no como error del stream.
+          const buildError = output?.find((event) => event.error)?.error;
+          if (progressError || buildError) {
+            reject(progressError ?? new Error(buildError));
           } else {
             resolve();
           }
@@ -520,6 +506,18 @@ export class ContainerRunner {
       );
     });
   }
+}
+
+/**
+ * Entorno de testing del profile PHP (009, corte T-003): Laravel exige
+ * `APP_KEY` para cifrado/cookies y los proyectos no versionan `.env`. Clave
+ * aleatoria por ejecución; las variables que fije `phpunit.xml` se respetan.
+ */
+function phpTestEnvironment(): Record<string, string> {
+  return {
+    APP_ENV: 'testing',
+    APP_KEY: `base64:${randomBytes(32).toString('base64')}`,
+  };
 }
 
 /** Nunca amplía el timeout configurado, solo puede acotarlo más. */

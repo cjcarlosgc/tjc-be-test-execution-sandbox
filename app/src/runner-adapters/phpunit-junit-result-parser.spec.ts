@@ -69,4 +69,16 @@ describe('parsePhpunitJunitXml', () => {
     expect(facts.passed).toBe(false);
     expect(facts.totalTests).toBe(0);
   });
+
+  describe('failureKind (009, corte T-003)', () => {
+    it('maps <failure> to ASSERTION and passing cases to null', async () => {
+      const facts = parsePhpunitJunitXml(await loadFixture('phpunit-mixed.xml'));
+      expect(facts.testCases.map((tc) => tc.failureKind)).toEqual([null, 'ASSERTION']);
+    });
+
+    it('maps <error> to ERROR and <skipped> to null', async () => {
+      const facts = parsePhpunitJunitXml(await loadFixture('phpunit-error-and-skipped.xml'));
+      expect(facts.testCases.map((tc) => tc.failureKind)).toEqual(['ERROR', null, null]);
+    });
+  });
 });
