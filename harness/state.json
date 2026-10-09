@@ -1,37 +1,148 @@
 {
   "schemaVersion": 3,
   "sddVersion": "2.1",
-  "allowedStatuses": ["SELECTED", "SPEC_VERIFIED", "AWAITING_APPROVAL", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DECISION_REQUIRED", "DONE"],
+  "allowedStatuses": [
+    "SELECTED",
+    "SPEC_VERIFIED",
+    "AWAITING_APPROVAL",
+    "IN_PROGRESS",
+    "IN_REVIEW",
+    "BLOCKED",
+    "DECISION_REQUIRED",
+    "DONE"
+  ],
   "activeWorkItem": {
-    "id": "T-001-sdd-2-baseline",
+    "id": "T-003-php-laravel-validation",
     "workItemType": "PRODUCT",
-    "storyIds": ["HU43", "HU47"],
-    "sprint": "T-001",
-    "status": "IN_REVIEW",
+    "storyIds": [
+      "HU43"
+    ],
+    "sprint": "T-003",
+    "status": "DONE",
     "specPaths": [
-      "spec/contracts/system-contract.md",
       "spec/contracts/interoperability-contract.md",
-      "spec/backlog.md",
-      "spec/backlog-migration-sdd-2.0.md",
       "spec/features/009-execution-profiles/spec.md",
       "spec/features/009-execution-profiles/plan.md",
       "spec/features/009-execution-profiles/tasks.md"
     ],
-    "transversalPaths": ["spec/constitution/architecture.md", "spec/constitution/mission.md", "spec/constitution/project-context.md", "spec/constitution/roadmap.md", "spec/constitution/tech-stack.md"],
+    "transversalPaths": [
+      "spec/constitution/architecture.md",
+      "spec/constitution/tech-stack.md",
+      "spec/constitution/delivery-workflow.md",
+      "spec/transversal/container-isolation/spec.md",
+      "spec/transversal/resource-limits/spec.md"
+    ],
     "approved": true,
     "decisionGate": {
       "checked": true,
       "blockingDecisionIds": [],
-      "nonBlockingDecisionIds": ["DEC-MET-001", "DEC-INF-001", "DEC-VAL-001", "DEC-EXP-FK-001"],
-      "checkedAt": "2026-09-13T03:00:00-05:00"
+      "nonBlockingDecisionIds": [
+        "DEC-INF-001",
+        "DEC-VAL-001",
+        "DEC-MET-001",
+        "DEC-EXP-FK-001"
+      ],
+      "checkedAt": "2026-10-09T18:00:00-05:00"
     },
-    "createdAt": "2026-09-13T03:00:00-05:00",
-    "updatedAt": "2026-09-13T03:00:00-05:00",
+    "createdAt": "2026-10-09T18:00:00-05:00",
+    "updatedAt": "2026-10-09T18:50:00-05:00",
     "blockedReason": null,
-    "execution": {"leaderAgent":"leader","analysisAgent":"sdd-analyst","implementationAgent":"implementer","contractReviewAgent":"contract-reviewer","reviewAgent":"reviewer","handoffs":[],"reviewCycles":0,"maxReviewCycles":2},
-    "gates": {"sddVerified":"PASSED","implementationCompleted":"NOT_RUN","independentReviewPassed":"NOT_RUN","technicalChecksPassed":"NOT_RUN","executionEvidencePassed":"NOT_APPLICABLE","contractReviewed":"NOT_APPLICABLE","interopSyncChecked":"PASSED","isolationChecksPassed":"NOT_APPLICABLE","noBlockingDecisions":"PASSED","retryLimitRespected":"PASSED"},
-    "coordination": {"contractImpact":false,"executionImpact":false,"pullCheckpoints":[{"checkpoint":"start","checkedAt":"2026-09-19T22:20:00-05:00","relevantPendingSyncIds":[]}],"publishedSyncIds":[],"pendingRelevantSyncIds":[]},
-    "evidence": ["Harness V2 fields added without changing the active product work item's scope."]
+    "execution": {
+      "leaderAgent": "leader",
+      "analysisAgent": "sdd-analyst",
+      "implementationAgent": "implementer",
+      "contractReviewAgent": "contract-reviewer",
+      "reviewAgent": "reviewer",
+      "handoffs": [
+        {
+          "agent": "reviewer",
+          "status": "APPROVED",
+          "findings": "7 NON_BLOCKING sobre 8e76632; 4 aplicados en 1630d45",
+          "blockers": [],
+          "filesAffected": [
+            "app/src/executions/execution-pipeline.service.ts",
+            "app/src/container/container-runner.service.ts",
+            "app/src/runner-adapters/vitest-test-runner.adapter.ts",
+            "app/docker/php/Dockerfile"
+          ],
+          "evidence": "harness/reports/delivery-php-profile-review.md",
+          "recommendedNextStep": "publicar CONTRACT_SYNC y re-revisar el delta"
+        },
+        {
+          "agent": "contract-reviewer",
+          "status": "APPROVED",
+          "findings": "9 NON_BLOCKING volcados al CONTRACT_SYNC",
+          "blockers": [],
+          "filesAffected": [
+            "app/src/executions/dto/create-execution-request.dto.ts",
+            "app/src/common/contracts/sandbox-execution.contract.ts",
+            "app/src/executions/execution-fingerprint.ts"
+          ],
+          "evidence": "harness/contract-sync/outbox/CS-SANDBOX-20261009-001.json",
+          "recommendedNextStep": "Core incorpora phase/failureKind/códigos al canónico"
+        },
+        {
+          "agent": "reviewer",
+          "status": "APPROVED",
+          "findings": "rango develop..1630d45 aprobado; 2 NON_BLOCKING (diferidos, precisión de test)",
+          "blockers": [],
+          "filesAffected": [
+            "app/src/executions/execution-pipeline.service.spec.ts"
+          ],
+          "evidence": "harness/reports/delivery-php-profile-review.md",
+          "recommendedNextStep": "registrar diferidos y cerrar"
+        }
+      ],
+      "reviewCycles": 1,
+      "maxReviewCycles": 2
+    },
+    "gates": {
+      "sddVerified": "PASSED",
+      "implementationCompleted": "PASSED",
+      "independentReviewPassed": "PASSED",
+      "technicalChecksPassed": "PASSED",
+      "executionEvidencePassed": "PASSED",
+      "contractReviewed": "PASSED",
+      "interopSyncChecked": "PASSED",
+      "isolationChecksPassed": "PASSED",
+      "noBlockingDecisions": "PASSED",
+      "retryLimitRespected": "PASSED"
+    },
+    "coordination": {
+      "contractImpact": true,
+      "executionImpact": true,
+      "pullCheckpoints": [
+        {
+          "checkpoint": "start",
+          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "relevantPendingSyncIds": []
+        },
+        {
+          "checkpoint": "before-implementation-delivery",
+          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "relevantPendingSyncIds": []
+        },
+        {
+          "checkpoint": "before-review",
+          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "relevantPendingSyncIds": []
+        },
+        {
+          "checkpoint": "before-done",
+          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "relevantPendingSyncIds": []
+        }
+      ],
+      "publishedSyncIds": [
+        "CS-SANDBOX-20261009-001"
+      ],
+      "pendingRelevantSyncIds": []
+    },
+    "evidence": [
+      "harness/reports/T-003-php-laravel-validation.md",
+      "harness/reports/delivery-php-profile-review.md",
+      "harness/contract-sync/outbox/CS-SANDBOX-20261009-001.json"
+    ]
   },
-  "lastUpdatedAt": "2026-09-13T03:00:00-05:00"
+  "lastUpdatedAt": "2026-10-09T18:50:00-05:00"
 }
