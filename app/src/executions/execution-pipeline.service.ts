@@ -149,6 +149,14 @@ export class ExecutionPipelineService {
         workspacePath,
         record.artifacts,
       );
+      // Se valida en PREPARING: un artefacto fuera del proyecto no debe
+      // consumir la instalación con red antes de fallar.
+      const testPaths = selectTestPaths(
+        record.phase,
+        record.artifacts,
+        workspacePath,
+        projectRoot,
+      );
 
       // `resultsFilePath` es una ruta absoluta dentro del container (el
       // workspace montado en `/app`); al ser absoluta, el runner la escribe
@@ -224,16 +232,11 @@ export class ExecutionPipelineService {
       const command = adapter.buildCommand({
         workspacePath: projectRoot,
         resultsFilePath,
-        testPaths: selectTestPaths(
-          record.phase,
-          record.artifacts,
-          workspacePath,
-          projectRoot,
-        ),
+        testPaths,
       });
       // Un reporte que ya venía en el snapshot (o de otra etapa) no puede
       // hacerse pasar por el de esta ejecución.
-      await fs.rm(hostResultsFilePath, { force: true });
+      await fs.rm(hostResultsFilePath, { force: true, recursive: true });
       const testStartedAt = Date.now();
       const testResult = await this.containerRunner.runTestCommand(
         executionId,
@@ -465,7 +468,7 @@ export function selectTestPaths(
  * de test no compila (verificado contra PHPUnit 11.5).
  */
 const PHP_SYNTAX_ERROR_PATTERN =
-  /syntax error, unexpected|PHP Parse error|\bParseError\b/;
+  /syntax error, unexpected|Parse error|\bParseError\b|Unclosed '[[{(]'/;
 
 function missingReportError(
   executionProfile: ExecutionProfile,

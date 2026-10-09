@@ -456,18 +456,20 @@ export class ContainerRunner {
   }
 
   /**
-   * Memoizado por imagen: ejecuciones concurrentes esperan el mismo
-   * pull/build en vez de lanzar uno cada una. Un fallo no queda cacheado.
+   * Solo se memoiza la operación en curso: ejecuciones concurrentes esperan
+   * el mismo pull/build, y cada run posterior vuelve a hacer el `inspect`
+   * barato (una imagen borrada con prune se reconstruye en vez de fallar).
    */
   private ensureImage(image: string): Promise<void> {
     let ready = this.imageReady.get(image);
     if (!ready) {
-      ready = this.provisionImage(image).catch((error: unknown) => {
-        this.imageReady.delete(image);
-        throw new ImageUnavailableError(
-          `image ${image} is not available: ${(error as Error).message}`,
-        );
-      });
+      ready = this.provisionImage(image)
+        .catch((error: unknown) => {
+          throw new ImageUnavailableError(
+            `image ${image} is not available: ${(error as Error).message}`,
+          );
+        })
+        .finally(() => this.imageReady.delete(image));
       this.imageReady.set(image, ready);
     }
     return ready;

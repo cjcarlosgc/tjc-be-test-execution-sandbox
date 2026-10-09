@@ -838,6 +838,51 @@ describe('ExecutionPipelineService', () => {
       expect(updated?.result?.facts).toBeNull();
     });
 
+    it('detects a truncated generated PHP test (Unclosed brace) as TEST_COMPILATION_FAILED', async () => {
+      const record = phpRecord({ artifacts: [artifact('tests/Unit/TruncatedTest.php')] });
+      const { pipeline, repository } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, '', 'utf8');
+          return okContainerResult({
+            exitCode: 255,
+            stdout: "An error occurred inside PHPUnit.\n\nMessage:  Unclosed '{' on line 8\n",
+          });
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.failureCode).toBe('TEST_COMPILATION_FAILED');
+    });
+
+    it('rejects an artifact outside the wrapped project during PREPARING, before installing', async () => {
+      const record = phpRecord({ artifacts: [artifact('../outside/FooTest.php')] });
+      const installDependencies = vi.fn(async () => okContainerResult());
+      const { pipeline, repository } = await buildPhp({ installDependencies });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      const updated = repository.findById(record.executionId);
+      expect(updated?.failureCode).toBe('INVALID_ARTIFACT_PATH');
+      expect(updated?.result?.failure?.stage).toBe('PREPARING');
+      expect(installDependencies).not.toHaveBeenCalled();
+    });
+
+    it('removes a pre-existing results path even when it is a directory', async () => {
+      const record = baseRecord();
+      const { pipeline, repository, workspaceDir } = await build({
+        runTestCommand: async () => okContainerResult({ exitCode: 1 }),
+      });
+      await fs.mkdir(path.join(workspaceDir, '.sandbox-results.json', 'nested'), { recursive: true });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.failureCode).toBe('TEST_EXECUTION_FAILED');
+    });
+
     it('never completes on an empty report without a syntax error: TEST_EXECUTION_FAILED', async () => {
       const record = phpRecord();
       const { pipeline, repository } = await buildPhp({

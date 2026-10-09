@@ -496,6 +496,18 @@ describe('ContainerRunner', () => {
       expect(docker.pull).not.toHaveBeenCalled();
     });
 
+    it('re-inspects the image on later runs instead of caching a past success', async () => {
+      const { docker } = buildFakeDocker();
+      const inspect = vi.fn(async () => ({}));
+      docker.getImage = vi.fn(() => ({ inspect }));
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+      await runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+      await runner.runTestCommand('22222222-2222-4222-8222-222222222222', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+
+      expect(inspect).toHaveBeenCalledTimes(2);
+    });
+
     it('pulls instead of building when the configured PHP image is not the managed one', async () => {
       const { docker } = buildFakeDocker();
       docker.getImage = vi.fn(missingImage);
