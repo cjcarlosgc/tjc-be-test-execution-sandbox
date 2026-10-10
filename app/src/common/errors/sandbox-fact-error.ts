@@ -88,6 +88,27 @@ export class TestExecutionFailedError extends SandboxFactError {
 }
 
 /**
+ * El runner no pudo cargar un archivo de test por un error de sintaxis del
+ * lenguaje (PHPUnit 11 deja el reporte vacío y escribe el motivo en stdout).
+ * No llegó a ejecutarse ningún test.
+ */
+export class TestCompilationFailedError extends SandboxFactError {
+  constructor(message: string) {
+    super('TEST_COMPILATION_FAILED', 'COMPILATION', message);
+  }
+}
+
+/**
+ * La imagen del profile no está disponible y no pudo descargarse ni
+ * construirse. Es un fallo de plataforma, no del proyecto.
+ */
+export class ImageUnavailableError extends SandboxFactError {
+  constructor(message: string) {
+    super('IMAGE_UNAVAILABLE', 'INFRASTRUCTURE', message);
+  }
+}
+
+/**
  * El runner abortó por una configuración inválida del proyecto (p.ej.
  * `testEnvironment: jsdom` sin declarar `jest-environment-jsdom` como
  * devDependency tras Jest 28) antes de ejecutar ningún test: no escribe

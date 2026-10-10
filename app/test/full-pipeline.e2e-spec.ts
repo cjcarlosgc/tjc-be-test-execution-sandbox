@@ -368,4 +368,138 @@ describe('add', () => {
     },
     210_000,
   );
+
+  /**
+   * Corte T-003 de 009: con un artefacto generado, PHPUnit real ejecuta
+   * solo ese archivo (no `MathTest` del snapshot), cada caso fallido trae su
+   * `failureKind` real y el container de tests recibe el entorno Laravel.
+   */
+  async function runPhpWithArtifact(
+    requestId: string,
+    artifactId: string,
+    fileName: string,
+    content: string,
+  ) {
+    const buffer = Buffer.from(content, 'utf8');
+    const sha256 = createHash('sha256').update(buffer).digest('hex');
+    fixtureServer.addRoute(`/${fileName}`, () => buffer);
+
+    const accepted = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', requestId)
+      .send({
+        requestId,
+        testRunId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        projectVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        snapshot: {
+          role: 'PROJECT_SNAPSHOT',
+          url: `${fixtureServer.baseUrl}/php-project.zip`,
+          expiresAt: '2099-01-01T00:00:00.000Z',
+          sha256: phpProjectSha256,
+          sizeBytes: phpProjectZip.length,
+        },
+        artifacts: [
+          {
+            artifactId,
+            relativePath: `tests/Generated/${fileName}`,
+            artifactType: 'CREATED',
+            download: {
+              role: 'GENERATED_ARTIFACT',
+              url: `${fixtureServer.baseUrl}/${fileName}`,
+              expiresAt: '2099-01-01T00:00:00.000Z',
+              sha256,
+              sizeBytes: buffer.length,
+            },
+          },
+        ],
+        scope: 'BATCH',
+        targetIds: [],
+        executionProfile: 'PHP_LARAVEL_PHPUNIT',
+        runnerHint: 'PHPUNIT',
+        phase: 'GENERATED_TESTS',
+      });
+    expect(accepted.status).toBe(202);
+    await pollExecution(app, accepted.body.executionId, 180_000);
+    const result = await request(app.getHttpServer())
+      .get(`/executions/${accepted.body.executionId}/result`)
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
+    return result.body;
+  }
+
+  it(
+    'runs only the generated PHPUnit test, distinguishing ASSERTION from ERROR, with the Laravel testing env',
+    async () => {
+      const body = await runPhpWithArtifact(
+        '12121212-1212-4212-8212-121212121212',
+        '13131313-1313-4313-8313-131313131313',
+        'GeneratedMathTest.php',
+        `<?php
+
+namespace Tests\\Generated;
+
+use App\\Math;
+use PHPUnit\\Framework\\TestCase;
+
+final class GeneratedMathTest extends TestCase
+{
+    public function testLaravelTestingEnvironment(): void
+    {
+        $this->assertSame('testing', getenv('APP_ENV'));
+        $this->assertMatchesRegularExpression('/^base64:.{44}$/', (string) getenv('APP_KEY'));
+    }
+
+    public function testAssertionMismatch(): void
+    {
+        $this->assertSame(999, (new Math())->add(2, 3));
+    }
+
+    public function testCallsMissingMethod(): void
+    {
+        (new Math())->multiply(2, 3);
+    }
+}
+`,
+      );
+
+      expect(body.status).toBe('COMPLETED');
+      expect(body.failure).toBeNull();
+      expect(body.facts.totalTests).toBe(3);
+      expect(body.facts.testCases.map((tc: { name: string }) => tc.name)).not.toContain('testAddWorks');
+      const kinds = Object.fromEntries(
+        body.facts.testCases.map((tc: { name: string; status: string; failureKind: string | null }) => [
+          tc.name,
+          [tc.status, tc.failureKind],
+        ]),
+      );
+      expect(kinds).toEqual({
+        testLaravelTestingEnvironment: ['PASSED', null],
+        testAssertionMismatch: ['FAILED', 'ASSERTION'],
+        testCallsMissingMethod: ['FAILED', 'ERROR'],
+      });
+    },
+    210_000,
+  );
+
+  it(
+    'reports TEST_COMPILATION_FAILED when the generated PHPUnit test has a syntax error',
+    async () => {
+      const body = await runPhpWithArtifact(
+        '14141414-1414-4414-8414-141414141414',
+        '15151515-1515-4515-8515-151515151515',
+        'BrokenTest.php',
+        "<?php\nnamespace Tests\\Generated;\nfinal class BrokenTest { public function x( { }\n",
+      );
+
+      expect(body.status).toBe('FAILED');
+      expect(body.facts).toBeNull();
+      expect(body.failure).toMatchObject({
+        stage: 'RUNNING_TESTS',
+        category: 'COMPILATION',
+        code: 'TEST_COMPILATION_FAILED',
+      });
+    },
+    210_000,
+  );
 });
+

@@ -1,6 +1,8 @@
 import type { ConfigService } from '@nestjs/config';
 import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
+import { ImageUnavailableError } from '../common/errors/sandbox-fact-error.js';
+import { MANAGED_PHP_IMAGE } from './container-limits.config.js';
 import { ContainerRunner } from './container-runner.service.js';
 
 function fakeConfigService(overrides: Record<string, unknown> = {}): ConfigService {
@@ -49,6 +51,7 @@ function buildFakeDocker(options: FakeContainerOptions = {}) {
     ),
     getImage: vi.fn(() => ({ inspect: vi.fn(async () => ({})) })),
     pull: vi.fn(async () => new PassThrough()),
+    buildImage: vi.fn(async () => new PassThrough()),
     modem: {
       demuxStream: vi.fn((stream: PassThrough, stdout: PassThrough, stderr: PassThrough) => {
         // Difiere para que el listener de 'end' ya esté registrado (evita
@@ -61,8 +64,11 @@ function buildFakeDocker(options: FakeContainerOptions = {}) {
         });
       }),
       followProgress: vi.fn(
-        (_stream: unknown, callback: (error: Error | null) => void) => {
-          callback(null);
+        (
+          _stream: unknown,
+          callback: (error: Error | null, output: unknown[]) => void,
+        ) => {
+          callback(null, []);
         },
       ),
     },
@@ -406,5 +412,132 @@ describe('ContainerRunner', () => {
 
     expect(result.timedOut).toBe(true);
     expect(container.kill).toHaveBeenCalledTimes(1);
+  });
+
+  describe('PHP_LARAVEL_PHPUNIT (009, corte T-003)', () => {
+    const missingImage = () => ({
+      inspect: vi.fn(async () => {
+        throw new Error('no such image');
+      }),
+    });
+
+    it('installs with composer from the managed image, without scripts, apt-get or extra capabilities', async () => {
+      const { docker } = buildFakeDocker();
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+      await runner.installDependencies(
+        '11111111-1111-4111-8111-111111111111',
+        '/tmp/workspace',
+        'PHP_LARAVEL_PHPUNIT',
+      );
+
+      expect(docker.createContainer).toHaveBeenCalledTimes(1);
+      const config = docker.createContainer.mock.calls[0][0] as unknown as {
+        Image: string;
+        Cmd: string[];
+        Env: string[];
+        HostConfig: { CapAdd?: string[]; NetworkMode: string; Binds: string[] };
+      };
+      expect(config.Image).toBe(MANAGED_PHP_IMAGE);
+      expect(config.Cmd).toEqual([
+        'composer',
+        'install',
+        '--no-interaction',
+        '--no-progress',
+        '--prefer-dist',
+        '--no-scripts',
+      ]);
+      expect(config.Cmd.join(' ')).not.toContain('apt-get');
+      expect(config.HostConfig.CapAdd).toBeUndefined();
+      expect(config.HostConfig.NetworkMode).toBe('bridge');
+      expect(config.HostConfig.Binds).toEqual([
+        '/tmp/workspace:/app',
+        'sandbox-composer-cache:/composer-cache',
+      ]);
+    });
+
+    it('injects APP_ENV=testing and a fresh random APP_KEY only into PHP test containers', async () => {
+      const { docker } = buildFakeDocker();
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+      const envOf = (call: number) =>
+        (docker.createContainer.mock.calls[call][0] as unknown as { Env?: string[] }).Env;
+
+      await runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+      await runner.runTestCommand('22222222-2222-4222-8222-222222222222', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+      await runner.runTestCommand('33333333-3333-4333-8333-333333333333', '/tmp/w', ['node'], 'NODE_TYPESCRIPT');
+
+      const first = envOf(0) ?? [];
+      const second = envOf(1) ?? [];
+      expect(first).toContain('APP_ENV=testing');
+      const firstKey = first.find((entry) => entry.startsWith('APP_KEY='));
+      expect(firstKey).toMatch(/^APP_KEY=base64:[A-Za-z0-9+/]{43}=$/);
+      expect(second.find((entry) => entry.startsWith('APP_KEY='))).not.toBe(firstKey);
+      expect(envOf(2)).toBeUndefined();
+    });
+
+    it('builds the managed PHP image from the bundled Dockerfile when it is missing, once for concurrent runs', async () => {
+      const { docker } = buildFakeDocker();
+      docker.getImage = vi.fn(missingImage);
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+      await Promise.all([
+        runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT'),
+        runner.runTestCommand('22222222-2222-4222-8222-222222222222', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT'),
+      ]);
+
+      expect(docker.buildImage).toHaveBeenCalledTimes(1);
+      const [context, options] = docker.buildImage.mock.calls[0] as unknown as [
+        { context: string; src: string[] },
+        { t: string },
+      ];
+      expect(context.src).toEqual(['Dockerfile']);
+      expect(context.context.replace(/\\/g, '/')).toMatch(/\/docker\/php\/?$/);
+      expect(options.t).toBe(MANAGED_PHP_IMAGE);
+      expect(docker.pull).not.toHaveBeenCalled();
+    });
+
+    it('re-inspects the image on later runs instead of caching a past success', async () => {
+      const { docker } = buildFakeDocker();
+      const inspect = vi.fn(async () => ({}));
+      docker.getImage = vi.fn(() => ({ inspect }));
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+      await runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+      await runner.runTestCommand('22222222-2222-4222-8222-222222222222', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+
+      expect(inspect).toHaveBeenCalledTimes(2);
+    });
+
+    it('pulls instead of building when the configured PHP image is not the managed one', async () => {
+      const { docker } = buildFakeDocker();
+      docker.getImage = vi.fn(missingImage);
+      const runner = new ContainerRunner(
+        docker as never,
+        fakeConfigService({ SANDBOX_DEFAULT_PHP_IMAGE: 'registry.example/php-custom:1' }),
+      );
+
+      await runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+
+      expect(docker.pull).toHaveBeenCalledWith('registry.example/php-custom:1', {});
+      expect(docker.buildImage).not.toHaveBeenCalled();
+    });
+
+    it('reports IMAGE_UNAVAILABLE when the build emits an error event, and retries on the next run', async () => {
+      const { docker } = buildFakeDocker();
+      docker.getImage = vi.fn(missingImage);
+      docker.modem.followProgress = vi.fn(
+        (_stream: unknown, callback: (error: Error | null, output: unknown[]) => void) => {
+          callback(null, [{ stream: 'Step 1/4' }, { error: 'apt-get failed' }]);
+        },
+      );
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+      const run = () =>
+        runner.runTestCommand('11111111-1111-4111-8111-111111111111', '/tmp/w', ['php'], 'PHP_LARAVEL_PHPUNIT');
+
+      await expect(run()).rejects.toBeInstanceOf(ImageUnavailableError);
+      await expect(run()).rejects.toThrow(/apt-get failed/);
+      expect(docker.buildImage).toHaveBeenCalledTimes(2);
+      expect(docker.createContainer).not.toHaveBeenCalled();
+    });
   });
 });

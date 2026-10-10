@@ -180,4 +180,41 @@ describe('ExecutionsService', () => {
       /has not reached a terminal state/,
     );
   });
+
+  describe('phase (009, corte T-003)', () => {
+    it('defaults phase to GENERATED_TESTS when Core omits it', () => {
+      const dto = validRequest();
+      const accepted = service.create(dto, dto.requestId);
+      expect(repository.findById(accepted.executionId)?.phase).toBe('GENERATED_TESTS');
+    });
+
+    it('treats an omitted phase and an explicit GENERATED_TESTS as the same idempotent request', () => {
+      const dto = validRequest();
+      const first = service.create(dto, dto.requestId);
+      const second = service.create(validRequest({ phase: 'GENERATED_TESTS' }), dto.requestId);
+      expect(second.executionId).toBe(first.executionId);
+    });
+
+    it('treats a different phase as a conflicting body for the same requestId', () => {
+      const dto = validRequest({ artifacts: [] });
+      service.create(dto, dto.requestId);
+      expect(() =>
+        service.create(validRequest({ artifacts: [], phase: 'BASELINE' }), dto.requestId),
+      ).toThrowError(/already used with a different request body/);
+    });
+
+    it('rejects BASELINE with artifacts', () => {
+      const dto = validRequest({ phase: 'BASELINE' });
+      expect(() => service.create(dto, dto.requestId)).toThrowError(
+        /phase=BASELINE does not accept artifacts/,
+      );
+    });
+
+    it('accepts BASELINE without artifacts', () => {
+      const dto = validRequest({ phase: 'BASELINE', artifacts: [] });
+      const accepted = service.create(dto, dto.requestId);
+      expect(repository.findById(accepted.executionId)?.phase).toBe('BASELINE');
+    });
+  });
 });
+

@@ -5,7 +5,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveSandboxLimits } from '../common/config/sandbox-limits.config.js';
 import type {
+  ExecutionArtifactInput,
   ExecutionEvidenceFact,
+  ExecutionPhase,
+  ExecutionProfile,
   RunnerFacts,
   SandboxExecutionStatus,
   SandboxFailureFact,
@@ -14,9 +17,11 @@ import type {
 } from '../common/contracts/sandbox-execution.contract.js';
 import {
   DependencyInstallFailedError,
+  InvalidArtifactPathError,
   OomKilledError,
   SandboxFactError,
   SandboxTimeoutError,
+  TestCompilationFailedError,
   TestEnvironmentConfigurationError,
   TestExecutionFailedError,
   WorkspaceDiskLimitExceededError,
@@ -144,6 +149,14 @@ export class ExecutionPipelineService {
         workspacePath,
         record.artifacts,
       );
+      // Se valida en PREPARING: un artefacto fuera del proyecto no debe
+      // consumir la instalación con red antes de fallar.
+      const testPaths = selectTestPaths(
+        record.phase,
+        record.artifacts,
+        workspacePath,
+        projectRoot,
+      );
 
       // `resultsFilePath` es una ruta absoluta dentro del container (el
       // workspace montado en `/app`); al ser absoluta, el runner la escribe
@@ -219,7 +232,11 @@ export class ExecutionPipelineService {
       const command = adapter.buildCommand({
         workspacePath: projectRoot,
         resultsFilePath,
+        testPaths,
       });
+      // Un reporte que ya venía en el snapshot (o de otra etapa) no puede
+      // hacerse pasar por el de esta ejecución.
+      await fs.rm(hostResultsFilePath, { force: true, recursive: true });
       const testStartedAt = Date.now();
       const testResult = await this.containerRunner.runTestCommand(
         executionId,
@@ -266,18 +283,16 @@ export class ExecutionPipelineService {
         );
       }
 
-      let rawResults: string;
-      try {
-        rawResults = await fs.readFile(hostResultsFilePath, 'utf8');
-      } catch (error) {
-        const configurationCrash = extractFatalConfigurationError(
+      const rawResults = await fs
+        .readFile(hostResultsFilePath, 'utf8')
+        .catch(() => null);
+      if (rawResults === null || rawResults.trim().length === 0) {
+        throw missingReportError(
+          record.executionProfile,
+          testResult.exitCode,
+          testResult.stdout,
           testResult.stderr,
-        );
-        if (configurationCrash) {
-          throw new TestEnvironmentConfigurationError(configurationCrash);
-        }
-        throw new TestExecutionFailedError(
-          `runner did not produce a results file (exitCode=${testResult.exitCode}): ${(error as Error).message}`,
+          rawResults === null ? 'missing' : 'empty',
         );
       }
       const { truncated: reportTruncated, originalBytes: reportBytes } =
@@ -413,6 +428,71 @@ export class ExecutionPipelineService {
       message: error instanceof Error ? error.message : 'unknown error',
     };
   }
+}
+
+/**
+ * `GENERATED_TESTS` con artefactos ejecuta solo esos archivos; el resto
+ * (BASELINE o sin artefactos) ejecuta la suite configurada (009, corte
+ * T-003). `relativePath` llega relativo a la raíz cruda del workspace y el
+ * comando corre en `projectRoot`, así que se re-expresa respecto de este.
+ */
+export function selectTestPaths(
+  phase: ExecutionPhase,
+  artifacts: ExecutionArtifactInput[],
+  workspacePath: string,
+  projectRoot: string,
+): string[] {
+  if (phase !== 'GENERATED_TESTS' || artifacts.length === 0) {
+    return [];
+  }
+  return artifacts.map((artifact) => {
+    const relativeToProject = path.relative(
+      projectRoot,
+      path.join(workspacePath, artifact.relativePath),
+    );
+    if (
+      relativeToProject.startsWith('..') ||
+      path.isAbsolute(relativeToProject)
+    ) {
+      throw new InvalidArtifactPathError(
+        `artifact ${artifact.artifactId} is outside the project root: ${artifact.relativePath}`,
+      );
+    }
+    return relativeToProject.split(path.sep).join('/');
+  });
+}
+
+/**
+ * PHPUnit 11 crea el JUnit vacío (0 bytes) y escribe en stdout "An error
+ * occurred inside PHPUnit ... syntax error, unexpected ..." cuando un archivo
+ * de test no compila (verificado contra PHPUnit 11.5).
+ */
+const PHP_SYNTAX_ERROR_PATTERN =
+  /syntax error, unexpected|Parse error|\bParseError\b|Unclosed '[[{(]'/;
+
+function missingReportError(
+  executionProfile: ExecutionProfile,
+  exitCode: number | null,
+  stdout: string,
+  stderr: string,
+  reportState: 'missing' | 'empty',
+): Error {
+  const configurationCrash = extractFatalConfigurationError(stderr);
+  if (configurationCrash) {
+    return new TestEnvironmentConfigurationError(configurationCrash);
+  }
+  const output = `${stdout}\n${stderr}`;
+  if (
+    executionProfile === 'PHP_LARAVEL_PHPUNIT' &&
+    PHP_SYNTAX_ERROR_PATTERN.test(output)
+  ) {
+    return new TestCompilationFailedError(
+      `test files could not be compiled: ${truncate(output.trim(), 500)}`,
+    );
+  }
+  return new TestExecutionFailedError(
+    `runner results file is ${reportState} (exitCode=${exitCode}): ${truncate((stderr || stdout).trim(), 500)}`,
+  );
 }
 
 /**

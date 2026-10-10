@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { CreateSandboxExecutionRequestDto } from './dto/create-execution-request.dto.js';
 import type { EphemeralDownloadRefDto } from './dto/ephemeral-download-ref.dto.js';
+import { DEFAULT_EXECUTION_PHASE } from './domain/execution-record.js';
 
 /**
  * Excludes `url` and `expiresAt` per INTEROP-1.1 7.2: re-signing or extending
@@ -30,6 +31,8 @@ export function computeRequestFingerprint(
     targetIds: [...dto.targetIds].sort(),
     executionProfile: dto.executionProfile,
     runnerHint: dto.runnerHint,
+    // Omitido y `GENERATED_TESTS` explícito son la misma petición lógica.
+    phase: dto.phase ?? DEFAULT_EXECUTION_PHASE,
   };
   return createHash('sha256')
     .update(JSON.stringify(normalized))

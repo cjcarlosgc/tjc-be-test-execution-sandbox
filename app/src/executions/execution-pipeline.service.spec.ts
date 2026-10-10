@@ -35,7 +35,10 @@ import type {
   TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import type { ExecutionRecord } from './domain/execution-record.js';
-import { ExecutionPipelineService } from './execution-pipeline.service.js';
+import {
+  ExecutionPipelineService,
+  selectTestPaths,
+} from './execution-pipeline.service.js';
 import { InMemoryExecutionRepository } from './execution.repository.js';
 
 function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
@@ -57,6 +60,7 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
     targetIds: [],
     executionProfile: 'NODE_TYPESCRIPT',
     runnerHint: 'VITEST',
+    phase: 'GENERATED_TESTS',
     status: 'PENDING',
     stage: null,
     failureCode: null,
@@ -727,5 +731,212 @@ describe('ExecutionPipelineService', () => {
   it('is a no-op when the execution no longer exists', async () => {
     const { pipeline } = await build({});
     await expect(pipeline.run('does-not-exist')).resolves.toBeUndefined();
+  });
+
+  describe('test selection and report integrity (009, corte T-003)', () => {
+    const artifact = (relativePath: string) => ({
+      artifactId: '55555555-5555-4555-8555-555555555555',
+      relativePath,
+      artifactType: 'CREATED' as const,
+      download: {
+        role: 'GENERATED_ARTIFACT' as const,
+        url: 'https://storage.example.com/a',
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        sha256: 'b'.repeat(64),
+        sizeBytes: 1,
+      },
+    });
+
+    function phpRecord(overrides: Partial<ExecutionRecord> = {}) {
+      return baseRecord({
+        executionProfile: 'PHP_LARAVEL_PHPUNIT',
+        runnerHint: 'PHPUNIT',
+        ...overrides,
+      });
+    }
+
+    async function buildPhp(options: Parameters<typeof build>[0] = {}) {
+      const contexts: ProjectRunnerContext[] = [];
+      const adapter: TestRunnerAdapter = {
+        executionProfile: 'PHP_LARAVEL_PHPUNIT',
+        runner: 'PHPUNIT',
+        supports: async () => true,
+        buildCommand: (context) => {
+          contexts.push(context);
+          return ['php', 'vendor/bin/phpunit'];
+        },
+        parseResult: (raw) => parsePhpunitJunitXml(raw),
+      };
+      const built = await build({
+        withPnpmLockfile: false,
+        resolveRunner: async () => adapter,
+        ...options,
+      });
+      await fs.writeFile(path.join(built.workspaceDir, 'composer.json'), '{}');
+      return { ...built, contexts };
+    }
+
+    it('runs only the materialized artifacts in GENERATED_TESTS', async () => {
+      const record = phpRecord({
+        artifacts: [artifact('tests/Unit/PriceTest.php'), artifact('tests/Unit/TaxTest.php')],
+      });
+      const { pipeline, repository, contexts } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, PHPUNIT_PASSING_REPORT, 'utf8');
+          return okContainerResult();
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.status).toBe('COMPLETED');
+      expect(contexts[0].testPaths).toEqual([
+        'tests/Unit/PriceTest.php',
+        'tests/Unit/TaxTest.php',
+      ]);
+    });
+
+    it('runs the configured suite (no test paths) in BASELINE', async () => {
+      const record = phpRecord({ phase: 'BASELINE' });
+      const { pipeline, repository, contexts } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, PHPUNIT_PASSING_REPORT, 'utf8');
+          return okContainerResult();
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(contexts[0].testPaths).toEqual([]);
+    });
+
+    it('fails with TEST_COMPILATION_FAILED/COMPILATION when PHPUnit leaves an empty report after a PHP syntax error', async () => {
+      const record = phpRecord({ artifacts: [artifact('tests/Unit/BrokenTest.php')] });
+      const { pipeline, repository } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, '', 'utf8');
+          return okContainerResult({
+            exitCode: 255,
+            stdout:
+              'An error occurred inside PHPUnit.\n\nMessage:  syntax error, unexpected token "{", expecting variable\nLocation: /app/tests/Unit/BrokenTest.php:2\n',
+          });
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      const updated = repository.findById(record.executionId);
+      expect(updated?.status).toBe('FAILED');
+      expect(updated?.result?.failure).toMatchObject({
+        stage: 'RUNNING_TESTS',
+        category: 'COMPILATION',
+        code: 'TEST_COMPILATION_FAILED',
+      });
+      expect(updated?.result?.facts).toBeNull();
+    });
+
+    it('detects a truncated generated PHP test (Unclosed brace) as TEST_COMPILATION_FAILED', async () => {
+      const record = phpRecord({ artifacts: [artifact('tests/Unit/TruncatedTest.php')] });
+      const { pipeline, repository } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, '', 'utf8');
+          return okContainerResult({
+            exitCode: 255,
+            stdout: "An error occurred inside PHPUnit.\n\nMessage:  Unclosed '{' on line 8\n",
+          });
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.failureCode).toBe('TEST_COMPILATION_FAILED');
+    });
+
+    it('rejects an artifact outside the wrapped project during PREPARING, before installing', async () => {
+      const record = phpRecord({ artifacts: [artifact('../outside/FooTest.php')] });
+      const installDependencies = vi.fn(async () => okContainerResult());
+      const { pipeline, repository } = await buildPhp({ installDependencies });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      const updated = repository.findById(record.executionId);
+      expect(updated?.failureCode).toBe('INVALID_ARTIFACT_PATH');
+      expect(updated?.result?.failure?.stage).toBe('PREPARING');
+      expect(installDependencies).not.toHaveBeenCalled();
+    });
+
+    it('removes a pre-existing results path even when it is a directory', async () => {
+      const record = baseRecord();
+      const { pipeline, repository, workspaceDir } = await build({
+        runTestCommand: async () => okContainerResult({ exitCode: 1 }),
+      });
+      await fs.mkdir(path.join(workspaceDir, '.sandbox-results.json', 'nested'), { recursive: true });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.failureCode).toBe('TEST_EXECUTION_FAILED');
+    });
+
+    it('never completes on an empty report without a syntax error: TEST_EXECUTION_FAILED', async () => {
+      const record = phpRecord();
+      const { pipeline, repository } = await buildPhp({
+        runTestCommand: async (resultsFilePath) => {
+          await fs.writeFile(resultsFilePath, '  \n', 'utf8');
+          return okContainerResult({ exitCode: 2, stdout: 'Could not read XML' });
+        },
+      });
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.failureCode).toBe('TEST_EXECUTION_FAILED');
+    });
+
+    it('ignores a results file that was already in the snapshot', async () => {
+      const record = baseRecord();
+      const { pipeline, repository, workspaceDir } = await build({
+        runTestCommand: async () => okContainerResult({ exitCode: 1 }),
+      });
+      await fs.writeFile(path.join(workspaceDir, '.sandbox-results.json'), PASSING_REPORT);
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      const updated = repository.findById(record.executionId);
+      expect(updated?.status).toBe('FAILED');
+      expect(updated?.failureCode).toBe('TEST_EXECUTION_FAILED');
+    });
+  });
+
+  describe('selectTestPaths', () => {
+    const ref = (relativePath: string) => ({
+      artifactId: '55555555-5555-4555-8555-555555555555',
+      relativePath,
+      artifactType: 'CREATED' as const,
+      download: {} as never,
+    });
+
+    it('re-expresses artifact paths relative to a wrapped project root', () => {
+      expect(
+        selectTestPaths('GENERATED_TESTS', [ref('my-app/tests/Unit/FooTest.php')], '/ws', '/ws/my-app'),
+      ).toEqual(['tests/Unit/FooTest.php']);
+    });
+
+    it('returns no paths for BASELINE or when there are no artifacts', () => {
+      expect(selectTestPaths('BASELINE', [ref('tests/A.php')], '/ws', '/ws')).toEqual([]);
+      expect(selectTestPaths('GENERATED_TESTS', [], '/ws', '/ws')).toEqual([]);
+    });
+
+    it('rejects an artifact outside the project root as INVALID_ARTIFACT_PATH', () => {
+      expect(() =>
+        selectTestPaths('GENERATED_TESTS', [ref('other/tests/A.php')], '/ws', '/ws/my-app'),
+      ).toThrow(/outside the project root/);
+    });
   });
 });

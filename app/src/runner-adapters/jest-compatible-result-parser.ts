@@ -3,6 +3,7 @@ import type {
   RunnerFacts,
   TestCaseFact,
   TestCaseFactStatus,
+  TestCaseFailureKind,
   TestRunner,
 } from '../common/contracts/sandbox-execution.contract.js';
 import { InvalidArchiveError } from '../common/errors/sandbox-fact-error.js';
@@ -13,6 +14,8 @@ interface JestCompatibleAssertion {
   status: string;
   duration?: number | null;
   failureMessages?: string[];
+  /** Solo Jest: objetos de error; los de `expect` traen `matcherResult`. */
+  failureDetails?: unknown[];
 }
 
 interface JestCompatibleSuite {
@@ -64,15 +67,17 @@ export function parseJestCompatibleJson(
         truncated = true;
         break;
       }
+      const status = mapAssertionStatus(assertion.status);
       testCases.push({
         suitePath: suite.name ?? null,
         name: assertion.title,
-        status: mapAssertionStatus(assertion.status),
+        status,
         durationMs:
           typeof assertion.duration === 'number'
             ? Math.round(assertion.duration)
             : null,
         errorMessage: assertion.failureMessages?.[0] ?? null,
+        failureKind: status === 'FAILED' ? classifyFailure(assertion) : null,
       });
     }
     if (truncated) {
@@ -93,6 +98,31 @@ export function parseJestCompatibleJson(
     testCases,
     testCasesTruncated: truncated,
   };
+}
+
+/**
+ * Jest marca los fallos de `expect` con `failureDetails[].matcherResult` y su
+ * mensaje empieza por `Error: expect(`; Vitest (chai) por `AssertionError`.
+ * Todo lo demás (TypeError, ReferenceError, excepción propia) es `ERROR`.
+ */
+function classifyFailure(
+  assertion: JestCompatibleAssertion,
+): TestCaseFailureKind {
+  const hasMatcherResult = (assertion.failureDetails ?? []).some(
+    (detail) =>
+      typeof detail === 'object' &&
+      detail !== null &&
+      'matcherResult' in detail,
+  );
+  const message = assertion.failureMessages?.[0] ?? '';
+  if (
+    hasMatcherResult ||
+    message.startsWith('Error: expect(') ||
+    message.startsWith('AssertionError')
+  ) {
+    return 'ASSERTION';
+  }
+  return 'ERROR';
 }
 
 function mapAssertionStatus(status: string): TestCaseFactStatus {
