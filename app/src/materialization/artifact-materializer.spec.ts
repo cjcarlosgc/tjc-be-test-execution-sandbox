@@ -101,6 +101,26 @@ describe('ArtifactMaterializer', () => {
     ).rejects.toThrow();
   });
 
+  it('rejects an artifact path that reaches outside through a snapshot symlink', async () => {
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'artifact-outside-'));
+    try {
+      await fs.symlink(outside, path.join(workspacePath, 'generated'));
+      const materializer = new ArtifactMaterializer(
+        workspaceManager,
+        stubDownloadService('x'),
+      );
+
+      await expect(
+        materializer.applyArtifacts(workspacePath, [
+          artifact('a1', 'generated/escape.spec.ts'),
+        ]),
+      ).rejects.toThrow(/symbolic link/);
+      await expect(fs.access(path.join(outside, 'escape.spec.ts'))).rejects.toThrow();
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it('overwrites an existing file for a MODIFIED artifact', async () => {
     const target = path.join(workspacePath, 'src', 'existing.ts');
     await fs.mkdir(path.dirname(target), { recursive: true });

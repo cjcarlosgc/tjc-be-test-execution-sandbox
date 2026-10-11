@@ -2,7 +2,7 @@
 
 **Estado:** APROBADO
 **Story IDs:** HU43
-**Contrato:** SYSTEM-2.2 / INTEROP-2.2
+**Contrato:** SYSTEM-2.2 (línea base Sandbox) / INTEROP-2.8 (campo Core→Sandbox `projectRoot`)
 
 ## Objetivo
 
@@ -16,6 +16,9 @@ Ejecutar solicitudes neutrales mediante un profile explícito, preservando `NODE
 - El container, límites, red por etapas, timeouts, redacción, hashes y cleanup se aplican a ambos profiles.
 - Baseline y propuesta son fases neutrales. Sandbox devuelve hechos; Core decide la clasificación.
 - Una combinación profile/runner no soportada falla explícitamente, sin fallback a otro runtime.
+- `CreateSandboxExecutionRequest.projectRoot` es opcional por compatibilidad; si se omite se interpreta como `.`. Cuando llega, es una ruta POSIX relativa, normalizada, existente bajo `repositoryRoot`, sin absoluta, traversal ni escape por symlink.
+- `PHP_LARAVEL_PHPUNIT` instala y ejecuta Composer/PHPUnit con cwd en `repositoryRoot/projectRoot`. La materialización y validación de `ExecutionArtifactInput.relativePath` mantienen rutas canónicas relativas al repositorio; el cambio de cwd no elimina el prefijo del subproyecto.
+- `NODE_TYPESCRIPT` conserva `projectRoot = .` y sus reglas actuales. Sandbox no detecta ni elige la raíz: Core envía el `effectiveProjectRoot` congelado.
 
 ## Frontera ciega
 
@@ -49,3 +52,9 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 ### Fuera de este corte
 
 Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core).
+
+## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU43)
+
+**Estado:** implementado y verificado localmente.
+
+El WI conserva SDD 2.1 y la decisión de un único Project por repositorio. Core detecta un único candidato `composer.json` y envía la raíz congelada; Sandbox solo valida y aplica el campo. No hay selección en Console ni política local para múltiples candidatos.

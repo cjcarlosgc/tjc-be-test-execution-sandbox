@@ -26,3 +26,7 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 - [x] Default de memoria 1 GiB.
 - [x] Unit + e2e real en verde; reporte en `harness/reports/`.
 - [x] `CONTRACT_SYNC` publicado hacia Core.
+
+## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
+
+- [x] **ST-SANDBOX-004 · T-READY · WI-SANDBOX-001 · HU43:** validar `projectRoot` dentro de `repositoryRoot`, usarlo como cwd de Composer/PHPUnit y mantener artifacts repo-relative según INTEROP-2.8; omisión legacy equivale a `.`. No detectar ni seleccionar proyectos en Sandbox. Evidencia: `harness/reports/wi-sandbox-001-project-root.md`.

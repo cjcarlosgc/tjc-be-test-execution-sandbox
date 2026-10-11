@@ -50,6 +50,13 @@ export class InvalidArtifactPathError extends SandboxFactError {
   }
 }
 
+/** `projectRoot` recibido no puede usarse de forma segura bajo el snapshot. */
+export class InvalidProjectRootError extends SandboxFactError {
+  constructor(message: string) {
+    super('INVALID_PROJECT_ROOT', 'CONFIGURATION', message);
+  }
+}
+
 export class UnsupportedRunnerError extends SandboxFactError {
   constructor(message: string) {
     super('UNSUPPORTED_RUNNER', 'CONFIGURATION', message);

@@ -1,5 +1,11 @@
 {
   "schemaVersion": 3,
+  "awayMode": {
+    "enabled": true,
+    "activatedBy": "user",
+    "activatedAt": "2026-10-11T10:09:24.000Z",
+    "quote": "un Modo Noche SDD: Modo fuera de casa del repositorio + un heartbeat en este chat cada 20 minutos"
+  },
   "sddVersion": "2.1",
   "allowedStatuses": [
     "SELECTED",
@@ -12,12 +18,12 @@
     "DONE"
   ],
   "activeWorkItem": {
-    "id": "T-003-php-laravel-validation",
+    "id": "WI-SANDBOX-001",
     "workItemType": "PRODUCT",
     "storyIds": [
       "HU43"
     ],
-    "sprint": "T-003",
+    "sprint": "T-READY",
     "status": "DONE",
     "specPaths": [
       "spec/contracts/interoperability-contract.md",
@@ -38,14 +44,14 @@
       "blockingDecisionIds": [],
       "nonBlockingDecisionIds": [
         "DEC-INF-001",
-        "DEC-VAL-001",
         "DEC-MET-001",
+        "DEC-VAL-001",
         "DEC-EXP-FK-001"
       ],
-      "checkedAt": "2026-10-09T18:00:00-05:00"
+      "checkedAt": "2026-10-11T10:20:00-05:00"
     },
-    "createdAt": "2026-10-09T18:00:00-05:00",
-    "updatedAt": "2026-10-09T18:50:00-05:00",
+    "createdAt": "2026-10-11T10:20:00-05:00",
+    "updatedAt": "2026-10-11T10:45:00-05:00",
     "blockedReason": null,
     "execution": {
       "leaderAgent": "leader",
@@ -55,45 +61,60 @@
       "reviewAgent": "reviewer",
       "handoffs": [
         {
-          "agent": "reviewer",
-          "status": "APPROVED",
-          "findings": "7 NON_BLOCKING sobre 8e76632; 4 aplicados en 1630d45",
+          "agent": "sdd-analyst",
+          "status": "SPEC_VERIFIED",
+          "findings": "INTEROP-2.8 exige projectRoot opcional (omisión = .), validado bajo repositoryRoot; PHP usa cwd del subproyecto y los artefactos siguen repo-relative. Sandbox no detecta ni selecciona raíces.",
           "blockers": [],
           "filesAffected": [
-            "app/src/executions/execution-pipeline.service.ts",
-            "app/src/container/container-runner.service.ts",
-            "app/src/runner-adapters/vitest-test-runner.adapter.ts",
-            "app/docker/php/Dockerfile"
+            "app/src/executions/",
+            "app/src/workspace/",
+            "app/src/container/",
+            "app/src/materialization/"
           ],
-          "evidence": "harness/reports/delivery-php-profile-review.md",
-          "recommendedNextStep": "publicar CONTRACT_SYNC y re-revisar el delta"
+          "evidence": "spec/features/009-execution-profiles/{spec,plan,tasks}.md; spec/contracts/interoperability-contract.md §7.2",
+          "recommendedNextStep": "Implementar el corte con pruebas de validación, cwd e idempotencia."
+        },
+        {
+          "agent": "implementer",
+          "status": "COMPLETED",
+          "findings": "projectRoot se valida bajo repositoryRoot, se incluye en idempotencia y fija el cwd PHP; materialización conserva rutas repo-relative y rechaza symlinks.",
+          "blockers": [],
+          "filesAffected": [
+            "app/src/executions/",
+            "app/src/workspace/",
+            "app/src/materialization/"
+          ],
+          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
+          "recommendedNextStep": "Revisión contractual y técnica independiente."
         },
         {
           "agent": "contract-reviewer",
           "status": "APPROVED",
-          "findings": "9 NON_BLOCKING volcados al CONTRACT_SYNC",
+          "findings": "Aprobado tras corregir null, symlink de artefactos y cubrir cwd PHP; Node mantiene exclusivamente root . sin detección local.",
           "blockers": [],
           "filesAffected": [
-            "app/src/executions/dto/create-execution-request.dto.ts",
-            "app/src/common/contracts/sandbox-execution.contract.ts",
-            "app/src/executions/execution-fingerprint.ts"
+            "app/src/executions/",
+            "app/src/workspace/",
+            "app/src/materialization/"
           ],
-          "evidence": "harness/contract-sync/outbox/CS-SANDBOX-20261009-001.json",
-          "recommendedNextStep": "Core incorpora phase/failureKind/códigos al canónico"
+          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
+          "recommendedNextStep": "Cerrar gates con verificaciones técnicas."
         },
         {
           "agent": "reviewer",
           "status": "APPROVED",
-          "findings": "rango develop..1630d45 aprobado; 2 NON_BLOCKING (diferidos, precisión de test)",
+          "findings": "Aprobado tras corregir null, escape por symlink y añadir pruebas directas de cwd PHP y artefactos repo-relative.",
           "blockers": [],
           "filesAffected": [
-            "app/src/executions/execution-pipeline.service.spec.ts"
+            "app/src/executions/",
+            "app/src/workspace/",
+            "app/src/materialization/"
           ],
-          "evidence": "harness/reports/delivery-php-profile-review.md",
-          "recommendedNextStep": "registrar diferidos y cerrar"
+          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
+          "recommendedNextStep": "Cerrar work item sin cambios externos."
         }
       ],
-      "reviewCycles": 1,
+      "reviewCycles": 0,
       "maxReviewCycles": 2
     },
     "gates": {
@@ -114,35 +135,33 @@
       "pullCheckpoints": [
         {
           "checkpoint": "start",
-          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "checkedAt": "2026-10-11T10:20:00-05:00",
           "relevantPendingSyncIds": []
         },
         {
           "checkpoint": "before-implementation-delivery",
-          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "checkedAt": "2026-10-11T10:35:00-05:00",
           "relevantPendingSyncIds": []
         },
         {
           "checkpoint": "before-review",
-          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "checkedAt": "2026-10-11T10:36:00-05:00",
           "relevantPendingSyncIds": []
         },
         {
           "checkpoint": "before-done",
-          "checkedAt": "2026-10-09T18:50:00-05:00",
+          "checkedAt": "2026-10-11T10:45:00-05:00",
           "relevantPendingSyncIds": []
         }
       ],
-      "publishedSyncIds": [
-        "CS-SANDBOX-20261009-001"
-      ],
+      "publishedSyncIds": [],
       "pendingRelevantSyncIds": []
     },
     "evidence": [
-      "harness/reports/T-003-php-laravel-validation.md",
-      "harness/reports/delivery-php-profile-review.md",
-      "harness/contract-sync/outbox/CS-SANDBOX-20261009-001.json"
+      "harness/contract-sync/inbox/CS-CORE-20261011-002.json",
+      "harness/reports/wi-sandbox-001-contract-sync-acknowledgement.md",
+      "harness/reports/wi-sandbox-001-project-root.md"
     ]
   },
-  "lastUpdatedAt": "2026-10-09T18:50:00-05:00"
+  "lastUpdatedAt": "2026-10-11T10:45:00-05:00"
 }

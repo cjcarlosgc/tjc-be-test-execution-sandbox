@@ -1,37 +1,84 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { InvalidProjectRootError } from '../common/errors/sandbox-fact-error.js';
+
+const DEFAULT_PROJECT_ROOT = '.';
 
 /**
- * Muchos snapshots reales (exports de GitHub, `zip -r carpeta/`, etc.)
- * envuelven todo el proyecto en una única carpeta contenedora de nivel
- * superior (`mi-proyecto/package.json` en vez de `package.json`). Esta
- * función solo *detecta* esa carpeta y devuelve su ruta absoluta — nunca
- * mueve ni renombra nada en disco. Un aplanado físico desalinearía
- * `artifact.relativePath` (que Core sigue enviando relativo a la estructura
- * original, envoltorio incluido) contra `ArtifactMaterializer`, que resuelve
- * esos artefactos directamente contra la raíz cruda del workspace.
- *
- * El resultado solo debe usarse para los consumidores que necesitan
- * localizar el proyecto real (`hasPnpmLockfile`, `readPackageJson`/
- * `hasAnyConfigFile` vía los adapters de runner, y el working directory del
- * container de instalación/ejecución) — nunca para resolver artefactos.
+ * Resuelve exclusivamente la raíz que Core ya congeló para el snapshot.
+ * Sandbox no busca manifests ni elige un candidato: valida que el valor
+ * POSIX normalizado exista dentro de `repositoryRoot`, incluso después de
+ * resolver symlinks (INTEROP-2.8 §7.2).
  */
-/**
- * Entradas espurias que macOS agrega a los ZIP creados con `zip`/Finder
- * (`__MACOSX/`, `.DS_Store`). Se ignoran solo para *decidir* si hay una
- * única carpeta contenedora — no se tocan en disco.
- */
-const MACOS_ARCHIVE_ARTIFACTS = new Set(['__MACOSX', '.DS_Store']);
-
-export async function resolveProjectRoot(workspacePath: string): Promise<string> {
-  const topLevelEntries = await fs.readdir(workspacePath, {
-    withFileTypes: true,
-  });
-  const relevantEntries = topLevelEntries.filter(
-    (entry) => !MACOS_ARCHIVE_ARTIFACTS.has(entry.name),
-  );
-  if (relevantEntries.length !== 1 || !relevantEntries[0].isDirectory()) {
-    return workspacePath;
+export async function resolveProjectRoot(
+  repositoryRoot: string,
+  requestedProjectRoot: string = DEFAULT_PROJECT_ROOT,
+): Promise<string> {
+  if (!isNormalizedProjectRoot(requestedProjectRoot)) {
+    throw new InvalidProjectRootError(
+      `projectRoot must be . or a normalized POSIX relative path: ${requestedProjectRoot}`,
+    );
   }
-  return path.join(workspacePath, relevantEntries[0].name);
+
+  const repositoryRealPath = await fs.realpath(repositoryRoot);
+  // Conserva la representación léxica de `repositoryRoot` para que las
+  // rutas de artefactos repo-relative no mezclen, por ejemplo, `/var` y su
+  // alias real `/private/var`. `realpath` se usa solo para comprobar el
+  // confinamiento frente a symlinks.
+  const candidatePath = path.resolve(
+    repositoryRoot,
+    ...requestedProjectRoot.split('/'),
+  );
+
+  let candidateRealPath: string;
+  try {
+    candidateRealPath = await fs.realpath(candidatePath);
+  } catch {
+    throw new InvalidProjectRootError(
+      `projectRoot does not exist under repositoryRoot: ${requestedProjectRoot}`,
+    );
+  }
+
+  if (!isWithin(repositoryRealPath, candidateRealPath)) {
+    throw new InvalidProjectRootError(
+      `projectRoot escapes repositoryRoot through a symlink: ${requestedProjectRoot}`,
+    );
+  }
+
+  const stats = await fs.stat(candidateRealPath);
+  if (!stats.isDirectory()) {
+    throw new InvalidProjectRootError(
+      `projectRoot must resolve to a directory: ${requestedProjectRoot}`,
+    );
+  }
+
+  return candidatePath;
+}
+
+function isNormalizedProjectRoot(value: string): boolean {
+  if (value === DEFAULT_PROJECT_ROOT) {
+    return true;
+  }
+  if (
+    value.length === 0 ||
+    path.posix.isAbsolute(value) ||
+    value.includes('\\') ||
+    /^[a-zA-Z]:/.test(value) ||
+    path.posix.normalize(value) !== value
+  ) {
+    return false;
+  }
+  return value.split('/').every(
+    (segment) => segment.length > 0 && segment !== '.' && segment !== '..',
+  );
+}
+
+function isWithin(repositoryRoot: string, candidate: string): boolean {
+  const relative = path.relative(repositoryRoot, candidate);
+  return (
+    relative === '' ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== '..' &&
+      !path.isAbsolute(relative))
+  );
 }

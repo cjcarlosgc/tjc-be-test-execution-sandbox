@@ -120,6 +120,47 @@ describe('ExecutionsService', () => {
     );
   });
 
+  describe('projectRoot (INTEROP-2.8)', () => {
+    it('persists . when Core omits projectRoot', () => {
+      const dto = validRequest();
+      const accepted = service.create(dto, dto.requestId);
+      expect(repository.findById(accepted.executionId)?.projectRoot).toBe('.');
+    });
+
+    it('treats an omitted root and explicit . as the same idempotent request', () => {
+      const dto = validRequest();
+      const first = service.create(dto, dto.requestId);
+      const replay = service.create(validRequest({ projectRoot: '.' }), dto.requestId);
+      expect(replay.executionId).toBe(first.executionId);
+    });
+
+    it('includes a PHP projectRoot in idempotency identity', () => {
+      const dto = validRequest({
+        executionProfile: 'PHP_LARAVEL_PHPUNIT',
+        runnerHint: 'PHPUNIT',
+        projectRoot: 'apps/api',
+      });
+      service.create(dto, dto.requestId);
+      expect(() =>
+        service.create(
+          validRequest({
+            executionProfile: 'PHP_LARAVEL_PHPUNIT',
+            runnerHint: 'PHPUNIT',
+            projectRoot: 'apps/worker',
+          }),
+          dto.requestId,
+        ),
+      ).toThrowError(/already used with a different request body/);
+    });
+
+    it('does not allow NODE_TYPESCRIPT to select a subproject', () => {
+      const dto = validRequest({ projectRoot: 'apps/web' });
+      expect(() => service.create(dto, dto.requestId)).toThrowError(
+        /NODE_TYPESCRIPT only supports projectRoot=\./,
+      );
+    });
+  });
+
   it('rejects snapshot with the wrong role', () => {
     const dto = validRequest({
       snapshot: {

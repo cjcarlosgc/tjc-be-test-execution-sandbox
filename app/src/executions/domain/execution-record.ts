@@ -18,6 +18,7 @@ export interface ExecutionRecord {
   testRunId: string;
   projectVersionId: string;
   snapshot: EphemeralDownloadRef;
+  projectRoot: string;
   artifacts: ExecutionArtifactInput[];
   scope: ExecutionScope;
   targetIds: string[];

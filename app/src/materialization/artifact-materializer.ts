@@ -28,7 +28,7 @@ export class ArtifactMaterializer {
   ): Promise<string[]> {
     const appliedArtifactIds: string[] = [];
     for (const artifact of artifacts) {
-      const destination = this.workspaceManager.resolveWithin(
+      const destination = await this.workspaceManager.resolveWritableWithin(
         workspacePath,
         artifact.relativePath,
       );

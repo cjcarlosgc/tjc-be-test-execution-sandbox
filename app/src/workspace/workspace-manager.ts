@@ -54,6 +54,39 @@ export class WorkspaceManager {
   }
 
   /**
+   * Igual que `resolveWithin`, pero también rechaza un symlink existente en
+   * cualquier componente del destino. Los artefactos se descargan después
+   * de extraer un snapshot no confiable: una comprobación léxica sola
+   * permitiría escribir fuera del repositorio a través de ese symlink.
+   */
+  async resolveWritableWithin(
+    workspacePath: string,
+    relativePath: string,
+  ): Promise<string> {
+    const destination = this.resolveWithin(workspacePath, relativePath);
+    const relative = path.relative(path.resolve(workspacePath), destination);
+    let current = path.resolve(workspacePath);
+
+    for (const segment of relative.split(path.sep)) {
+      current = path.join(current, segment);
+      try {
+        const stats = await fs.lstat(current);
+        if (stats.isSymbolicLink()) {
+          throw new InvalidArtifactPathError(
+            `relativePath traverses a symbolic link: ${relativePath}`,
+          );
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          continue;
+        }
+        throw error;
+      }
+    }
+    return destination;
+  }
+
+  /**
    * Tamaño real en disco del workspace (recursivo). Docker no puede aplicar
    * una cuota de disco por container con el storage driver `overlay2`
    * (default de Docker Desktop, el entorno aprobado): `HostConfig.DiskQuota`

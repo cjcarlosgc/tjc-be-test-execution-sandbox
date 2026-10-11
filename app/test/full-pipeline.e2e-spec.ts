@@ -268,7 +268,7 @@ describe('add', () => {
   );
 
   it(
-    'installs and runs the real project when the snapshot is wrapped in a single top-level folder (Docker real)',
+    'rejects a Node subproject root instead of detecting it locally',
     async () => {
       const accepted = await request(app.getHttpServer())
         .post('/executions')
@@ -285,6 +285,7 @@ describe('add', () => {
             sha256: wrappedProjectSha256,
             sizeBytes: wrappedProjectZip.length,
           },
+          projectRoot: 'my-project',
           artifacts: [],
           scope: 'BATCH',
           targetIds: [],
@@ -292,22 +293,8 @@ describe('add', () => {
           runnerHint: 'VITEST',
         });
 
-      expect(accepted.status).toBe(202);
-      const executionId = accepted.body.executionId;
-
-      const finalStatus = await pollExecution(app, executionId, 120_000);
-      expect(finalStatus.status).toBe('COMPLETED');
-
-      const result = await request(app.getHttpServer())
-        .get(`/executions/${executionId}/result`)
-        .set('Authorization', `Bearer ${SERVICE_TOKEN}`);
-
-      expect(result.status).toBe(200);
-      expect(result.body.status).toBe('COMPLETED');
-      expect(result.body.failure).toBeNull();
-      expect(result.body.facts.runner).toBe('VITEST');
-      expect(result.body.facts.passed).toBe(true);
-      expect(result.body.facts.totalTests).toBe(1);
+      expect(accepted.status).toBe(400);
+      expect(accepted.body.message).toContain('NODE_TYPESCRIPT only supports projectRoot=.');
     },
     150_000,
   );

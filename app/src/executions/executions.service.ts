@@ -50,6 +50,7 @@ export class ExecutionsService {
     this.assertRoles(dto);
     this.assertTargetIds(dto);
     this.assertPhase(dto);
+    this.assertProjectRoot(dto);
 
     const fingerprint = computeRequestFingerprint(dto);
     const existing = this.repository.findByRequestId(dto.requestId);
@@ -75,6 +76,7 @@ export class ExecutionsService {
       testRunId: dto.testRunId,
       projectVersionId: dto.projectVersionId,
       snapshot: dto.snapshot,
+      projectRoot: dto.projectRoot ?? '.',
       artifacts: dto.artifacts,
       scope: dto.scope,
       targetIds: dto.targetIds,
@@ -205,6 +207,20 @@ export class ExecutionsService {
         400,
         'VALIDATION_ERROR',
         'phase=BASELINE does not accept artifacts.',
+      );
+    }
+  }
+
+  private assertProjectRoot(dto: CreateSandboxExecutionRequestDto): void {
+    if (
+      dto.executionProfile === 'NODE_TYPESCRIPT' &&
+      dto.projectRoot !== undefined &&
+      dto.projectRoot !== '.'
+    ) {
+      throw new AppHttpException(
+        400,
+        'VALIDATION_ERROR',
+        'NODE_TYPESCRIPT only supports projectRoot=.',
       );
     }
   }

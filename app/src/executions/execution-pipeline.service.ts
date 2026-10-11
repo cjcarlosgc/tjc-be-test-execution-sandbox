@@ -131,15 +131,13 @@ export class ExecutionPipelineService {
         await fs.rm(snapshotZipPath, { force: true });
       }
 
-      // `projectRoot` es una detección de solo lectura (nunca mueve/renombra
-      // nada en disco): si el snapshot vino envuelto en una única carpeta
-      // contenedora de nivel superior, resuelve a esa carpeta; si no, es el
-      // propio `workspacePath`. Un aplanado físico desalinearía
-      // `artifact.relativePath` — Core lo sigue enviando relativo a la
-      // estructura original, envoltorio incluido — así que
-      // `applyArtifacts` se resuelve siempre contra `workspacePath` en
-      // crudo, nunca contra `projectRoot`.
-      const projectRoot = await resolveProjectRoot(workspacePath);
+      // Core entrega la raíz efectiva ya congelada. Sandbox no detecta ni
+      // elige proyectos: solo comprueba que la ruta exista bajo el snapshot
+      // y que un symlink no pueda escapar del repositoryRoot.
+      const projectRoot = await resolveProjectRoot(
+        workspacePath,
+        record.projectRoot,
+      );
       const containerWorkingDir = this.toContainerWorkingDir(
         workspacePath,
         projectRoot,

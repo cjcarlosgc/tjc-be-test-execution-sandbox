@@ -55,6 +55,7 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
       sha256: 'a'.repeat(64),
       sizeBytes: 10,
     },
+    projectRoot: '.',
     artifacts: [],
     scope: 'BATCH',
     targetIds: [],
@@ -227,14 +228,16 @@ describe('ExecutionPipelineService', () => {
     // mismo bind mount); el fake escribe directo en la ruta del host.
     const hostResultsFilePath = path.join(workspaceDir, '.sandbox-results.json');
     const containerRunner = {
-      installDependencies: (_executionId: string, wp: string) =>
+      installDependencies: vi.fn((_executionId: string, wp: string) =>
         (options.installDependencies ?? (async () => okContainerResult()))(wp),
-      runTestCommand: () =>
+      ),
+      runTestCommand: vi.fn(() =>
         options.runTestCommand?.(hostResultsFilePath) ??
         fs
           .writeFile(hostResultsFilePath, PASSING_REPORT, 'utf8')
           .then(() => okContainerResult()),
-    } as unknown as ContainerRunner;
+      ),
+    };
 
     const pipeline = new ExecutionPipelineService(
       repository,
@@ -243,7 +246,7 @@ describe('ExecutionPipelineService', () => {
       downloadService,
       artifactMaterializer,
       runnerAdapterRegistry,
-      containerRunner,
+      containerRunner as unknown as ContainerRunner,
       fakeConfigService(options.configOverrides ?? {}),
     );
 
@@ -452,7 +455,7 @@ describe('ExecutionPipelineService', () => {
     // fakes), para que `readPackageJson`/`hasAnyConfigFile` — invocados
     // dentro de `supports()` — se ejerciten de verdad contra la ruta
     // resuelta, no una fake que ignora el contexto.
-    const record = baseRecord();
+    const record = baseRecord({ projectRoot: 'my-project' });
     const wrappedZip = await buildZip({
       'my-project/package.json':
         '{"name":"demo","devDependencies":{"vitest":"^3.0.0"}}',
@@ -810,6 +813,31 @@ describe('ExecutionPipelineService', () => {
       await pipeline.run(record.executionId);
 
       expect(contexts[0].testPaths).toEqual([]);
+    });
+
+    it('runs PHP install and PHPUnit with the nested cwd while artifacts remain repo-relative', async () => {
+      const record = phpRecord({
+        projectRoot: 'apps/api',
+        artifacts: [artifact('apps/api/tests/Unit/PriceTest.php')],
+      });
+      const { pipeline, repository, workspaceDir, containerRunner, contexts } =
+        await buildPhp({
+          runTestCommand: async (resultsFilePath) => {
+            await fs.writeFile(resultsFilePath, PHPUNIT_PASSING_REPORT, 'utf8');
+            return okContainerResult();
+          },
+        });
+      await fs.mkdir(path.join(workspaceDir, 'apps', 'api'), { recursive: true });
+      await fs.writeFile(path.join(workspaceDir, 'apps', 'api', 'composer.json'), '{}');
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.status).toBe('COMPLETED');
+      expect(contexts[0].workspacePath).toBe(path.join(workspaceDir, 'apps', 'api'));
+      expect(contexts[0].testPaths).toEqual(['tests/Unit/PriceTest.php']);
+      expect(containerRunner.installDependencies.mock.calls[0]?.[4]).toBe('/app/apps/api');
+      expect(containerRunner.runTestCommand.mock.calls[0]?.[5]).toBe('/app/apps/api');
     });
 
     it('fails with TEST_COMPILATION_FAILED/COMPILATION when PHPUnit leaves an empty report after a PHP syntax error', async () => {

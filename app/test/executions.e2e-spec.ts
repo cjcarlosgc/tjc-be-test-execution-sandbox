@@ -158,6 +158,16 @@ describe('Executions API (e2e)', () => {
     expect(response.body.code).toBe('IDEMPOTENCY_KEY_MISMATCH');
   });
 
+  it('rejects projectRoot null instead of treating it as the legacy omission', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/executions')
+      .set('Authorization', `Bearer ${SERVICE_TOKEN}`)
+      .set('Idempotency-Key', '11111111-1111-4111-8111-111111111111')
+      .send(validExecutionPayload({ projectRoot: null }));
+
+    expect(response.status).toBe(400);
+  });
+
   it('rejects unknown fields in the request body', async () => {
     const response = await request(app.getHttpServer())
       .post('/executions')
