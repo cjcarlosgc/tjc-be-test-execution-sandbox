@@ -4,7 +4,7 @@
     "enabled": true,
     "activatedBy": "user",
     "activatedAt": "2026-10-11T10:09:24.000Z",
-    "quote": "un Modo Noche SDD: Modo fuera de casa del repositorio + un heartbeat en este chat cada 20 minutos"
+    "quote": "Modo fuera de casa"
   },
   "sddVersion": "2.1",
   "allowedStatuses": [
@@ -17,16 +17,55 @@
     "DECISION_REQUIRED",
     "DONE"
   ],
+  "completedWorkItems": [
+    {
+      "id": "WI-SANDBOX-003",
+      "status": "DONE",
+      "evidence": [
+        "harness/reports/wi-sandbox-003-contract-sync-preflight.md"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-004",
+      "status": "DONE",
+      "scope": "HARNESS record only; E2E remains failed and cleanup/process/tunnel are unknown",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "PASSED",
+        "contractReviewed": "NOT_APPLICABLE",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-implementation-delivery: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/wi-sandbox-004-remote-e2e-authorization.md",
+        "harness/reports/wi-sandbox-004-review.md"
+      ]
+    }
+  ],
   "activeWorkItem": {
-    "id": "WI-SANDBOX-001",
+    "id": "WI-SANDBOX-005",
     "workItemType": "PRODUCT",
     "storyIds": [
-      "HU43"
+      "HU11"
     ],
     "sprint": "T-READY",
-    "status": "DONE",
+    "status": "IN_PROGRESS",
     "specPaths": [
+      "spec/contracts/system-contract.md",
       "spec/contracts/interoperability-contract.md",
+      "spec/backlog.md",
       "spec/features/009-execution-profiles/spec.md",
       "spec/features/009-execution-profiles/plan.md",
       "spec/features/009-execution-profiles/tasks.md"
@@ -44,77 +83,50 @@
       "blockingDecisionIds": [],
       "nonBlockingDecisionIds": [
         "DEC-INF-001",
-        "DEC-MET-001",
-        "DEC-VAL-001",
-        "DEC-EXP-FK-001"
+        "DEC-VAL-001"
       ],
-      "checkedAt": "2026-10-11T10:20:00-05:00"
+      "checkedAt": "2026-10-12T16:47:03Z"
     },
-    "createdAt": "2026-10-11T10:20:00-05:00",
-    "updatedAt": "2026-10-11T10:45:00-05:00",
+    "createdAt": "2026-10-12T16:47:03Z",
+    "updatedAt": "2026-10-12T18:40:00Z",
     "blockedReason": null,
     "execution": {
       "leaderAgent": "leader",
       "analysisAgent": "sdd-analyst",
-      "implementationAgent": "implementer",
-      "contractReviewAgent": "contract-reviewer",
+      "implementationAgent": null,
+      "contractReviewAgent": null,
       "reviewAgent": "reviewer",
       "handoffs": [
         {
           "agent": "sdd-analyst",
           "status": "SPEC_VERIFIED",
-          "findings": "INTEROP-2.8 exige projectRoot opcional (omisión = .), validado bajo repositoryRoot; PHP usa cwd del subproyecto y los artefactos siguen repo-relative. Sandbox no detecta ni selecciona raíces.",
-          "blockers": [],
-          "filesAffected": [
-            "app/src/executions/",
-            "app/src/workspace/",
-            "app/src/container/",
-            "app/src/materialization/"
+          "findings": "ACL acotada a UID 10001 es una solución local plausible; agregar pruebas de acceso host/UID10001, aislamiento y cambios de modo adversariales. DEC-INF-001 y DEC-VAL-001 no bloquean el corte local con demo propia. El paquete host acl/setfacl no se instala en este WI.",
+          "blockers": [
+            "El commit queda bloqueado por delivery-workflow: no hay HU aplicable y la regla actual no permite Refs: WI sin HU. No inventar HU ni cambiar la política sin decisión."
           ],
-          "evidence": "spec/features/009-execution-profiles/{spec,plan,tasks}.md; spec/contracts/interoperability-contract.md §7.2",
-          "recommendedNextStep": "Implementar el corte con pruebas de validación, cwd e idempotencia."
-        },
-        {
-          "agent": "implementer",
-          "status": "COMPLETED",
-          "findings": "projectRoot se valida bajo repositoryRoot, se incluye en idempotencia y fija el cwd PHP; materialización conserva rutas repo-relative y rechaza symlinks.",
-          "blockers": [],
           "filesAffected": [
-            "app/src/executions/",
-            "app/src/workspace/",
-            "app/src/materialization/"
+            "spec/features/009-execution-profiles/spec.md",
+            "spec/features/009-execution-profiles/plan.md",
+            "spec/features/009-execution-profiles/tasks.md",
+            "harness/reports/wi-sandbox-005-sdd-analysis.md"
           ],
-          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
-          "recommendedNextStep": "Revisión contractual y técnica independiente."
-        },
-        {
-          "agent": "contract-reviewer",
-          "status": "APPROVED",
-          "findings": "Aprobado tras corregir null, symlink de artefactos y cubrir cwd PHP; Node mantiene exclusivamente root . sin detección local.",
-          "blockers": [],
-          "filesAffected": [
-            "app/src/executions/",
-            "app/src/workspace/",
-            "app/src/materialization/"
-          ],
-          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
-          "recommendedNextStep": "Cerrar gates con verificaciones técnicas."
+          "evidence": "harness/reports/wi-sandbox-005-sdd-analysis.md; node harness/contract-sync.mjs check --checkpoint start --work-item WI-SANDBOX-005 => PASSED, no relevant pending syncs.",
+          "recommendedNextStep": "Implementar localmente y validar ACL sin cambiar VM; antes de commit, pedir decisión sobre trazabilidad de corte técnico sin HU."
         },
         {
           "agent": "reviewer",
-          "status": "APPROVED",
-          "findings": "Aprobado tras corregir null, escape por symlink y añadir pruebas directas de cwd PHP y artefactos repo-relative.",
+          "status": "IN_REVIEW",
+          "findings": "Ciclo 1 CHANGES_REQUESTED (B1 script de recuperación, B2 cleanup host no-root, B3 evidencia); corregidos. Re-revisión APPROVED para el corte de código; sin bloqueantes de código.",
           "blockers": [],
           "filesAffected": [
-            "app/src/executions/",
-            "app/src/workspace/",
-            "app/src/materialization/"
+            "harness/reports/wi-sandbox-005-review.md",
+            "harness/reports/wi-sandbox-005-linux-acl-evidence.md"
           ],
-          "evidence": "harness/reports/wi-sandbox-001-project-root.md",
-          "recommendedNextStep": "Cerrar work item sin cambios externos."
+          "evidence": "lint, tsc build y 203 tests OK (2 skipped requieren Linux+setfacl); evidencia kernel Linux en Docker: harness/reports/wi-sandbox-005-linux-acl-evidence.md",
+          "recommendedNextStep": "Commit local con Refs: HU11. Antes de cerrar WI: correr workspace-manager.spec.ts en Linux como root con acl/setpriv y smoke PHP real tras reconstruir la imagen sandbox-php en la VM."
         }
       ],
-      "reviewCycles": 0,
+      "reviewCycles": 1,
       "maxReviewCycles": 2
     },
     "gates": {
@@ -122,35 +134,20 @@
       "implementationCompleted": "PASSED",
       "independentReviewPassed": "PASSED",
       "technicalChecksPassed": "PASSED",
-      "executionEvidencePassed": "PASSED",
-      "contractReviewed": "PASSED",
+      "executionEvidencePassed": "NOT_RUN",
+      "contractReviewed": "NOT_APPLICABLE",
       "interopSyncChecked": "PASSED",
       "isolationChecksPassed": "PASSED",
       "noBlockingDecisions": "PASSED",
       "retryLimitRespected": "PASSED"
     },
     "coordination": {
-      "contractImpact": true,
-      "executionImpact": true,
+      "contractImpact": false,
+      "executionImpact": false,
       "pullCheckpoints": [
         {
           "checkpoint": "start",
-          "checkedAt": "2026-10-11T10:20:00-05:00",
-          "relevantPendingSyncIds": []
-        },
-        {
-          "checkpoint": "before-implementation-delivery",
-          "checkedAt": "2026-10-11T10:35:00-05:00",
-          "relevantPendingSyncIds": []
-        },
-        {
-          "checkpoint": "before-review",
-          "checkedAt": "2026-10-11T10:36:00-05:00",
-          "relevantPendingSyncIds": []
-        },
-        {
-          "checkpoint": "before-done",
-          "checkedAt": "2026-10-11T10:45:00-05:00",
+          "checkedAt": "2026-10-12T16:47:03Z",
           "relevantPendingSyncIds": []
         }
       ],
@@ -158,10 +155,13 @@
       "pendingRelevantSyncIds": []
     },
     "evidence": [
-      "harness/contract-sync/inbox/CS-CORE-20261011-002.json",
-      "harness/reports/wi-sandbox-001-contract-sync-acknowledgement.md",
-      "harness/reports/wi-sandbox-001-project-root.md"
+      "harness/contract-sync/inbox/CS-CORE-20261012-001.json",
+      "harness/reports/wi-sandbox-005-sdd-analysis.md",
+      "harness/reports/wi-sandbox-005-review.md",
+      "harness/reports/wi-sandbox-005-linux-acl-evidence.md",
+      "harness/reports/wi-sandbox-005-linux-acl-check.sh",
+      "No Contract Sync impact; contractReviewed es NOT_APPLICABLE. Trazabilidad HU11 por decisión del usuario. executionEvidencePassed sigue NOT_RUN hasta el smoke PHP real en la VM."
     ]
   },
-  "lastUpdatedAt": "2026-10-11T10:45:00-05:00"
+  "lastUpdatedAt": "2026-10-12T18:40:00Z"
 }
