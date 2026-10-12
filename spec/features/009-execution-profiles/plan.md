@@ -36,3 +36,11 @@ No cambiar `sddVersion`, `SYSTEM-2.2`, la cardinalidad de binding ni infraestruc
 2. Inicializar una vez y de forma recursiva el named volume Composer mediante un container efímero root con red `none`, `CapDrop: ['ALL']` y solo `CHOWN`; no ejecutar `chown` durante instalaciones ni tests.
 3. Mantener instalación con red y tests sin red; comprobarlo en Docker real junto con proyecto anidado y artefactos repo-relative.
 4. Mantener el corte local: sin VM, GCE, despliegue, persistencia ni Contract Sync.
+
+## WI-SANDBOX-005 — ACL acotadas para workspace PHP no-root (HU11)
+
+1. Antes de extraer el snapshot o aplicar artefactos, conceder por ACL acceso de lectura/escritura al UID 10001 solo al workspace de esa ejecución y preservar acceso del UID host que administra evidencia y cleanup.
+2. Incluir ACL de acceso y herencia para nuevos archivos/directorios; comprobarlas sobre los modos reales creados por extractor, Composer y PHPUnit, no asumir que una default ACL vence un `chmod` explícito.
+3. Fallar cerrado sin cambiar a permisos globales si la utilidad ACL no existe o no puede aplicar/verificar entradas; documentar `setfacl`/paquete Linux `acl` como prerequisito host, sin instalarlo ni cambiar VM en este WI.
+4. Probar lectura/escritura como `sandbox` UID 10001, acceso bidireccional y cleanup host, aislamiento entre dos workspaces, snapshot con archivos/directorios anidados y denegación/cleanup ante `chmod` adversarial de contenido propiedad del contenedor.
+5. No alterar UID/GID 10001, límites, aislamiento de red, montaje Docker, respuestas API, ni contratos; el E2E remoto queda para un WI/ejecución operativa posterior con autorización vigente.

@@ -328,6 +328,30 @@ describe('ContainerRunner', () => {
     );
   });
 
+  it('restores PHP workspace ACLs as sandbox without network or added capabilities', async () => {
+    const { docker } = buildFakeDocker();
+    const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+    await runner.restorePhpWorkspaceAccess(
+      '11111111-1111-4111-8111-111111111111',
+      '/tmp/workspace',
+    );
+
+    expect(docker.createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'sandbox-11111111-1111-4111-8111-111111111111-acl-recovery',
+        Cmd: ['restore-workspace-acl', String(process.getuid?.()), '/app'],
+        User: 'sandbox',
+        HostConfig: expect.objectContaining({
+          Binds: ['/tmp/workspace:/app'],
+          NetworkMode: 'none',
+          CapDrop: ['ALL'],
+          CapAdd: undefined,
+        }),
+      }),
+    );
+  });
+
   it('marks stdout as truncated and reports the original byte count beyond the cap', async () => {
     const docker = {
       createContainer: vi.fn(async () => ({
@@ -528,7 +552,7 @@ describe('ContainerRunner', () => {
         { context: string; src: string[] },
         { t: string },
       ];
-      expect(context.src).toEqual(['Dockerfile']);
+      expect(context.src).toEqual(['Dockerfile', 'restore-workspace-acl']);
       expect(context.context.replace(/\\/g, '/')).toMatch(/\/docker\/php\/?$/);
       expect(options.t).toBe(MANAGED_PHP_IMAGE);
       expect(docker.pull).not.toHaveBeenCalled();

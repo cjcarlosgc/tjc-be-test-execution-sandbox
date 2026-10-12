@@ -34,3 +34,11 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 ## Próximo corte local — identidad de ejecución PHP (HU43)
 
 - [x] **ST-SANDBOX-005 · T-READY · WI-SANDBOX-002 · HU43:** containers PHP con identidad Unix no-root obligatoria `sandbox` (UID/GID 10001), sin `chown` manual por ejecución; `CapDrop: ['ALL']`, `no-new-privileges`, red solo durante instalación y aislamiento del workspace. El named volume de **caché** Composer se inicializa una vez, recursivamente y sin red para dar ownership al usuario no-root, sin descargar ni copiar el binario. Evidencia: `harness/reports/wi-sandbox-002-implementation.md`, 194 pruebas unitarias y E2E Docker (21); revisión independiente excepcional final APPROVED. Sin VM, GCE, despliegue ni Contract Sync.
+
+## Corte técnico de permisos del workspace — HU11
+
+- [ ] **WI-SANDBOX-005 · T-READY · `storyIds: ["HU11"]`:** conceder con ACL acceso mínimo del UID PHP 10001 al workspace de su ejecución y conservar la capacidad host de leer/limpiar. Cubre herencia, aislamiento entre workspaces, cambios de modo por contenido no confiable y fallo seguro si falta el soporte ACL. Prerequisito operativo `setfacl`/paquete `acl` en Linux; no se instala en la VM dentro de este corte. Sin cambio de API/contratos, SDD 2.1 ni SYSTEM-2.2.
+
+## WI-SANDBOX-004 — registro Harness del E2E remoto fallido
+
+- [x] Registrar los intentos autorizados, el fallo HTTP 401 previo y la ejecución aceptada que falló al instalar dependencias; no declarar éxito ni repetir el POST. Evidencia reconciliada: `harness/reports/wi-sandbox-004-remote-e2e-authorization.md`.

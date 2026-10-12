@@ -157,3 +157,17 @@ export class WorkspaceDiskLimitExceededError extends SandboxFactError {
     super('WORKSPACE_DISK_LIMIT_EXCEEDED', 'INFRASTRUCTURE', message);
   }
 }
+
+/**
+ * La plataforma no pudo aprovisionar el workspace aislado del execution
+ * (p.ej. faltan las utilidades ACL en un host Linux). Es un fallo de
+ * infraestructura, no del proyecto; el mensaje no incluye rutas.
+ */
+export class WorkspaceProvisioningFailedError extends SandboxFactError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super('WORKSPACE_PROVISIONING_FAILED', 'INFRASTRUCTURE', message);
+    if (options?.cause !== undefined) {
+      this.cause = options.cause;
+    }
+  }
+}

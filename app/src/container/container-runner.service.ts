@@ -303,6 +303,40 @@ export class ContainerRunner {
   }
 
   /**
+   * Restablece, antes de que el host lea evidencia, las ACL que el código
+   * ejecutado pudo enmascarar mediante chmod. El comando vive en la imagen
+   * gestionada y corre como el mismo usuario no-root que es dueño de esos
+   * descendientes: no recibe red, capacidades ni otro bind mount.
+   */
+  async restorePhpWorkspaceAccess(
+    executionId: string,
+    workspacePath: string,
+  ): Promise<void> {
+    const hostUid = process.getuid?.();
+    if (hostUid === undefined) {
+      throw new Error('Cannot determine host process UID for workspace ACL recovery');
+    }
+    const profile = this.limits.profiles.PHP_LARAVEL_PHPUNIT;
+    const result = await this.run({
+      executionId,
+      nameSuffix: 'acl-recovery',
+      image: profile.image,
+      user: profile.user,
+      workspacePath,
+      command: ['restore-workspace-acl', String(hostUid), DEFAULT_CONTAINER_WORKING_DIR],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(
+        `workspace ACL recovery failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
+      );
+    }
+  }
+
+  /**
    * Un volumen Docker named nuevo se crea `root:root` (0755): el proceso de
    * instalación, que corre como `profiles.NODE_TYPESCRIPT.user` (no root,
    * por diseño), no podría escribir ahí. Este bootstrap corre una única vez
@@ -518,7 +552,10 @@ export class ContainerRunner {
     const stream =
       image === MANAGED_PHP_IMAGE
         ? await this.docker.buildImage(
-            { context: MANAGED_PHP_IMAGE_CONTEXT, src: ['Dockerfile'] },
+            {
+              context: MANAGED_PHP_IMAGE_CONTEXT,
+              src: ['Dockerfile', 'restore-workspace-acl'],
+            },
             { t: image },
           )
         : await this.docker.pull(image, {});

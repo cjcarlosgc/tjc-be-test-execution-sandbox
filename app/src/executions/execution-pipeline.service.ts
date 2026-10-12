@@ -273,6 +273,11 @@ export class ExecutionPipelineService {
             : null,
         },
       );
+      await this.recoverPhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+        record.executionProfile,
+      );
       if (testResult.timedOut) {
         throw new SandboxTimeoutError(
           'TEST_TIMEOUT',
@@ -349,8 +354,40 @@ export class ExecutionPipelineService {
         `execution ${executionId} ${status} during ${currentStage}: ${failure.code} ${failure.message}`,
       );
       if (workspacePath) {
+        // Failure paths (install error, OOM, timeout) skip the post-test
+        // recovery above; repair runner-owned entries before removal.
+        await this.recoverPhpWorkspaceAccess(
+          executionId,
+          workspacePath,
+          record.executionProfile,
+        );
         await this.workspaceManager.cleanup(workspacePath);
       }
+    }
+  }
+
+  /**
+   * Restores host access to runner-owned PHP workspace entries. Best effort:
+   * a recovery failure is observable in the log and must never replace the
+   * execution's own outcome (for example `TEST_TIMEOUT`).
+   */
+  private async recoverPhpWorkspaceAccess(
+    executionId: string,
+    workspacePath: string,
+    executionProfile: string,
+  ): Promise<void> {
+    if (executionProfile !== 'PHP_LARAVEL_PHPUNIT') {
+      return;
+    }
+    try {
+      await this.containerRunner.restorePhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `execution ${executionId} workspace ACL recovery failed: ${(error as Error).message}`,
+      );
     }
   }
 

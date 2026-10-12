@@ -237,6 +237,7 @@ describe('ExecutionPipelineService', () => {
           .writeFile(hostResultsFilePath, PASSING_REPORT, 'utf8')
           .then(() => okContainerResult()),
       ),
+      restorePhpWorkspaceAccess: vi.fn(async () => {}),
     };
 
     const pipeline = new ExecutionPipelineService(
@@ -294,7 +295,7 @@ describe('ExecutionPipelineService', () => {
       ],
       parseResult: (raw) => parsePhpunitJunitXml(raw),
     };
-    const { pipeline, repository, workspaceDir } = await build({
+    const { pipeline, repository, workspaceDir, containerRunner } = await build({
       withPnpmLockfile: false,
       resolveRunner: async () => phpFakeAdapter,
       runTestCommand: async (resultsFilePath) => {
@@ -315,6 +316,10 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.result?.facts?.executionProfile).toBe('PHP_LARAVEL_PHPUNIT');
     expect(updated?.result?.facts?.runner).toBe('PHPUNIT');
     expect(updated?.result?.facts?.passed).toBe(true);
+    expect(containerRunner.restorePhpWorkspaceAccess).toHaveBeenCalledWith(
+      record.executionId,
+      workspaceDir,
+    );
   });
 
   it('fails PHP_LARAVEL_PHPUNIT executions with UNSUPPORTED_PACKAGE_MANAGER when composer.json is missing', async () => {
