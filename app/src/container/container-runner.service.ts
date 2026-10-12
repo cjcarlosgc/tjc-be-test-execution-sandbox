@@ -72,6 +72,7 @@ export class ContainerRunner {
   private readonly logger = new Logger(ContainerRunner.name);
   private readonly limits: ContainerLimitsConfig;
   private pnpmStoreVolumeReady?: Promise<void>;
+  private composerCacheVolumeReady?: Promise<void>;
   private readonly imageReady = new Map<string, Promise<void>>();
 
   constructor(
@@ -150,7 +151,7 @@ export class ContainerRunner {
             maxTimeoutMs,
             workingDir,
           )
-        : this.buildPhpInstallOptions(
+        : await this.buildPhpInstallOptions(
             executionId,
             workspacePath,
             profile,
@@ -203,13 +204,14 @@ export class ContainerRunner {
    * (Laravel regenera su manifest de paquetes al arrancar los tests).
    * Respeta `composer.lock` cuando existe (009, corte T-003).
    */
-  private buildPhpInstallOptions(
+  private async buildPhpInstallOptions(
     executionId: string,
     workspacePath: string,
     profile: ProfileContainerConfig,
     maxTimeoutMs: number | undefined,
     workingDir: string,
-  ): RunContainerOptions {
+  ): Promise<RunContainerOptions> {
+    await this.ensureComposerCacheVolumeOwnership();
     return {
       executionId,
       nameSuffix: 'install',
@@ -229,7 +231,6 @@ export class ContainerRunner {
       timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
       workingDir,
       env: {
-        COMPOSER_ALLOW_SUPERUSER: '1',
         COMPOSER_HOME: '/tmp',
         COMPOSER_CACHE_DIR: COMPOSER_CACHE_CONTAINER_PATH,
       },
@@ -237,6 +238,37 @@ export class ContainerRunner {
         `${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`,
       ],
     };
+  }
+
+  private async ensureComposerCacheVolumeOwnership(): Promise<void> {
+    if (!this.composerCacheVolumeReady) {
+      this.composerCacheVolumeReady = this.runComposerCacheVolumeBootstrap().catch((error: unknown) => {
+        this.composerCacheVolumeReady = undefined;
+        throw error;
+      });
+    }
+    return this.composerCacheVolumeReady;
+  }
+
+  private async runComposerCacheVolumeBootstrap(): Promise<void> {
+    const profile = this.limits.profiles.PHP_LARAVEL_PHPUNIT;
+    const bootstrapId = `composer-cache-init-${randomUUID()}`;
+    const result = await this.run({
+      executionId: bootstrapId,
+      nameSuffix: 'bootstrap',
+      image: profile.image,
+      command: ['chown', '-R', profile.user, COMPOSER_CACHE_CONTAINER_PATH],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+      extraBinds: [`${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`],
+      user: 'root',
+      capAdd: ['CHOWN'],
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(`composer cache volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`);
+    }
   }
 
   async runTestCommand(

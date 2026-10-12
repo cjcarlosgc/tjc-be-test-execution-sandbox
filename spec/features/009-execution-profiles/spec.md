@@ -51,10 +51,16 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 
 ### Fuera de este corte
 
-Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core).
+Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
 
 ## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU43)
 
 **Estado:** implementado y verificado localmente.
+
+## WI-SANDBOX-002 — Identidad local PHP no-root (HU43)
+
+**Estado:** aprobado por el usuario (2026-10-12) para Docker local.
+
+La imagen PHP gestionada crea `sandbox` (UID/GID 10001), identidad obligatoria de `PHP_LARAVEL_PHPUNIT`. Antes de la primera instalación, un bootstrap efímero, sin red y memoizado inicializa recursivamente exclusivamente el named volume de cache Composer con ese ownership; la instalación y los tests nunca ejecutan como root. El bootstrap conserva `CapDrop: ['ALL']`, añade únicamente `CHOWN` y no monta el workspace. `pnpm-workspace.yaml` declara explícitamente la raíz. No se selecciona proveedor, VM, GCE, despliegue ni se modifica contrato alguno.
 
 El WI conserva SDD 2.1 y la decisión de un único Project por repositorio. Core detecta un único candidato `composer.json` y envía la raíz congelada; Sandbox solo valida y aplica el campo. No hay selección en Console ni política local para múltiples candidatos.

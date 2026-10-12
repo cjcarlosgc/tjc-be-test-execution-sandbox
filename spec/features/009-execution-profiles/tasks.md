@@ -30,3 +30,7 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 ## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
 
 - [x] **ST-SANDBOX-004 · T-READY · WI-SANDBOX-001 · HU43:** validar `projectRoot` dentro de `repositoryRoot`, usarlo como cwd de Composer/PHPUnit y mantener artifacts repo-relative según INTEROP-2.8; omisión legacy equivale a `.`. No detectar ni seleccionar proyectos en Sandbox. Evidencia: `harness/reports/wi-sandbox-001-project-root.md`.
+
+## Próximo corte local — identidad de ejecución PHP (HU43)
+
+- [x] **ST-SANDBOX-005 · T-READY · WI-SANDBOX-002 · HU43:** containers PHP con identidad Unix no-root obligatoria `sandbox` (UID/GID 10001), sin `chown` manual por ejecución; `CapDrop: ['ALL']`, `no-new-privileges`, red solo durante instalación y aislamiento del workspace. El named volume de **caché** Composer se inicializa una vez, recursivamente y sin red para dar ownership al usuario no-root, sin descargar ni copiar el binario. Evidencia: `harness/reports/wi-sandbox-002-implementation.md`, 194 pruebas unitarias y E2E Docker (21); revisión independiente excepcional final APPROVED. Sin VM, GCE, despliegue ni Contract Sync.

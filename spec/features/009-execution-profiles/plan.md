@@ -29,3 +29,10 @@ T-001 solo consolida contrato y planificación; no modifica `app/` ni infraestru
 5. Añadir pruebas de root, raíz anidada, omisión legacy, traversal/symlink, cwd y rutas de artefactos; ejecutar validadores, lint, tests, build y prueba Docker aplicable antes del review.
 
 No cambiar `sddVersion`, `SYSTEM-2.2`, la cardinalidad de binding ni infraestructura externa.
+
+## WI-SANDBOX-002 — identidad PHP local
+
+1. Crear y usar obligatoriamente la identidad Unix PHP no-root `sandbox` (UID/GID 10001) en la imagen gestionada.
+2. Inicializar una vez y de forma recursiva el named volume Composer mediante un container efímero root con red `none`, `CapDrop: ['ALL']` y solo `CHOWN`; no ejecutar `chown` durante instalaciones ni tests.
+3. Mantener instalación con red y tests sin red; comprobarlo en Docker real junto con proyecto anidado y artefactos repo-relative.
+4. Mantener el corte local: sin VM, GCE, despliegue, persistencia ni Contract Sync.

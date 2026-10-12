@@ -27,7 +27,7 @@ export interface ContainerLimitsConfig {
  * `SANDBOX_DEFAULT_PHP_IMAGE` apunta a otra imagen, se descarga con pull y
  * debe traer `composer` y `unzip` en el PATH.
  */
-export const MANAGED_PHP_IMAGE = 'tjc-sandbox-php:8.3';
+export const MANAGED_PHP_IMAGE = 'tjc-sandbox-php:8.3-nonroot';
 
 /**
  * tech-stack.md: la imagen/runtime Node es seleccionable/configurable, nunca
@@ -61,17 +61,16 @@ export function resolveContainerLimits(
        * La imagen gestionada parte de `php:8.3-cli`; es un default
        * configurable, no una versión fija de política (009/system-contract.md:
        * "no se fija una única versión de PHP/Laravel hasta revisar
-       * repositorios reales"). El usuario `root` +
-       * `COMPOSER_ALLOW_SUPERUSER=1` (container-runner.service.ts) es un
-       * placeholder pragmático: la imagen oficial `php` no trae un usuario
-       * no-root listo para usar como sí trae `node:*-slim`.
+       * repositorios reales). La imagen gestionada crea el usuario Unix
+       * no-root `sandbox` (UID/GID 10001); esta identidad no es configurable
+       * para que Composer y PHPUnit no puedan volver a ejecutarse como root.
        */
       PHP_LARAVEL_PHPUNIT: {
         image: configService.get<string>(
           'SANDBOX_DEFAULT_PHP_IMAGE',
           MANAGED_PHP_IMAGE,
         ),
-        user: configService.get<string>('SANDBOX_PHP_CONTAINER_USER', 'root'),
+        user: 'sandbox',
       },
     },
     memoryBytes: getNumberConfig(

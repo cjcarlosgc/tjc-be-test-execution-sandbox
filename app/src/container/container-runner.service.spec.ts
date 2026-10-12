@@ -431,14 +431,20 @@ describe('ContainerRunner', () => {
         'PHP_LARAVEL_PHPUNIT',
       );
 
-      expect(docker.createContainer).toHaveBeenCalledTimes(1);
-      const config = docker.createContainer.mock.calls[0][0] as unknown as {
+      expect(docker.createContainer).toHaveBeenCalledTimes(2);
+      const bootstrap = docker.createContainer.mock.calls[0][0] as unknown as { Cmd: string[]; User: string; HostConfig: { NetworkMode: string; CapAdd?: string[]; Binds: string[] } };
+      expect(bootstrap.Cmd).toEqual(['chown', '-R', 'sandbox', '/composer-cache']);
+      expect(bootstrap.User).toBe('root');
+      expect(bootstrap.HostConfig).toMatchObject({ NetworkMode: 'none', CapAdd: ['CHOWN'], Binds: ['sandbox-composer-cache:/composer-cache'] });
+      const config = docker.createContainer.mock.calls[1][0] as unknown as {
         Image: string;
         Cmd: string[];
         Env: string[];
+        User: string;
         HostConfig: { CapAdd?: string[]; NetworkMode: string; Binds: string[] };
       };
       expect(config.Image).toBe(MANAGED_PHP_IMAGE);
+      expect(config.User).toBe('sandbox');
       expect(config.Cmd).toEqual([
         'composer',
         'install',
@@ -454,6 +460,38 @@ describe('ContainerRunner', () => {
         '/tmp/workspace:/app',
         'sandbox-composer-cache:/composer-cache',
       ]);
+      expect(config.Env).not.toContain('COMPOSER_ALLOW_SUPERUSER=1');
+    });
+
+    it('initializes the Composer cache volume only once per runner', async () => {
+      const { docker } = buildFakeDocker();
+      const runner = new ContainerRunner(docker as never, fakeConfigService());
+
+      await runner.installDependencies('11111111-1111-4111-8111-111111111111', '/tmp/workspace', 'PHP_LARAVEL_PHPUNIT');
+      await runner.installDependencies('22222222-2222-4222-8222-222222222222', '/tmp/workspace', 'PHP_LARAVEL_PHPUNIT');
+
+      const bootstrapCalls = docker.createContainer.mock.calls.filter(
+        ([config]) => (config as { name?: string }).name?.includes('-bootstrap'),
+      );
+      expect(bootstrapCalls).toHaveLength(1);
+    });
+
+    it('keeps the PHP profile non-root even when a legacy root env value is present', async () => {
+      const { docker } = buildFakeDocker();
+      const runner = new ContainerRunner(
+        docker as never,
+        fakeConfigService({ SANDBOX_PHP_CONTAINER_USER: 'root' }),
+      );
+
+      await runner.runTestCommand(
+        '11111111-1111-4111-8111-111111111111',
+        '/tmp/workspace',
+        ['php', 'vendor/bin/phpunit'],
+        'PHP_LARAVEL_PHPUNIT',
+      );
+
+      const config = docker.createContainer.mock.calls[0][0] as unknown as { User: string };
+      expect(config.User).toBe('sandbox');
     });
 
     it('injects APP_ENV=testing and a fresh random APP_KEY only into PHP test containers', async () => {

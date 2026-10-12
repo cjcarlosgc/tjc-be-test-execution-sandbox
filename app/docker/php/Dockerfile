@@ -17,3 +17,5 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends unzip \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+RUN groupadd --gid 10001 sandbox \
+ && useradd --uid 10001 --gid sandbox --create-home --shell /usr/sbin/nologin sandbox

@@ -434,6 +434,7 @@ final class GeneratedMathTest extends TestCase
     {
         $this->assertSame('testing', getenv('APP_ENV'));
         $this->assertMatchesRegularExpression('/^base64:.{44}$/', (string) getenv('APP_KEY'));
+        $this->assertSame('10001', trim((string) shell_exec('id -u')));
     }
 
     public function testAssertionMismatch(): void
