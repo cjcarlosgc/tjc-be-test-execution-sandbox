@@ -38,8 +38,12 @@ Core trata un `429` del proxy como `SandboxUnavailable`, lo que haría **fallar 
 
 - `POST /executions`: **60 req/min por IP**.
 - `GET /executions/<id>` y `/result`: **600 req/min por IP**. Base: `pollAfterMs` por defecto es 2000 ms (`SANDBOX_POLL_AFTER_MS`), o sea ~30 GET/min por ejecución activa; 600/min cubre ~20 ejecuciones concurrentes por IP. Core hace polling con el `pollAfterMs` que devuelve el Sandbox, sin intervalo fijo propio.
+- Sin tope **global** (Core propuso 30/min global y 20/min por IP en `CS-CORE-20261012-012`; **no se adoptan**: un tope bajo estrangularía experimentos y un `429` se vuelve fallo de plataforma).
+- Solicitudes **sin `Authorization`**: **10/min por IP**, solo sobre `/executions*`. Core siempre envía bearer, así que no le afecta. El proxy **no puede validar el token**: solo detecta cabecera ausente; los tokens inválidos los rechaza la app con 401 y un bloqueo temporal por 401 requeriría `fail2ban` sobre el access log de Caddy (opcional, no incluido). `caddy-ratelimit` devuelve `429` durante la ventana; no es un bloqueo.
 - `request_body max_size`: **se mantiene 5MB** (no bajar hasta validar con el request real más grande).
 - Allowlist de rutas: lo demás `404`. `/health/ready` **no se publica** (Core no lo usa; la verificación se hace por la ruta 401 de `/executions`); `/health/live` sigue disponible.
+
+**Valores iniciales:** todos son iniciales y se ajustan tras observar PRs reales y la evidencia de experimentos (ratificados por Cross el 2026-10-12; dueño operativo: Jean).
 
 **Constancia:** si aparece cualquier `429` en la evidencia de experimentos, el límite se sube/ajusta (o se retira) antes de repetir; un `429` en un experimento invalida la repetición afectada como medición.
 
@@ -86,6 +90,15 @@ Contenido propuesto de `/etc/caddy/Caddyfile`:
 				events 60
 				window 1m
 			}
+			zone no_auth_per_ip {
+				match {
+					path /executions /executions/*
+					not header Authorization Bearer*
+				}
+				key    {remote_host}
+				events 10
+				window 1m
+			}
 			zone read_per_ip {
 				match {
 					method GET
@@ -108,7 +121,7 @@ Contenido propuesto de `/etc/caddy/Caddyfile`:
 Validar y aplicar:
 
 ```bash
-sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile   # valida también la sintaxis `not header` del matcher
 sudo systemctl reload caddy
 ```
 
@@ -118,6 +131,8 @@ sudo systemctl reload caddy
 H=136-115-2-208.sslip.io
 # 65 POST sin credenciales: sin efecto (401 del guard); esperado: 60 de 401 y luego 429
 for i in $(seq 1 65); do curl -s -o /dev/null -w '%{http_code} ' -X POST https://$H/executions; done; echo
+# 12 GET sin credenciales a /executions/<id>: esperado ~10 de 401 y luego 429 (zona sin bearer)
+for i in $(seq 1 12); do curl -s -o /dev/null -w '%{http_code} ' https://$H/executions/00000000-0000-4000-8000-000000000000; done; echo
 # ruta no permitida: 404
 curl -s -o /dev/null -w '%{http_code}\n' https://$H/health/ready
 # health live sigue disponible: 200
@@ -196,6 +211,7 @@ El Sandbox en `:3001` y el acceso IAP no se tocan. Reactivar: `--no-disabled` y 
 
 ## 6. Decisiones cerradas
 
+0. DEC-INF-002 aprobada as-built (SYSTEM-2.12, según Core vía Cross; no verificado por el Sandbox). Valores de rate limit: ratificados por Cross, dueño Jean, iniciales.
 1. `/health/ready` no se publica (Core no lo consume).
 2. Valores 60/600 por minuto y por IP; `max_size` 5MB; ajuste ante cualquier `429` en evidencia.
 3. Doble token y tope de concurrencia: backlog.

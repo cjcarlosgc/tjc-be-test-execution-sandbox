@@ -1,0 +1,27 @@
+{
+  "id": "CS-CORE-20261012-012",
+  "source": "core",
+  "targets": [
+    "sandbox"
+  ],
+  "changedContractAreas": [
+    "executions"
+  ],
+  "requiredActions": [
+    "Ratify or adjust initial proxy rate-limit values and the 90-day token rotation procedure (owner: Jean); keep the IAP tunnel as fallback; no VM/firewall/proxy changes without operational authorization; keep SYSTEM-2.2. DEC-INF-002 approved as-built at source. No route, field, code or transport change. Replaces CS-CORE-20261012-010."
+  ],
+  "sourceRevision": "864aa837b95fa379cc2c6d0a98f37521ff3eb3b6",
+  "status": "ACKNOWLEDGED",
+  "createdAt": "2026-10-12T22:58:19.000Z",
+  "breaking": false,
+  "sourceWorkItem": "WI-CORE-049",
+  "sourceStatus": "C-PENDING",
+  "supersedes": [
+    "CS-CORE-20261012-010"
+  ],
+  "originalFormat": "YAML (Core outbox); translated to this harness JSON schema",
+  "translationNotes": "changedContractAreas is a schema-forced placeholder (closed set, at least one required); the event declares no route/field/code/transport change. createdAt is the import time. Original content preserved verbatim in sourceEventYaml.",
+  "sourceEventYaml": "type: CONTRACT_SYNC\nid: CS-CORE-20261012-012\nsource: core\nsourceWorkItem: WI-CORE-049\ntargets: [sandbox]\nscopePaths: [spec/contracts/system-contract.md]\nbreaking: false\nchanged:\n  - SYSTEM-2.12/INTEROP-2.12 (sucesores de CS-CORE-20261012-009/010): DEC-INF-002 APROBADA AS-BUILT (servicio del Sandbox por HTTPS con TLS y bearer detras de un proxy en la VM; sustituye solo el ingreso por IAP al puerto del servicio y la obligacion de limitar HTTP/HTTPS para 80/443 hacia el proxy; SSH sigue IAP-only; rate limit aprobado con valores iniciales a ratificar; rotacion de 90 dias; IAP como respaldo). Reemplaza el estado PROPOSED publicado en SYSTEM-2.11/INTEROP-2.11. Sin cambios de rutas, campos, codigos ni transporte.\nrequiredAction:\n  - Ratificar o ajustar los valores iniciales de rate limit en el proxy (POST /executions 20/min por IP y 30/min global; GET 240/min por IP; 10 intentos/min sin bearer valido) y el procedimiento de rotacion del token cada 90 dias con dueño Jean; conservar el tunel IAP como respaldo; sin cambios en VM, firewall ni proxy sin autorizacion operativa; conserva SYSTEM-2.2; reemplaza CS-CORE-20261012-010\nsourceRevision: 864aa837b95fa379cc2c6d0a98f37521ff3eb3b6\nstatus: C-PENDING\n",
+  "acknowledgedAt": "2026-10-12T22:58:41.198Z",
+  "acknowledgementEvidence": "harness/reports/contract-sync-cs-core-20261012-012-acknowledgement.md"
+}
