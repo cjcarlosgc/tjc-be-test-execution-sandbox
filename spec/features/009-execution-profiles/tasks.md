@@ -37,7 +37,7 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 
 ## Corte técnico de permisos del workspace — HU11
 
-- [ ] **WI-SANDBOX-005 · T-READY · `storyIds: ["HU11"]`:** conceder con ACL acceso mínimo del UID PHP 10001 al workspace de su ejecución y conservar la capacidad host de leer/limpiar. Cubre herencia, aislamiento entre workspaces, cambios de modo por contenido no confiable y fallo seguro si falta el soporte ACL. Prerequisito operativo `setfacl`/paquete `acl` en Linux; no se instala en la VM dentro de este corte. Sin cambio de API/contratos, SDD 2.1 ni SYSTEM-2.2.
+- [x] **WI-SANDBOX-005 · T-READY · `storyIds: ["HU11"]`:** conceder con ACL acceso mínimo del UID PHP 10001 al workspace de su ejecución y conservar la capacidad host de leer/limpiar. Cubre herencia, aislamiento entre workspaces, cambios de modo por contenido no confiable y fallo seguro si falta el soporte ACL. Prerequisito operativo `setfacl`/paquete `acl` en Linux; no se instala en la VM dentro de este corte. Sin cambio de API/contratos, SDD 2.1 ni SYSTEM-2.2.
 
 ## WI-SANDBOX-004 — registro Harness del E2E remoto fallido
 
