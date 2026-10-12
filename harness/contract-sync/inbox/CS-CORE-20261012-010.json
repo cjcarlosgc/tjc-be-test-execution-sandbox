@@ -1,0 +1,24 @@
+{
+  "id": "CS-CORE-20261012-010",
+  "source": "core",
+  "targets": [
+    "sandbox"
+  ],
+  "changedContractAreas": [
+    "executions"
+  ],
+  "requiredActions": [
+    "Informational: SYSTEM-2.11/INTEROP-2.11 editorial state corrections and DEC-INF-002 PROPOSED at source time. No route, field, code or transport change. Keep SYSTEM-2.2."
+  ],
+  "sourceRevision": "b07d188a6ad60051e40e4d47ae44ec06aa0de50f",
+  "status": "ACKNOWLEDGED",
+  "createdAt": "2026-10-12T22:55:15.000Z",
+  "breaking": false,
+  "sourceWorkItem": "WI-CORE-049",
+  "sourceStatus": "C-PENDING",
+  "originalFormat": "YAML (Core outbox); translated to this harness JSON schema",
+  "translationNotes": "changedContractAreas is a schema-forced placeholder (the harness requires at least one of its closed set); the event declares no route/field/code/transport change. createdAt is the import time. Original content preserved verbatim in sourceEventYaml.",
+  "sourceEventYaml": "type: CONTRACT_SYNC\nid: CS-CORE-20261012-010\nsource: core\nsourceWorkItem: WI-CORE-049\ntargets: [sandbox]\nscopePaths: [spec/contracts/system-contract.md]\nbreaking: false\nchanged:\n  - SYSTEM-2.11/INTEROP-2.11: DEC-INF-002 PROPOSED (sin efecto normativo) y correcciones editoriales de estado (DEC-VAL-002 implementada en WI-CORE-048; mensaje de OC11 implementado en WI-CORE-046). Sin cambios de rutas, campos, códigos ni transporte.\nrequiredAction:\n  - Ninguna ahora; conserva SYSTEM-2.2; no implementar ni tocar firewall, proxy ni VM hasta la aprobacion del usuario y la autorizacion operativa explicita\nsourceRevision: b07d188a6ad60051e40e4d47ae44ec06aa0de50f\nstatus: C-PENDING\n",
+  "acknowledgedAt": "2026-10-12T22:55:15.784Z",
+  "acknowledgementEvidence": "harness/reports/contract-sync-cs-core-20261012-010-acknowledgement.md"
+}
