@@ -149,6 +149,12 @@
           "checkpoint": "start",
           "checkedAt": "2026-10-12T16:47:03Z",
           "relevantPendingSyncIds": []
+        },
+        {
+          "checkpoint": "before-done",
+          "checkedAt": "2026-10-12T18:50:57.070Z",
+          "relevantPendingSyncIds": [],
+          "note": "CS-CORE-20261012-002 importado y ACKNOWLEDGED (informativo, no relevante)"
         }
       ],
       "publishedSyncIds": [],
@@ -160,7 +166,8 @@
       "harness/reports/wi-sandbox-005-review.md",
       "harness/reports/wi-sandbox-005-linux-acl-evidence.md",
       "harness/reports/wi-sandbox-005-linux-acl-check.sh",
-      "No Contract Sync impact; contractReviewed es NOT_APPLICABLE. Trazabilidad HU11 por decisión del usuario. executionEvidencePassed sigue NOT_RUN hasta el smoke PHP real en la VM."
+      "No Contract Sync impact; contractReviewed es NOT_APPLICABLE. Trazabilidad HU11 por decisión del usuario. executionEvidencePassed sigue NOT_RUN hasta el smoke PHP real en la VM.",
+      "harness/reports/contract-sync-cs-core-20261012-002-acknowledgement.md"
     ]
   },
   "lastUpdatedAt": "2026-10-12T18:40:00Z"
