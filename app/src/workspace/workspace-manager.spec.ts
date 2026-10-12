@@ -331,7 +331,14 @@ describe('WorkspaceManager', () => {
       );
       // The orchestration process is root in this smoke, while UID 1000
       // represents a distinct, unprivileged API host identity.
-      execFileSync('setfacl', ['-m', 'u:1000:rwx,m:rwx', '--', tempRoot]);
+      // The runner UID only needs to traverse the root: Docker exposes just the
+      // workspace mount, never the parent directory.
+      execFileSync('setfacl', [
+        '-m',
+        'u:1000:rwx,u:10001:--x,m:rwx',
+        '--',
+        tempRoot,
+      ]);
       const realManager = new LinuxAclManagerAsHost1000(
         fakeConfigService({ SANDBOX_WORKSPACE_ROOT: tempRoot }),
       );
@@ -393,7 +400,14 @@ describe('WorkspaceManager', () => {
       const tempRoot = await fs.mkdtemp(
         path.join(os.tmpdir(), 'workspace-acl-host-'),
       );
-      execFileSync('setfacl', ['-m', 'u:1000:rwx,m:rwx', '--', tempRoot]);
+      // The runner UID only needs to traverse the root: Docker exposes just the
+      // workspace mount, never the parent directory.
+      execFileSync('setfacl', [
+        '-m',
+        'u:1000:rwx,u:10001:--x,m:rwx',
+        '--',
+        tempRoot,
+      ]);
       const realManager = new LinuxAclManagerAsHost1000(
         fakeConfigService({ SANDBOX_WORKSPACE_ROOT: tempRoot }),
       );
