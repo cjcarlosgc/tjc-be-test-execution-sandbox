@@ -28,3 +28,13 @@ Origen: smoke remoto d6f8a87e-273f-4e6f-8d8f-a3b6fbac138b → `UNSUPPORTED_RUNNE
 ## Requisitos de proceso
 
 Abrir WI-SANDBOX-006 requiere aprobación del usuario (hoy WI-005 sigue activo, pendiente de evidencia VM) y trazabilidad (`Refs: HU11`, ya decidida para este frente). No tocar la VM ni desplegar hasta entonces.
+
+## Actualización (Core, 2026-10-12)
+
+Core verificó que el flujo real envía un ZIP **plano** (`AdmZip.addLocalFolder` desde un directorio con paths repo-relative; sin zipball de GitHub) y congela `projectRoot` sin prefijo, coherente con INTEROP-2.8. El wrapper del smoke fue un artefacto del script de Core. Se retira la petición de aplanado; no se abre WI-006.
+
+## Deuda documental (sin prioridad)
+
+- `app/src/executions/execution-pipeline.service.ts:115-116`: el comentario dice que `SafeArchiveExtractor` «detectaría/aplanaría» una carpeta contenedora; ya no ocurre desde WI-SANDBOX-001. Corregir en un corte documental futuro.
+- `spec/transversal/temporary-workspaces/tasks.md`: la nota «carpeta contenedora única» describe `resolveProjectRoot` como detección; hoy solo valida el `projectRoot` de Core.
+- No se edita `spec/backlog.md` (reservado a HUs); la deuda vive aquí.
