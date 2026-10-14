@@ -87,8 +87,39 @@
         "harness/reports/contract-sync-cs-core-20261012-002-acknowledgement.md",
         "harness/reports/wi-sandbox-005-execution-evidence.md"
       ]
+    },
+    {
+      "id": "WI-SANDBOX-007",
+      "status": "DONE",
+      "storyIds": [
+        "HU11"
+      ],
+      "scope": "StageDuration agrega startedAt/completedAt opcionales por etapa (aditivo); Contract Sync CS-SANDBOX-20261014-001 a Core; sin push ni despliegue",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "NOT_APPLICABLE",
+        "contractReviewed": "PASSED",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/wi-sandbox-007-review.md",
+        "harness/contract-sync/outbox/CS-SANDBOX-20261014-001.json",
+        "commit 19dfde45"
+      ]
     }
   ],
   "activeWorkItem": null,
-  "lastUpdatedAt": "2026-10-12T19:15:00Z"
+  "lastUpdatedAt": "2026-10-14T01:35:00Z"
 }
