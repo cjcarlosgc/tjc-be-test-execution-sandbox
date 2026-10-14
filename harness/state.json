@@ -118,8 +118,41 @@
         "harness/contract-sync/outbox/CS-SANDBOX-20261014-001.json",
         "commit 19dfde45"
       ]
+    },
+    {
+      "id": "WI-SANDBOX-008",
+      "status": "DONE",
+      "storyIds": [
+        "HU11"
+      ],
+      "scope": "restore-workspace-acl agrupa la pasada de archivos con {} +; despliegue pendiente (reconstruir imagen en la VM con 2FA de Jean); sin cambios de contrato ni de código Node",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "PASSED",
+        "contractReviewed": "NOT_APPLICABLE",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/acl-recovery-12s-diagnostic-2026-10-14.md",
+        "harness/reports/wi-sandbox-008-review.md",
+        "harness/reports/wi-sandbox-008-vm-deploy-runbook.md",
+        "commit f6b8e41",
+        "executionEvidencePassed: prueba conductual con Docker local (rojo 500 invocaciones -> verde <=10); smoke en la VM pendiente del despliegue"
+      ]
     }
   ],
   "activeWorkItem": null,
-  "lastUpdatedAt": "2026-10-14T01:35:00Z"
+  "lastUpdatedAt": "2026-10-14T02:15:00Z"
 }
