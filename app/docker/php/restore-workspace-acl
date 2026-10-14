@@ -23,5 +23,9 @@ owner_uid=$(id -u)
 
 find -P "$workspace" -xdev -uid "$owner_uid" -type d -exec \
   setfacl -m "u::rwx,u:${host_uid}:rwx,g::---,m::rwx,o::---" -- {} \;
+# Files do not need to be repaired before find descends, so they are batched
+# (`+`): one setfacl per file cost ~12 s on a workspace with vendor/.  A failing
+# entry does not stop the batch; find exits non-zero at the end, which the
+# best-effort recovery logs.
 find -P "$workspace" -xdev -uid "$owner_uid" -type f -exec \
-  setfacl -m "u::rw-,u:${host_uid}:r--,g::---,m::r--,o::---" -- {} \;
+  setfacl -m "u::rw-,u:${host_uid}:r--,g::---,m::r--,o::---" -- {} +
