@@ -50,6 +50,20 @@ const CONTAINER_WORKSPACE_MOUNT = '/app';
 const MAX_EVIDENCE_BYTES = 8 * 1024;
 
 /**
+ * Duración y marcas ISO de inicio/fin de una etapa (hechos de tiempo; la
+ * ventana `[startedAt, completedAt]` es exactamente la que se mide).
+ */
+function stageTiming(stage: SandboxStage, startedAtMs: number): StageDuration {
+  const completedAtMs = Date.now();
+  return {
+    stage,
+    durationMs: completedAtMs - startedAtMs,
+    startedAt: new Date(startedAtMs).toISOString(),
+    completedAt: new Date(completedAtMs).toISOString(),
+  };
+}
+
+/**
  * Orquesta el pipeline completo: `PREPARING` (002/003) →
  * `INSTALLING_DEPENDENCIES` (004, `DEC-SBX-002` APROBADO: solo pnpm) →
  * `RUNNING_TESTS` (005) → `COMPLETED`/`FAILED`/`TIMED_OUT`. Nunca calcula
@@ -171,10 +185,7 @@ export class ExecutionPipelineService {
         record.runnerHint,
         { workspacePath: projectRoot, resultsFilePath },
       );
-      stageDurations.push({
-        stage: 'PREPARING',
-        durationMs: Date.now() - preparingStartedAt,
-      });
+      stageDurations.push(stageTiming('PREPARING', preparingStartedAt));
 
       await assertSupportedManifest(record.executionProfile, projectRoot);
 
@@ -190,10 +201,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - installStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, installStartedAt));
       if (installResult.oomKilled) {
         throw new OomKilledError(
           'dependency installation was killed for exceeding the memory limit',
@@ -244,10 +252,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - testStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, testStartedAt));
       if (testResult.oomKilled) {
         throw new OomKilledError(
           'test execution was killed for exceeding the memory limit',

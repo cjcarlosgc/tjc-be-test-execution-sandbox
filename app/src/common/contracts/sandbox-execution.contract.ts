@@ -92,6 +92,10 @@ export interface RunnerFacts {
 export interface StageDuration {
   stage: SandboxStage;
   durationMs: number;
+  /** Aditivo (WI-SANDBOX-007): instante ISO de inicio de la etapa. */
+  startedAt?: string;
+  /** Aditivo (WI-SANDBOX-007): instante ISO de fin de la etapa. */
+  completedAt?: string;
 }
 
 export type SandboxFailureCategory =

@@ -271,6 +271,21 @@ describe('ExecutionPipelineService', () => {
     expect(
       updated?.result?.stageDurations.map((d) => d.stage),
     ).toEqual(['PREPARING', 'INSTALLING_DEPENDENCIES', 'RUNNING_TESTS']);
+    // WI-SANDBOX-007: marcas ISO por etapa, ordenadas y coherentes con la
+    // duración; aditivas, no sustituyen a `durationMs`.
+    const stages = updated?.result?.stageDurations ?? [];
+    for (const stage of stages) {
+      expect(stage.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(stage.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(Date.parse(stage.completedAt!) - Date.parse(stage.startedAt!)).toBe(
+        stage.durationMs,
+      );
+    }
+    for (let index = 1; index < stages.length; index += 1) {
+      expect(Date.parse(stages[index]!.startedAt!)).toBeGreaterThanOrEqual(
+        Date.parse(stages[index - 1]!.completedAt!),
+      );
+    }
     expect(updated?.result?.evidence.map((e) => e.kind)).toEqual([
       'TEST_STDOUT',
       'TEST_STDERR',
@@ -570,6 +585,12 @@ describe('ExecutionPipelineService', () => {
 
     const updated = repository.findById(record.executionId);
     expect(updated?.status).toBe('FAILED');
+    // WI-SANDBOX-007: la etapa que falló también conserva sus marcas.
+    const failedStage = updated?.result?.stageDurations.at(-1);
+    expect(failedStage?.stage).toBe('INSTALLING_DEPENDENCIES');
+    expect(Date.parse(failedStage!.completedAt!)).toBeGreaterThanOrEqual(
+      Date.parse(failedStage!.startedAt!),
+    );
     expect(updated?.failureCode).toBe('OOM_KILLED');
     expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
     expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
