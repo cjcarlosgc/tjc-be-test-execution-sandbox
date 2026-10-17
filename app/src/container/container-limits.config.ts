@@ -18,11 +18,16 @@ export interface ContainerLimitsConfig {
   maxCapturedOutputBytes: number;
   pnpmVersion: string;
   pnpmStoreVolumeName: string;
-  /** Imagen completa (con shell) usada solo una vez para sembrar el binario de Composer en `composerBinaryVolumeName`; nunca corre en el path caliente de una ejecución. */
-  composerBinaryImage: string;
-  composerBinaryVolumeName: string;
   composerCacheVolumeName: string;
 }
+
+/**
+ * Imagen del profile PHP que el propio Sandbox construye desde
+ * `app/docker/php/Dockerfile` si falta en el host (009, corte T-003). Si
+ * `SANDBOX_DEFAULT_PHP_IMAGE` apunta a otra imagen, se descarga con pull y
+ * debe traer `composer` y `unzip` en el PATH.
+ */
+export const MANAGED_PHP_IMAGE = 'tjc-sandbox-php:8.3-nonroot';
 
 /**
  * tech-stack.md: la imagen/runtime Node es seleccionable/configurable, nunca
@@ -53,25 +58,27 @@ export function resolveContainerLimits(
         user: configService.get<string>('SANDBOX_CONTAINER_USER', 'node'),
       },
       /**
-       * `php:8.3-cli` es un default configurable, no una versión fija de
-       * política (009/system-contract.md: "no se fija una única versión de
-       * PHP/Laravel hasta revisar repositorios reales"). El usuario `root` +
-       * `COMPOSER_ALLOW_SUPERUSER=1` (container-runner.service.ts) es un
-       * placeholder pragmático: la imagen oficial `php` no trae un usuario
-       * no-root listo para usar como sí trae `node:*-slim`.
+       * La imagen gestionada parte de `php:8.3-cli`; es un default
+       * configurable, no una versión fija de política (009/system-contract.md:
+       * "no se fija una única versión de PHP/Laravel hasta revisar
+       * repositorios reales). La imagen gestionada crea el usuario Unix
+       * no-root `sandbox` (UID/GID 10001); esta identidad no es configurable
+       * para que Composer y PHPUnit no puedan volver a ejecutarse como root.
        */
       PHP_LARAVEL_PHPUNIT: {
         image: configService.get<string>(
           'SANDBOX_DEFAULT_PHP_IMAGE',
-          'php:8.3-cli',
+          MANAGED_PHP_IMAGE,
         ),
-        user: configService.get<string>('SANDBOX_PHP_CONTAINER_USER', 'root'),
+        user: 'sandbox',
       },
     },
     memoryBytes: getNumberConfig(
       configService,
       'SANDBOX_CONTAINER_MEMORY_BYTES',
-      256 * 1024 * 1024,
+      // 256 MiB no alcanzaba para `composer install`/`pnpm install` de
+      // proyectos reales (009, corte T-003).
+      1024 * 1024 * 1024,
     ),
     nanoCpus: getNumberConfig(
       configService,
@@ -103,14 +110,6 @@ export function resolveContainerLimits(
     pnpmStoreVolumeName: configService.get<string>(
       'SANDBOX_PNPM_STORE_VOLUME',
       'sandbox-pnpm-store',
-    ),
-    composerBinaryImage: configService.get<string>(
-      'SANDBOX_COMPOSER_BINARY_IMAGE',
-      'composer:2',
-    ),
-    composerBinaryVolumeName: configService.get<string>(
-      'SANDBOX_COMPOSER_BINARY_VOLUME',
-      'sandbox-composer-bin',
     ),
     composerCacheVolumeName: configService.get<string>(
       'SANDBOX_COMPOSER_CACHE_VOLUME',

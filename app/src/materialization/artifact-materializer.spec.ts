@@ -13,11 +13,37 @@ import { ArtifactMaterializer } from './artifact-materializer.js';
 
 const EXECUTION_ID = '11111111-1111-4111-8111-111111111111';
 
-function fakeConfigService(overrides: Record<string, unknown> = {}): ConfigService {
+function fakeConfigService(
+  overrides: Record<string, unknown> = {},
+): ConfigService {
   return {
     get: (key: string, defaultValue?: unknown) =>
       key in overrides ? overrides[key] : defaultValue,
   } as unknown as ConfigService;
+}
+
+class TestWorkspaceManager extends WorkspaceManager {
+  protected override async runAclCommand(
+    command: 'setfacl' | 'getfacl',
+  ): Promise<string> {
+    return command === 'getfacl'
+      ? [
+          'user::rwx',
+          'user:10001:rwx',
+          'group::---',
+          'mask::rwx',
+          'other::---',
+          'default:user::rwx',
+          'default:user:10001:rwx',
+          ...(process.getuid?.() === 10001
+            ? []
+            : [`default:user:${process.getuid?.()}:rwx`]),
+          'default:group::---',
+          'default:mask::rwx',
+          'default:other::---',
+        ].join('\n')
+      : '';
+  }
 }
 
 function artifact(
@@ -43,7 +69,11 @@ function stubDownloadService(content: string): ExecutionInputDownloadService {
   return {
     async downloadToFile(_ref, destinationPath): Promise<DownloadedFile> {
       await fs.writeFile(destinationPath, content, 'utf8');
-      return { path: destinationPath, sizeBytes: content.length, sha256: 'stub' };
+      return {
+        path: destinationPath,
+        sizeBytes: content.length,
+        sha256: 'stub',
+      };
     },
   };
 }
@@ -55,7 +85,7 @@ describe('ArtifactMaterializer', () => {
 
   beforeEach(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'materializer-'));
-    workspaceManager = new WorkspaceManager(
+    workspaceManager = new TestWorkspaceManager(
       fakeConfigService({ SANDBOX_WORKSPACE_ROOT: root }),
     );
     workspacePath = await workspaceManager.createWorkspace(EXECUTION_ID);
@@ -99,6 +129,30 @@ describe('ArtifactMaterializer', () => {
         artifact('a1', '../outside.ts'),
       ]),
     ).rejects.toThrow();
+  });
+
+  it('rejects an artifact path that reaches outside through a snapshot symlink', async () => {
+    const outside = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'artifact-outside-'),
+    );
+    try {
+      await fs.symlink(outside, path.join(workspacePath, 'generated'));
+      const materializer = new ArtifactMaterializer(
+        workspaceManager,
+        stubDownloadService('x'),
+      );
+
+      await expect(
+        materializer.applyArtifacts(workspacePath, [
+          artifact('a1', 'generated/escape.spec.ts'),
+        ]),
+      ).rejects.toThrow(/symbolic link/);
+      await expect(
+        fs.access(path.join(outside, 'escape.spec.ts')),
+      ).rejects.toThrow();
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
   });
 
   it('overwrites an existing file for a MODIFIED artifact', async () => {

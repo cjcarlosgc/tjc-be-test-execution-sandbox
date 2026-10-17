@@ -16,6 +16,7 @@ import {
   type ExecutionRepository,
 } from './execution.repository.js';
 import {
+  DEFAULT_EXECUTION_PHASE,
   isTerminalStatus,
   type ExecutionRecord,
 } from './domain/execution-record.js';
@@ -48,6 +49,8 @@ export class ExecutionsService {
 
     this.assertRoles(dto);
     this.assertTargetIds(dto);
+    this.assertPhase(dto);
+    this.assertProjectRoot(dto);
 
     const fingerprint = computeRequestFingerprint(dto);
     const existing = this.repository.findByRequestId(dto.requestId);
@@ -73,11 +76,13 @@ export class ExecutionsService {
       testRunId: dto.testRunId,
       projectVersionId: dto.projectVersionId,
       snapshot: dto.snapshot,
+      projectRoot: dto.projectRoot ?? '.',
       artifacts: dto.artifacts,
       scope: dto.scope,
       targetIds: dto.targetIds,
       executionProfile: dto.executionProfile,
       runnerHint: dto.runnerHint,
+      phase: dto.phase ?? DEFAULT_EXECUTION_PHASE,
       status: 'PENDING',
       stage: null,
       failureCode: null,
@@ -188,6 +193,34 @@ export class ExecutionsService {
         400,
         'VALIDATION_ERROR',
         'scope=TARGET requires at least one targetId.',
+      );
+    }
+  }
+
+  /**
+   * `BASELINE` mide la suite existente sin propuestas: aceptar artefactos
+   * mezclaría ambas fases en un mismo hecho (009, corte T-003).
+   */
+  private assertPhase(dto: CreateSandboxExecutionRequestDto): void {
+    if (dto.phase === 'BASELINE' && dto.artifacts.length > 0) {
+      throw new AppHttpException(
+        400,
+        'VALIDATION_ERROR',
+        'phase=BASELINE does not accept artifacts.',
+      );
+    }
+  }
+
+  private assertProjectRoot(dto: CreateSandboxExecutionRequestDto): void {
+    if (
+      dto.executionProfile === 'NODE_TYPESCRIPT' &&
+      dto.projectRoot !== undefined &&
+      dto.projectRoot !== '.'
+    ) {
+      throw new AppHttpException(
+        400,
+        'VALIDATION_ERROR',
+        'NODE_TYPESCRIPT only supports projectRoot=.',
       );
     }
   }

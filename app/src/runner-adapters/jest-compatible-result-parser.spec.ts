@@ -107,4 +107,42 @@ describe('parseJestCompatibleJson', () => {
     const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST',raw);
     expect(facts.testCases[0].status).toBe('FAILED');
   });
+
+  describe('failureKind (009, corte T-003)', () => {
+    it('marks a real Jest expect() failure as ASSERTION and passing cases as null', async () => {
+      const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST', await loadFixture('jest-mixed.json'));
+      expect(facts.testCases.map((tc) => tc.failureKind)).toEqual([null, 'ASSERTION']);
+    });
+
+    it('marks a real Vitest AssertionError as ASSERTION', async () => {
+      const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', await loadFixture('vitest-mixed.json'));
+      expect(facts.testCases.map((tc) => tc.failureKind)).toEqual([null, 'ASSERTION']);
+    });
+
+    it('marks a thrown TypeError (no matcher result) as ERROR', () => {
+      const raw = JSON.stringify({
+        success: false,
+        numTotalTests: 1,
+        numPassedTests: 0,
+        numFailedTests: 1,
+        numPendingTests: 0,
+        testResults: [
+          {
+            name: 'svc.test.ts',
+            status: 'failed',
+            assertionResults: [
+              {
+                title: 'calls missing method',
+                status: 'failed',
+                failureMessages: ["TypeError: svc.total is not a function\n    at svc.test.ts:4"],
+                failureDetails: [{}],
+              },
+            ],
+          },
+        ],
+      });
+      const facts = parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST', raw);
+      expect(facts.testCases[0].failureKind).toBe('ERROR');
+    });
+  });
 });

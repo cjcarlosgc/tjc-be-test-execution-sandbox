@@ -67,4 +67,14 @@ describe('PhpunitTestRunnerAdapter', () => {
       '/app/.sandbox-results.json',
     ]);
   });
+
+  it('appends only the selected test paths when testPaths is given (009, corte T-003)', () => {
+    expect(
+      adapter.buildCommand({
+        workspacePath,
+        resultsFilePath: '/app/r.xml',
+        testPaths: ['tests/Unit/FooTest.php', 'tests/Unit/BarTest.php'],
+      }),
+    ).toEqual(['php', 'vendor/bin/phpunit', '--log-junit', '/app/r.xml', 'tests/Unit/FooTest.php', 'tests/Unit/BarTest.php']);
+  });
 });

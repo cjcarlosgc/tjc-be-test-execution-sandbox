@@ -1,0 +1,29 @@
+{
+  "id": "CS-SANDBOX-20261009-001",
+  "source": "sandbox",
+  "targets": [
+    "core"
+  ],
+  "changedContractAreas": [
+    "executions",
+    "dto",
+    "phase",
+    "idempotency",
+    "statuses",
+    "evidence"
+  ],
+  "requiredActions": [
+    "PHASE: el Sandbox acepta phase como OPCIONAL (default GENERATED_TESTS), tolerancia transitoria frente a INTEROP §7.2 que lo declara requerido. Core debe enviar phase explicito en POST /executions; cuando lo haga, el Sandbox volvera a exigirlo con otro CONTRACT_SYNC.",
+    "SEMANTICA: GENERATED_TESTS con artefactos ejecuta EXCLUSIVAMENTE las rutas de los artefactos aplicados (Jest --runTestsByPath; Vitest/PHPUnit por ruta; en Vitest son filtros por substring); sin artefactos ejecuta la suite configurada. Cambia los hechos que hoy recibe Core (totalTests/testCases/passed solo de los tests generados; un test preexistente rojo ya no invalida). Revisar si 005/008 asumian suite completa y aclarar en el canonico que 'incorpora los artefactos' significa 'solo los artefactos'.",
+    "BASELINE: ejecuta la suite configurada completa porque el contrato no permite nombrar los 'tests relevantes'; requiere decision contractual (campo de seleccion o redaccion 'suite configurada'). Regla nueva: phase=BASELINE con artifacts no vacio -> 400 VALIDATION_ERROR.",
+    "IDEMPOTENCIA: phase normalizado (omitido = GENERATED_TESTS) forma parte de la huella; mismo requestId con distinta phase -> 409 IDEMPOTENCY_CONFLICT.",
+    "EVIDENCIA/DTO: campo aditivo TestCaseFact.failureKind 'ASSERTION' ",
+    " 'ERROR' ",
+    " null (null si el caso no fallo). PHPUnit: JUnit failure/error (determinista). Jest/Vitest: mejor esfuerzo (matcherResult, 'Error: expect(', 'AssertionError'). Es un hecho del runner, no una clasificacion; incorporarlo a INTEROP §7.3 y mirrors; Core puede usarlo en mapSandboxResult (ERROR -> fallo tecnico, ASSERTION -> posible BEHAVIORAL_MISMATCH) pero la clasificacion es suya.",
+    "CODIGOS: nuevos SandboxFailureFact.code con categorias existentes: TEST_COMPILATION_FAILED/COMPILATION (error de sintaxis PHP con JUnit vacio; stage RUNNING_TESTS, no COMPILING) e IMAGE_UNAVAILABLE/INFRASTRUCTURE. Un reporte ausente o vacio ya nunca es COMPLETED. Valorar registrarlos en §7.4; actualizar sandbox.types.ts (TestCaseFact.failureKind y RunnerFacts.runner con PHPUNIT) y contract tests."
+  ],
+  "sourceRevision": "1630d45",
+  "status": "PENDING",
+  "createdAt": "2026-10-09T23:41:02.252Z",
+  "breaking": false
+}

@@ -39,6 +39,7 @@ export class VitestTestRunnerAdapter implements TestRunnerAdapter {
       'run',
       '--reporter=json',
       `--outputFile=${context.resultsFilePath}`,
+      ...(context.testPaths ?? []),
     ];
   }
 

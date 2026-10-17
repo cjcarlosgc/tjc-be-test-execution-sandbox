@@ -27,7 +27,13 @@ export class PhpunitTestRunnerAdapter implements TestRunnerAdapter {
   }
 
   buildCommand(context: ProjectRunnerContext): string[] {
-    return ['php', 'vendor/bin/phpunit', '--log-junit', context.resultsFilePath];
+    return [
+      'php',
+      'vendor/bin/phpunit',
+      '--log-junit',
+      context.resultsFilePath,
+      ...(context.testPaths ?? []),
+    ];
   }
 
   parseResult(rawOutput: string): RunnerFacts {

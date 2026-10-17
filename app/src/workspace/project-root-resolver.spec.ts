@@ -5,112 +5,63 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveProjectRoot } from './project-root-resolver.js';
 
 describe('resolveProjectRoot', () => {
-  let workspacePath: string;
+  let repositoryRoot: string;
+  let outsideRoot: string;
 
   beforeEach(async () => {
-    workspacePath = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'project-root-resolver-'),
-    );
+    repositoryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'project-root-resolver-'));
+    outsideRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'outside-root-'));
+    await fs.mkdir(path.join(repositoryRoot, 'apps', 'api'), { recursive: true });
   });
 
   afterEach(async () => {
-    await fs.rm(workspacePath, { recursive: true, force: true });
+    await Promise.all([
+      fs.rm(repositoryRoot, { recursive: true, force: true }),
+      fs.rm(outsideRoot, { recursive: true, force: true }),
+    ]);
   });
 
-  it('resolves to the single top-level containing folder without moving anything', async () => {
-    await fs.mkdir(path.join(workspacePath, 'my-project', 'src'), {
-      recursive: true,
-    });
-    await fs.writeFile(
-      path.join(workspacePath, 'my-project', 'package.json'),
-      '{}',
-    );
-
-    const projectRoot = await resolveProjectRoot(workspacePath);
-
-    expect(projectRoot).toBe(path.join(workspacePath, 'my-project'));
-    // No debe haber movido nada: el archivo sigue donde la extracción lo dejó.
-    await expect(
-      fs.access(path.join(workspacePath, 'my-project', 'package.json')),
-    ).resolves.toBeUndefined();
+  it('uses the legacy repository root when projectRoot is omitted or explicit .', async () => {
+    const expected = path.resolve(repositoryRoot);
+    await expect(resolveProjectRoot(repositoryRoot)).resolves.toBe(expected);
+    await expect(resolveProjectRoot(repositoryRoot, '.')).resolves.toBe(expected);
   });
 
-  it('resolves to the workspace root itself when there are multiple top-level entries', async () => {
-    await fs.writeFile(path.join(workspacePath, 'package.json'), '{}');
-    await fs.writeFile(path.join(workspacePath, 'README.md'), 'hello');
-
-    await expect(resolveProjectRoot(workspacePath)).resolves.toBe(
-      workspacePath,
+  it('resolves the exact nested path sent by Core without detecting candidates', async () => {
+    await expect(resolveProjectRoot(repositoryRoot, 'apps/api')).resolves.toBe(
+      path.join(repositoryRoot, 'apps', 'api'),
     );
   });
 
-  it('resolves to the workspace root itself when the single top-level entry is a file', async () => {
-    await fs.writeFile(path.join(workspacePath, 'package.json'), '{}');
+  it.each(['../outside', 'apps/../api', '/tmp/project', 'apps//api', 'apps/./api', 'apps\\api'])(
+    'rejects a non-normalized or absolute projectRoot: %s',
+    async (projectRoot) => {
+      await expect(resolveProjectRoot(repositoryRoot, projectRoot)).rejects.toThrow(
+        /projectRoot must be/,
+      );
+    },
+  );
 
-    await expect(resolveProjectRoot(workspacePath)).resolves.toBe(
-      workspacePath,
+  it('rejects a missing projectRoot before any runner can execute', async () => {
+    await expect(resolveProjectRoot(repositoryRoot, 'apps/missing')).rejects.toThrow(
+      /does not exist/,
     );
   });
 
-  it('resolves to the workspace root itself for an empty workspace', async () => {
-    await expect(resolveProjectRoot(workspacePath)).resolves.toBe(
-      workspacePath,
+  it('rejects a projectRoot symlink that escapes repositoryRoot', async () => {
+    await fs.symlink(outsideRoot, path.join(repositoryRoot, 'apps', 'escape'));
+    await expect(resolveProjectRoot(repositoryRoot, 'apps/escape')).rejects.toThrow(
+      /escapes repositoryRoot through a symlink/,
     );
   });
 
-  it('ignores a sibling __MACOSX/ folder when detecting the wrapping folder', async () => {
-    await fs.mkdir(path.join(workspacePath, 'my-project', 'src'), {
-      recursive: true,
-    });
-    await fs.writeFile(
-      path.join(workspacePath, 'my-project', 'package.json'),
-      '{}',
+  it('allows a symlink only when its resolved directory remains inside repositoryRoot', async () => {
+    await fs.symlink(
+      path.join(repositoryRoot, 'apps', 'api'),
+      path.join(repositoryRoot, 'apps', 'api-link'),
     );
-    await fs.mkdir(path.join(workspacePath, '__MACOSX', 'my-project'), {
-      recursive: true,
-    });
-    await fs.writeFile(
-      path.join(workspacePath, '__MACOSX', 'my-project', '._package.json'),
-      '',
-    );
-
-    const projectRoot = await resolveProjectRoot(workspacePath);
-
-    expect(projectRoot).toBe(path.join(workspacePath, 'my-project'));
-    // No debe haber movido ni eliminado __MACOSX: la detección es no-destructiva.
-    await expect(
-      fs.access(path.join(workspacePath, '__MACOSX', 'my-project')),
-    ).resolves.toBeUndefined();
-  });
-
-  it('ignores a sibling .DS_Store file when detecting the wrapping folder', async () => {
-    await fs.mkdir(path.join(workspacePath, 'my-project', 'src'), {
-      recursive: true,
-    });
-    await fs.writeFile(
-      path.join(workspacePath, 'my-project', 'package.json'),
-      '{}',
-    );
-    await fs.writeFile(path.join(workspacePath, '.DS_Store'), '');
-
-    await expect(resolveProjectRoot(workspacePath)).resolves.toBe(
-      path.join(workspacePath, 'my-project'),
-    );
-  });
-
-  it('still resolves to the workspace root when a real second top-level entry accompanies __MACOSX/', async () => {
-    await fs.mkdir(path.join(workspacePath, 'my-project'), {
-      recursive: true,
-    });
-    await fs.writeFile(
-      path.join(workspacePath, 'my-project', 'package.json'),
-      '{}',
-    );
-    await fs.mkdir(path.join(workspacePath, '__MACOSX'), { recursive: true });
-    await fs.writeFile(path.join(workspacePath, 'README.md'), 'hello');
-
-    await expect(resolveProjectRoot(workspacePath)).resolves.toBe(
-      workspacePath,
+    await expect(resolveProjectRoot(repositoryRoot, 'apps/api-link')).resolves.toBe(
+      path.join(repositoryRoot, 'apps', 'api-link'),
     );
   });
 });

@@ -1,5 +1,5 @@
 # Reviewer
-Revisa de forma independiente respecto del implementer. Verifica comportamiento, contratos, pruebas, manejo de errores, seguridad, observabilidad, limpieza y alineación con el alcance.
+Revisa independientemente y no corrige sus propios hallazgos. Antes del veredicto hace PULL de CONTRACT_SYNC; verifica contrato, pruebas, errores, observabilidad, alcance y, cuando aplica, aislamiento, secretos, límites, cleanup, red/capabilities y evidencia neutral del Sandbox.
 
 Comprueba que la implementación derive de las specs referenciadas, que no queden decisiones bloqueantes sin resolver y que la evidencia sea reproducible. Rechaza trabajo que dependa de supuestos no aprobados, contexto académico/externo no consolidado o código fuente fuera de `app/`.
 

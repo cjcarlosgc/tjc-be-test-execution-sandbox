@@ -8,6 +8,11 @@ export interface ProjectRunnerContext {
   workspacePath: string;
   /** Ruta absoluta donde el comando debe escribir el reporte JSON del runner. */
   resultsFilePath: string;
+  /**
+   * Rutas de test relativas al proyecto (POSIX) a ejecutar en exclusiva. Vacío
+   * o ausente = la suite configurada del proyecto (009, corte T-003).
+   */
+  testPaths?: string[];
 }
 
 /**

@@ -3,6 +3,7 @@ import type {
   RunnerFacts,
   TestCaseFact,
   TestCaseFactStatus,
+  TestCaseFailureKind,
 } from '../common/contracts/sandbox-execution.contract.js';
 import { InvalidArchiveError } from '../common/errors/sandbox-fact-error.js';
 import { MAX_TEST_CASES } from './runner-result-limits.js';
@@ -105,6 +106,7 @@ function collectTestCases(
             ? Math.round(Number.parseFloat(testcase.time) * 1000)
             : null,
         errorMessage: extractMessage(testcase),
+        failureKind: mapFailureKind(testcase),
       });
     }
   }
@@ -118,6 +120,17 @@ function mapTestCaseStatus(testcase: JunitTestCase): TestCaseFactStatus {
     return 'SKIPPED';
   }
   return 'PASSED';
+}
+
+/** JUnit de PHPUnit: `<failure>` = aserción no cumplida; `<error>` = excepción/Error. */
+function mapFailureKind(testcase: JunitTestCase): TestCaseFailureKind | null {
+  if (testcase.error !== undefined) {
+    return 'ERROR';
+  }
+  if (testcase.failure !== undefined) {
+    return 'ASSERTION';
+  }
+  return null;
 }
 
 function extractMessage(testcase: JunitTestCase): string | null {

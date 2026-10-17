@@ -1,6 +1,7 @@
 import type {
   EphemeralDownloadRef,
   ExecutionArtifactInput,
+  ExecutionPhase,
   ExecutionProfile,
   ExecutionResultFacts,
   ExecutionScope,
@@ -17,11 +18,13 @@ export interface ExecutionRecord {
   testRunId: string;
   projectVersionId: string;
   snapshot: EphemeralDownloadRef;
+  projectRoot: string;
   artifacts: ExecutionArtifactInput[];
   scope: ExecutionScope;
   targetIds: string[];
   executionProfile: ExecutionProfile;
   runnerHint: TestRunner;
+  phase: ExecutionPhase;
   status: SandboxExecutionStatus;
   stage: SandboxStage | null;
   failureCode: string | null;

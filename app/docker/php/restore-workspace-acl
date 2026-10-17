@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+# Fixed maintenance command invoked after untrusted PHP execution.  It runs
+# as the same non-root UID that owns Composer/PHPUnit descendants, has no
+# network or added capabilities, and can touch only the current /app mount.
+#
+# setfacl needs ownership of the object (the container has no CAP_FOWNER), so
+# only entries owned by this UID are repaired; host-owned entries (the
+# workspace root, snapshot, artifacts) are never modified by the runner and
+# keep the host's access.  `-exec ... \;` runs before find descends, so a
+# directory the code chmod'ed to 000 is repaired before it is read, and one
+# failing entry does not abort the sweep.
+host_uid=${1:?host UID is required}
+workspace=${2:-/app}
+
+case "$host_uid" in
+  *[!0-9]*|'') exit 64 ;;
+esac
+[ "$workspace" = /app ] || exit 64
+
+owner_uid=$(id -u)
+
+find -P "$workspace" -xdev -uid "$owner_uid" -type d -exec \
+  setfacl -m "u::rwx,u:${host_uid}:rwx,g::---,m::rwx,o::---" -- {} \;
+# Files do not need to be repaired before find descends, so they are batched
+# (`+`): one setfacl per file cost ~12 s on a workspace with vendor/.  A failing
+# entry does not stop the batch; find exits non-zero at the end, which the
+# best-effort recovery logs.
+find -P "$workspace" -xdev -uid "$owner_uid" -type f -exec \
+  setfacl -m "u::rw-,u:${host_uid}:r--,g::---,m::r--,o::---" -- {} +

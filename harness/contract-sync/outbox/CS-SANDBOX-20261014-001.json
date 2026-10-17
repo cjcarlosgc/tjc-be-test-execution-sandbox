@@ -1,0 +1,18 @@
+{
+  "id": "CS-SANDBOX-20261014-001",
+  "source": "sandbox",
+  "targets": [
+    "core"
+  ],
+  "changedContractAreas": [
+    "executions",
+    "evidence"
+  ],
+  "requiredActions": [
+    "Additive and backward compatible (WI-SANDBOX-007, approved by Jean 2026-10-14): StageDuration in INTEROP section 7.3 gains optional startedAt and completedAt (ISO-8601 UTC) per stage, alongside unchanged durationMs. Consumers must ignore unknown fields (INTEROP section 1). Incorporate into the canonical contract at your discretion; the Sandbox emits the fields from the commit in sourceRevision once deployed. No change to routes, codes, auth, idempotency or isolation."
+  ],
+  "sourceRevision": "19dfde456795c0a533d4823c25b546f3d372a970",
+  "status": "PENDING",
+  "createdAt": "2026-10-14T06:30:33.225Z",
+  "breaking": false
+}

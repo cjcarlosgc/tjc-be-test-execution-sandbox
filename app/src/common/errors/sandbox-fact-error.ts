@@ -50,6 +50,13 @@ export class InvalidArtifactPathError extends SandboxFactError {
   }
 }
 
+/** `projectRoot` recibido no puede usarse de forma segura bajo el snapshot. */
+export class InvalidProjectRootError extends SandboxFactError {
+  constructor(message: string) {
+    super('INVALID_PROJECT_ROOT', 'CONFIGURATION', message);
+  }
+}
+
 export class UnsupportedRunnerError extends SandboxFactError {
   constructor(message: string) {
     super('UNSUPPORTED_RUNNER', 'CONFIGURATION', message);
@@ -84,6 +91,27 @@ export class DependencyInstallFailedError extends SandboxFactError {
 export class TestExecutionFailedError extends SandboxFactError {
   constructor(message: string) {
     super('TEST_EXECUTION_FAILED', 'TEST_RUNTIME', message);
+  }
+}
+
+/**
+ * El runner no pudo cargar un archivo de test por un error de sintaxis del
+ * lenguaje (PHPUnit 11 deja el reporte vacío y escribe el motivo en stdout).
+ * No llegó a ejecutarse ningún test.
+ */
+export class TestCompilationFailedError extends SandboxFactError {
+  constructor(message: string) {
+    super('TEST_COMPILATION_FAILED', 'COMPILATION', message);
+  }
+}
+
+/**
+ * La imagen del profile no está disponible y no pudo descargarse ni
+ * construirse. Es un fallo de plataforma, no del proyecto.
+ */
+export class ImageUnavailableError extends SandboxFactError {
+  constructor(message: string) {
+    super('IMAGE_UNAVAILABLE', 'INFRASTRUCTURE', message);
   }
 }
 
@@ -127,5 +155,19 @@ export class OomKilledError extends SandboxFactError {
 export class WorkspaceDiskLimitExceededError extends SandboxFactError {
   constructor(message: string) {
     super('WORKSPACE_DISK_LIMIT_EXCEEDED', 'INFRASTRUCTURE', message);
+  }
+}
+
+/**
+ * La plataforma no pudo aprovisionar el workspace aislado del execution
+ * (p.ej. faltan las utilidades ACL en un host Linux). Es un fallo de
+ * infraestructura, no del proyecto; el mensaje no incluye rutas.
+ */
+export class WorkspaceProvisioningFailedError extends SandboxFactError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super('WORKSPACE_PROVISIONING_FAILED', 'INFRASTRUCTURE', message);
+    if (options?.cause !== undefined) {
+      this.cause = options.cause;
+    }
   }
 }

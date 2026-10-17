@@ -1,47 +1,39 @@
-# Workflow SDD
+# Harness V2 workflow — Test Execution Sandbox
 
-## Estados
+## Alcance y responsables
 
-`SELECTED -> SPEC_VERIFIED -> AWAITING_APPROVAL -> IN_PROGRESS -> IN_REVIEW -> DONE`
+Este harness coordina cambios de especificación e implementación sin alterar la frontera ciega del Sandbox. El código de producto vive exclusivamente en `app/`; un work item `HARNESS` no autoriza cambios funcionales, contractuales ni de infraestructura.
 
-`BLOCKED` puede utilizarse desde cualquier estado no terminal.
+Solo existen `leader`, `sdd-analyst`, `implementer`, `contract-reviewer` y `reviewer`. El `leader` es el único dueño de `harness/state.json`: selecciona el corte, **delega**, consolida handoffs, ejecuta fan-in y mueve el estado global. Para cambio no trivial no puede autoafirmar la delegación: el mínimo es `sdd-analyst -> implementer -> reviewer`. Implementer nunca aprueba la revisión final.
 
-## Flujo
+Todo subagente devuelve este handoff: `status`, `findings`, `blockers`, `filesAffected`, `evidence`, `recommendedNextStep`. El contexto es mínimo: analyst recibe work item/SDD/contrato/profiles/decisiones; implementer corte aprobado, adapter/profile, contrato y restricciones; contract-reviewer solo contrato/diff/DTOs/adapters; reviewer diff, criterios, pruebas y configuración Docker pertinente. Ningún rol requiere Console, RAG, GitHub, prompts o reglas de negocio.
 
-1. **SELECTED:** elegir un work item del backlog y registrar `storyIds`, `sprint`, `specPaths`.
-2. **SPEC_VERIFIED:** el analyst confirma que spec/plan/tasks son coherentes, que dependencias existen, que la puerta de decisiones fue evaluada y que no quedan decisiones pendientes que bloqueen el alcance.
-3. **AWAITING_APPROVAL:** esperar aprobación humana del alcance cuando el cambio altere comportamiento, contratos o arquitectura.
-4. **IN_PROGRESS:** implementer desarrolla únicamente el alcance aprobado dentro de `app/`.
-5. **IN_REVIEW:** reviewer verifica contrato, pruebas, errores, seguridad, observabilidad y no ampliación de alcance.
-6. **DONE:** lint/test/build pasan, evidencia se registra en `harness/reports/`, tareas aplicables quedan cerradas y `activeWorkItem` vuelve a `null`.
+## Estados, decisiones y reintentos
 
-## Puerta de decisiones
+`SELECTED -> SPEC_VERIFIED -> AWAITING_APPROVAL -> IN_PROGRESS -> IN_REVIEW -> DONE`. Desde un estado no terminal se escala a `BLOCKED` o `DECISION_REQUIRED`, sin inventar resoluciones. Antes de `SPEC_VERIFIED`, analyst revisa PENDING/PROPOSED de las rutas del corte y registra IDs/`Blocks`; una decisión bloquea solo si `Blocks` alcanza ese corte.
 
-Antes de pasar a `SPEC_VERIFIED`:
+`execution.reviewCycles` cuenta devoluciones que requieren corrección y su máximo es `execution.maxReviewCycles` (2). Antes de un tercer ciclo leader escala a `BLOCKED` (falta evidencia/técnica) o `DECISION_REQUIRED` (requiere decisión humana); no reinicia el contador.
 
-1. Revisar únicamente `specPaths` y `transversalPaths` del work item activo, además de la constitución y dependencias referenciadas.
-2. Identificar decisiones `PENDING` o `PROPOSED` mediante sus IDs y su campo `Blocks`.
-3. Registrar los IDs aplicables en `decisionGate`; no copiar el texto de las decisiones al estado.
-4. Si existe un ID bloqueante, usar `BLOCKED` y formular una pregunta concreta. Las decisiones de otras features no bloquean globalmente.
-5. Si aparece una decisión bloqueante durante la implementación, detener el punto afectado y volver a `BLOCKED`; no elegir silenciosamente.
+## Delegación, fan-out/fan-in y gates
 
-Ejemplo: `DEC-MET-001` no bloquea la ejecución Jest/Vitest ordinaria. Si el work item intenta integrar StrykerJS, `decisionGate.blockingDecisionIds=["DEC-MET-001"]`, el estado pasa a `BLOCKED` y se formula la pregunta de la spec.
+1. Leader registra el work item, ejecuta PULL `start` y delega `sdd-analyst`; registra su handoff antes de `SPEC_VERIFIED`.
+2. Si el contrato está en discusión, delega contract-reviewer previo. Delega implementer con corte aprobado; este hace PULL `before-implementation-delivery` antes de `COMPLETED`.
+3. Al entrar a `IN_REVIEW`, leader hace PULL `before-review` y **fan-out** a reviewer y, si hay impacto contractual, contract-reviewer. Son revisiones independientes.
+4. Leader hace **fan-in**, registra ambos handoffs y gates. Sin impacto contractual, `contractReviewed=NOT_APPLICABLE` exige razón en evidencia, no aprobación simulada.
+5. Antes de `DONE`, hace PULL `before-done`, validador y checks técnicos. `DONE` exige gates obligatorios `PASSED`, cero syncs relevantes pendientes y cero decisiones bloqueantes.
 
-## Handoffs externos
+El patrón ejecutable está en `harness/examples/fan-out-fan-in.json` y el validador rechaza un cierre que lo viole.
 
-Separar decisiones aprobadas, propuestas y pendientes; contrastarlas con la spec; consolidar solo cambios aprobados. Excluir bibliografía, personas y organización académica que no alteren contratos implementables.
+## CONTRACT_SYNC persistente
 
-## Cambios de SDD
+Los mensajes JSON versionados se conservan en `harness/contract-sync/outbox` e `inbox`. Publicar solo escribe el outbox local; importar copia explícitamente un mensaje recibido al inbox y nunca modifica Core. El protocolo ejecutable está en `harness/contract-sync/README.md`.
 
-No se agregan “enmiendas” acumulativas dentro de una spec. Una decisión aprobada modifica el texto canónico, actualiza plan/tasks afectados, incrementa versión si corresponde y registra el cambio en `CHANGELOG.md`. `sddVersion` representa la línea base conjunta y debe quedar homologada en los tres repositorios antes de commit; `SYSTEM-*` e `INTEROP-*` mantienen versionado propio. Git conserva el historial fino.
+PULL es obligatorio en `start`, `before-implementation-delivery`, `before-review` y `before-done`. Un PENDING dirigido a Sandbox es relevante si cambia `/executions`, DTO, `phase`, `executionProfile`, auth, headers, idempotencia, estados o evidencia; se registra y exige contract review. Bloquea DONE hasta que una acción explícita con evidencia lo deje `ACKNOWLEDGED` o `RESOLVED`; nunca se borra. Sandbox solo publica si un cambio contractual suyo ya fue aprobado; Core sigue siendo canónico.
 
-## Commits y cierre de sprint
+## Checklist de reviewer
 
-La política canónica está en `spec/constitution/delivery-workflow.md`.
+Siempre revisa alcance, SDD, contrato, errores, observabilidad, pruebas y evidencia reproducible. Si toca Docker, ejecución no confiable, tokens, red, filesystem, límites o profiles, registra: Sandbox sin credenciales GitHub/RAG; Bearer no debilitado y secretos fuera de container/logs; límites/cleanup/aislamiento preservados; red/capabilities justificadas; y evidencia neutral para que Core clasifique. No existe security-reviewer: estos controles son del reviewer. Si no aplica, `isolationChecksPassed=NOT_APPLICABLE` debe justificarlo.
 
-1. Durante `IN_PROGRESS`, dividir el trabajo en commits coherentes y verificables; una HU puede usar varios commits y un commit puede referenciar varias HU.
-2. Usar un asunto compatible con Conventional Commits y añadir al cuerpo `Refs: HUxx[, HUyy...]` con todas las HU afectadas. `Decisions: DEC-...` es opcional y no sustituye las HU.
-3. Completar la revisión de cada work item antes de `DONE`.
-4. Al cerrar el sprint, el reviewer revisa el rango acumulado que se pretende publicar y registra el resultado en `harness/reports/sprint-<N>-review.md`; una entrega extraordinaria usa `harness/reports/delivery-<scope>-review.md`.
-5. Solo un veredicto `APPROVED`, con lint/test/build aplicables en verde y sin cambios posteriores al commit revisado, habilita el push. Se admite después un único commit `docs(review)` que solo incorpore esos reportes, previa comprobación del reviewer; cualquier otra diferencia exige nueva revisión completa.
-6. Commit y push continúan requiriendo solicitud humana explícita. Un push extraordinario antes de cerrar el sprint requiere la misma revisión previa.
+## Cierre y Git
+
+Antes de cerrar: lint, test, build, typecheck aplicable, validador y pruebas reales si el cambio/entorno lo requieren. Reportes en `harness/reports/`. Commits, revisión de rango y push siguen `spec/constitution/delivery-workflow.md`; este workflow no amplía autorización externa.

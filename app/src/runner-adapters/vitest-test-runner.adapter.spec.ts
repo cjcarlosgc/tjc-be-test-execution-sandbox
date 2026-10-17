@@ -62,4 +62,14 @@ describe('VitestTestRunnerAdapter', () => {
       '--outputFile=/tmp/results.json',
     ]);
   });
+
+  it('appends only the selected test paths when testPaths is given (009, corte T-003)', () => {
+    expect(
+      adapter.buildCommand({
+        workspacePath,
+        resultsFilePath: '/app/r.xml',
+        testPaths: ['tests/Unit/FooTest.php', 'tests/Unit/BarTest.php'],
+      }),
+    ).toEqual(['node_modules/.bin/vitest', 'run', '--reporter=json', '--outputFile=/app/r.xml', 'tests/Unit/FooTest.php', 'tests/Unit/BarTest.php']);
+  });
 });

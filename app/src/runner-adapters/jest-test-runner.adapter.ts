@@ -41,6 +41,10 @@ export class JestTestRunnerAdapter implements TestRunnerAdapter {
       '--ci',
       '--json',
       `--outputFile=${context.resultsFilePath}`,
+      // Rutas exactas, no patrones regex (el modo por defecto de Jest).
+      ...(context.testPaths?.length
+        ? ['--runTestsByPath', ...context.testPaths]
+        : []),
     ];
   }
 

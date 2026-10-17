@@ -5,7 +5,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveSandboxLimits } from '../common/config/sandbox-limits.config.js';
 import type {
+  ExecutionArtifactInput,
   ExecutionEvidenceFact,
+  ExecutionPhase,
+  ExecutionProfile,
   RunnerFacts,
   SandboxExecutionStatus,
   SandboxFailureFact,
@@ -14,9 +17,11 @@ import type {
 } from '../common/contracts/sandbox-execution.contract.js';
 import {
   DependencyInstallFailedError,
+  InvalidArtifactPathError,
   OomKilledError,
   SandboxFactError,
   SandboxTimeoutError,
+  TestCompilationFailedError,
   TestEnvironmentConfigurationError,
   TestExecutionFailedError,
   WorkspaceDiskLimitExceededError,
@@ -43,6 +48,20 @@ const RESULTS_FILENAME = '.sandbox-results.json';
 /** El workspace siempre se monta en `/app` dentro del container (container-runner.service.ts). */
 const CONTAINER_WORKSPACE_MOUNT = '/app';
 const MAX_EVIDENCE_BYTES = 8 * 1024;
+
+/**
+ * Duración y marcas ISO de inicio/fin de una etapa (hechos de tiempo; la
+ * ventana `[startedAt, completedAt]` es exactamente la que se mide).
+ */
+function stageTiming(stage: SandboxStage, startedAtMs: number): StageDuration {
+  const completedAtMs = Date.now();
+  return {
+    stage,
+    durationMs: completedAtMs - startedAtMs,
+    startedAt: new Date(startedAtMs).toISOString(),
+    completedAt: new Date(completedAtMs).toISOString(),
+  };
+}
 
 /**
  * Orquesta el pipeline completo: `PREPARING` (002/003) →
@@ -126,15 +145,13 @@ export class ExecutionPipelineService {
         await fs.rm(snapshotZipPath, { force: true });
       }
 
-      // `projectRoot` es una detección de solo lectura (nunca mueve/renombra
-      // nada en disco): si el snapshot vino envuelto en una única carpeta
-      // contenedora de nivel superior, resuelve a esa carpeta; si no, es el
-      // propio `workspacePath`. Un aplanado físico desalinearía
-      // `artifact.relativePath` — Core lo sigue enviando relativo a la
-      // estructura original, envoltorio incluido — así que
-      // `applyArtifacts` se resuelve siempre contra `workspacePath` en
-      // crudo, nunca contra `projectRoot`.
-      const projectRoot = await resolveProjectRoot(workspacePath);
+      // Core entrega la raíz efectiva ya congelada. Sandbox no detecta ni
+      // elige proyectos: solo comprueba que la ruta exista bajo el snapshot
+      // y que un symlink no pueda escapar del repositoryRoot.
+      const projectRoot = await resolveProjectRoot(
+        workspacePath,
+        record.projectRoot,
+      );
       const containerWorkingDir = this.toContainerWorkingDir(
         workspacePath,
         projectRoot,
@@ -143,6 +160,14 @@ export class ExecutionPipelineService {
       const appliedArtifactIds = await this.artifactMaterializer.applyArtifacts(
         workspacePath,
         record.artifacts,
+      );
+      // Se valida en PREPARING: un artefacto fuera del proyecto no debe
+      // consumir la instalación con red antes de fallar.
+      const testPaths = selectTestPaths(
+        record.phase,
+        record.artifacts,
+        workspacePath,
+        projectRoot,
       );
 
       // `resultsFilePath` es una ruta absoluta dentro del container (el
@@ -160,10 +185,7 @@ export class ExecutionPipelineService {
         record.runnerHint,
         { workspacePath: projectRoot, resultsFilePath },
       );
-      stageDurations.push({
-        stage: 'PREPARING',
-        durationMs: Date.now() - preparingStartedAt,
-      });
+      stageDurations.push(stageTiming('PREPARING', preparingStartedAt));
 
       await assertSupportedManifest(record.executionProfile, projectRoot);
 
@@ -179,10 +201,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - installStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, installStartedAt));
       if (installResult.oomKilled) {
         throw new OomKilledError(
           'dependency installation was killed for exceeding the memory limit',
@@ -219,7 +238,11 @@ export class ExecutionPipelineService {
       const command = adapter.buildCommand({
         workspacePath: projectRoot,
         resultsFilePath,
+        testPaths,
       });
+      // Un reporte que ya venía en el snapshot (o de otra etapa) no puede
+      // hacerse pasar por el de esta ejecución.
+      await fs.rm(hostResultsFilePath, { force: true, recursive: true });
       const testStartedAt = Date.now();
       const testResult = await this.containerRunner.runTestCommand(
         executionId,
@@ -229,10 +252,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - testStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, testStartedAt));
       if (testResult.oomKilled) {
         throw new OomKilledError(
           'test execution was killed for exceeding the memory limit',
@@ -258,6 +278,11 @@ export class ExecutionPipelineService {
             : null,
         },
       );
+      await this.recoverPhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+        record.executionProfile,
+      );
       if (testResult.timedOut) {
         throw new SandboxTimeoutError(
           'TEST_TIMEOUT',
@@ -266,18 +291,16 @@ export class ExecutionPipelineService {
         );
       }
 
-      let rawResults: string;
-      try {
-        rawResults = await fs.readFile(hostResultsFilePath, 'utf8');
-      } catch (error) {
-        const configurationCrash = extractFatalConfigurationError(
+      const rawResults = await fs
+        .readFile(hostResultsFilePath, 'utf8')
+        .catch(() => null);
+      if (rawResults === null || rawResults.trim().length === 0) {
+        throw missingReportError(
+          record.executionProfile,
+          testResult.exitCode,
+          testResult.stdout,
           testResult.stderr,
-        );
-        if (configurationCrash) {
-          throw new TestEnvironmentConfigurationError(configurationCrash);
-        }
-        throw new TestExecutionFailedError(
-          `runner did not produce a results file (exitCode=${testResult.exitCode}): ${(error as Error).message}`,
+          rawResults === null ? 'missing' : 'empty',
         );
       }
       const { truncated: reportTruncated, originalBytes: reportBytes } =
@@ -336,8 +359,40 @@ export class ExecutionPipelineService {
         `execution ${executionId} ${status} during ${currentStage}: ${failure.code} ${failure.message}`,
       );
       if (workspacePath) {
+        // Failure paths (install error, OOM, timeout) skip the post-test
+        // recovery above; repair runner-owned entries before removal.
+        await this.recoverPhpWorkspaceAccess(
+          executionId,
+          workspacePath,
+          record.executionProfile,
+        );
         await this.workspaceManager.cleanup(workspacePath);
       }
+    }
+  }
+
+  /**
+   * Restores host access to runner-owned PHP workspace entries. Best effort:
+   * a recovery failure is observable in the log and must never replace the
+   * execution's own outcome (for example `TEST_TIMEOUT`).
+   */
+  private async recoverPhpWorkspaceAccess(
+    executionId: string,
+    workspacePath: string,
+    executionProfile: string,
+  ): Promise<void> {
+    if (executionProfile !== 'PHP_LARAVEL_PHPUNIT') {
+      return;
+    }
+    try {
+      await this.containerRunner.restorePhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `execution ${executionId} workspace ACL recovery failed: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -413,6 +468,71 @@ export class ExecutionPipelineService {
       message: error instanceof Error ? error.message : 'unknown error',
     };
   }
+}
+
+/**
+ * `GENERATED_TESTS` con artefactos ejecuta solo esos archivos; el resto
+ * (BASELINE o sin artefactos) ejecuta la suite configurada (009, corte
+ * T-003). `relativePath` llega relativo a la raíz cruda del workspace y el
+ * comando corre en `projectRoot`, así que se re-expresa respecto de este.
+ */
+export function selectTestPaths(
+  phase: ExecutionPhase,
+  artifacts: ExecutionArtifactInput[],
+  workspacePath: string,
+  projectRoot: string,
+): string[] {
+  if (phase !== 'GENERATED_TESTS' || artifacts.length === 0) {
+    return [];
+  }
+  return artifacts.map((artifact) => {
+    const relativeToProject = path.relative(
+      projectRoot,
+      path.join(workspacePath, artifact.relativePath),
+    );
+    if (
+      relativeToProject.startsWith('..') ||
+      path.isAbsolute(relativeToProject)
+    ) {
+      throw new InvalidArtifactPathError(
+        `artifact ${artifact.artifactId} is outside the project root: ${artifact.relativePath}`,
+      );
+    }
+    return relativeToProject.split(path.sep).join('/');
+  });
+}
+
+/**
+ * PHPUnit 11 crea el JUnit vacío (0 bytes) y escribe en stdout "An error
+ * occurred inside PHPUnit ... syntax error, unexpected ..." cuando un archivo
+ * de test no compila (verificado contra PHPUnit 11.5).
+ */
+const PHP_SYNTAX_ERROR_PATTERN =
+  /syntax error, unexpected|Parse error|\bParseError\b|Unclosed '[[{(]'/;
+
+function missingReportError(
+  executionProfile: ExecutionProfile,
+  exitCode: number | null,
+  stdout: string,
+  stderr: string,
+  reportState: 'missing' | 'empty',
+): Error {
+  const configurationCrash = extractFatalConfigurationError(stderr);
+  if (configurationCrash) {
+    return new TestEnvironmentConfigurationError(configurationCrash);
+  }
+  const output = `${stdout}\n${stderr}`;
+  if (
+    executionProfile === 'PHP_LARAVEL_PHPUNIT' &&
+    PHP_SYNTAX_ERROR_PATTERN.test(output)
+  ) {
+    return new TestCompilationFailedError(
+      `test files could not be compiled: ${truncate(output.trim(), 500)}`,
+    );
+  }
+  return new TestExecutionFailedError(
+    `runner results file is ${reportState} (exitCode=${exitCode}): ${truncate((stderr || stdout).trim(), 500)}`,
+  );
 }
 
 /**
