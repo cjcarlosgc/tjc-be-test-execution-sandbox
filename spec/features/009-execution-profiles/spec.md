@@ -2,7 +2,7 @@
 
 **Estado:** APROBADO
 **Story IDs:** HU43
-**Contrato:** SYSTEM-2.2 / INTEROP-2.2
+**Contrato:** SYSTEM-2.2 (línea base Sandbox) / INTEROP-2.8 (campo Core→Sandbox `projectRoot`)
 
 ## Objetivo
 
@@ -16,6 +16,9 @@ Ejecutar solicitudes neutrales mediante un profile explícito, preservando `NODE
 - El container, límites, red por etapas, timeouts, redacción, hashes y cleanup se aplican a ambos profiles.
 - Baseline y propuesta son fases neutrales. Sandbox devuelve hechos; Core decide la clasificación.
 - Una combinación profile/runner no soportada falla explícitamente, sin fallback a otro runtime.
+- `CreateSandboxExecutionRequest.projectRoot` es opcional por compatibilidad; si se omite se interpreta como `.`. Cuando llega, es una ruta POSIX relativa, normalizada, existente bajo `repositoryRoot`, sin absoluta, traversal ni escape por symlink.
+- `PHP_LARAVEL_PHPUNIT` instala y ejecuta Composer/PHPUnit con cwd en `repositoryRoot/projectRoot`. La materialización y validación de `ExecutionArtifactInput.relativePath` mantienen rutas canónicas relativas al repositorio; el cambio de cwd no elimina el prefijo del subproyecto.
+- `NODE_TYPESCRIPT` conserva `projectRoot = .` y sus reglas actuales. Sandbox no detecta ni elige la raíz: Core envía el `effectiveProjectRoot` congelado.
 
 ## Frontera ciega
 
@@ -48,4 +51,28 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 
 ### Fuera de este corte
 
-Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core).
+Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
+
+## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU43)
+
+**Estado:** implementado y verificado localmente.
+
+## WI-SANDBOX-002 — Identidad local PHP no-root (HU43)
+
+**Estado:** aprobado por el usuario (2026-10-12) para Docker local.
+
+La imagen PHP gestionada crea `sandbox` (UID/GID 10001), identidad obligatoria de `PHP_LARAVEL_PHPUNIT`. Antes de la primera instalación, un bootstrap efímero, sin red y memoizado inicializa recursivamente exclusivamente el named volume de cache Composer con ese ownership; la instalación y los tests nunca ejecutan como root. El bootstrap conserva `CapDrop: ['ALL']`, añade únicamente `CHOWN` y no monta el workspace. `pnpm-workspace.yaml` declara explícitamente la raíz. No se selecciona proveedor, VM, GCE, despliegue ni se modifica contrato alguno.
+
+El WI conserva SDD 2.1 y la decisión de un único Project por repositorio. Core detecta un único candidato `composer.json` y envía la raíz congelada; Sandbox solo valida y aplica el campo. No hay selección en Console ni política local para múltiples candidatos.
+
+## WI-SANDBOX-005 — Acceso ACL al workspace para PHP no-root (habilitador técnico, trazado a HU11)
+
+**Estado:** aprobado por el usuario (2026-10-12) para registrar y corregir el corte técnico. El usuario decidió trazar el corte a `HU11` (`storyIds: ["HU11"]`, commit con `Refs: HU11`); no se crea una historia nueva ni se cambia la política de trazabilidad.
+
+La raíz privada de cada workspace debe seguir aislada de otros usuarios y ejecuciones, pero permitir al runner PHP no-root UID/GID 10001 leer y escribir únicamente el workspace de su ejecución. El proceso host que administra el workspace debe conservar acceso para medirlo, leer evidencia y limpiarlo. Se concederán permisos POSIX ACL acotados; queda prohibido abrir permisos globales (`0777`) o ejecutar el profile PHP como root.
+
+La configuración ACL se aplica por workspace antes de materializar el snapshot/artefactos y se hereda a los archivos y directorios creados con Composer y durante las pruebas. La implementación debe fallar explícitamente y de forma segura si no puede establecer o verificar los permisos requeridos. Debe probar aislamiento entre workspaces, lectura/escritura del runner, acceso/limpieza del proceso host y el caso adversarial en que código no confiable cambie permisos de archivos/directorios que posee; no se promete impedir que un contenedor cause denegación de servicio sobre sus propios archivos.
+
+La utilidad `setfacl` del host (paquete Linux `acl`) es un prerrequisito de operación para el despliegue actual; este WI no la instala en la VM ni realiza otros cambios externos. No se modifican `SDD 2.1`, `SYSTEM-2.2`, `INTEROP-2.8`, autenticación, límites, ni la identidad PHP 10001.
+
+**Plataformas y clasificación de fallos (corrección 2026-10-12):** la ACL se aplica y verifica solo cuando el host es Linux, donde sigue siendo obligatoria y falla cerrada. En hosts sin soporte ACL (macOS/Windows con Docker Desktop, donde el montaje bind mapea la propiedad) se omite y se registra en log; esos hosts son solo de desarrollo local. Si en Linux faltan `setfacl`/`getfacl` o no se pueden verificar las entradas, la ejecución falla con `category: INFRASTRUCTURE` y `code: WORKSPACE_PROVISIONING_FAILED` (campo `code` libre de `SandboxFailureFact`; sin cambio de contrato). `acl` es prerrequisito de **todos** los perfiles en hosts Linux, no solo PHP. La recuperación de ACL en contenedor repara únicamente entradas del UID 10001 (único con propiedad para `setfacl`); el host limpia primero con `rm` y solo si falla restaura entradas propias. La imagen gestionada `tjc-sandbox-php:8.3-nonroot` debe reconstruirse al desplegar este corte (se construye solo si no existe).

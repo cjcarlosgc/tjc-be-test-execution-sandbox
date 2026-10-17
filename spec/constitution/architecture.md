@@ -1,6 +1,6 @@
 # Arquitectura
 
-**Contratos compartidos:** SYSTEM-2.2 / INTEROP-2.2
+**Contratos aplicables:** SYSTEM-2.2 (baseline Sandbox) / INTEROP-2.8 (`projectRoot` Core→Sandbox)
 
 `POST /executions -> validar profile/request -> descargar snapshot -> workspace seguro -> materializar tests -> container aislado -> instalar -> compilar si aplica -> ejecutar runner -> normalizar evidencia -> cleanup`.
 

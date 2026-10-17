@@ -1,6 +1,6 @@
 # Product Backlog global
 
-**Estado:** línea base global vigente SDD 2.1 / SYSTEM-2.2 / INTEROP-2.2
+**Estado:** baseline local Sandbox SDD 2.1 / SYSTEM-2.2; INTEROP-2.8 se adopta para `projectRoot` en `WI-SANDBOX-001`. La homologación global continúa pendiente.
 
 Este backlog es compartido conceptualmente por los tres repositorios. Cada SDD local indica su participación concreta. La numeración expresa trazabilidad y orden lógico, no ejecución estrictamente secuencial.
 

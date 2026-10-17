@@ -14,6 +14,10 @@ FROM ${COMPOSER_IMAGE} AS composer
 
 FROM ${PHP_IMAGE}
 RUN apt-get update \
- && apt-get install -y --no-install-recommends unzip \
+ && apt-get install -y --no-install-recommends acl unzip \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+COPY restore-workspace-acl /usr/local/bin/restore-workspace-acl
+RUN chmod 0755 /usr/local/bin/restore-workspace-acl
+RUN groupadd --gid 10001 sandbox \
+ && useradd --uid 10001 --gid sandbox --create-home --shell /usr/sbin/nologin sandbox

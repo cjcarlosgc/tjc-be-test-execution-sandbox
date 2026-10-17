@@ -4,10 +4,12 @@ import {
   IsIn,
   IsOptional,
   IsUUID,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { EphemeralDownloadRefDto } from './ephemeral-download-ref.dto.js';
 import { ExecutionArtifactInputDto } from './execution-artifact-input.dto.js';
+import { IsProjectRootPath } from '../../common/validation/relative-path.validator.js';
 import type {
   ExecutionPhase,
   ExecutionProfile,
@@ -28,6 +30,11 @@ export class CreateSandboxExecutionRequestDto {
   @ValidateNested()
   @Type(() => EphemeralDownloadRefDto)
   snapshot!: EphemeralDownloadRefDto;
+
+  /** INTEROP-2.8 §7.2. Omitido conserva la raíz legacy `.`. */
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsProjectRootPath()
+  projectRoot?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

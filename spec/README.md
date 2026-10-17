@@ -6,13 +6,13 @@ Orden de lectura: `contracts/system-contract.md` -> `contracts/interoperability-
 
 ## Contrato entre componentes
 
-[`contracts/system-contract.md`](contracts/system-contract.md) es la copia espejo `SYSTEM-2.2` del contrato común de los tres componentes. Su propietario canónico es RAG Core; esta copia no puede redefinirlo.
+[`contracts/system-contract.md`](contracts/system-contract.md) conserva el espejo Sandbox `SYSTEM-2.2`. Su propietario canónico es RAG Core; esta copia no puede redefinirlo. Este corte no cambia la línea base local `SDD 2.1` ni declara homologación global.
 
-[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) es la copia espejo `INTEROP-2.2` con rutas, DTOs, estados, errores y transporte universales.
+[`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) se actualiza a `INTEROP-2.8` para el campo Core→Sandbox `projectRoot`, conforme al alcance de `CS-CORE-20261011-002`; el WI local registra que SYSTEM y la línea base global no cambian en este corte.
 
 ## Versionado
 
-La especificación vigente se consolida; no se acumulan enmiendas. Los cambios se registran en `CHANGELOG.md` y en Git. `sddVersion` representa la línea base conjunta de los tres repositorios.
+La especificación vigente se consolida; no se acumulan enmiendas. Los cambios se registran en `CHANGELOG.md` y en Git. `sddVersion` representa la línea base local del Sandbox: `2.1`; no se declara una línea base global común hasta homologación explícita.
 
 ## Estados de decisión
 

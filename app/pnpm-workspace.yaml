@@ -1,3 +1,6 @@
+packages:
+  - .
+
 allowBuilds:
   # Transitive optional deps of dockerode's docker-modem (SSH transport to a
   # remote Docker host). The Sandbox only connects via unix socket/TCP

@@ -55,6 +55,7 @@ function baseRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
       sha256: 'a'.repeat(64),
       sizeBytes: 10,
     },
+    projectRoot: '.',
     artifacts: [],
     scope: 'BATCH',
     targetIds: [],
@@ -227,14 +228,17 @@ describe('ExecutionPipelineService', () => {
     // mismo bind mount); el fake escribe directo en la ruta del host.
     const hostResultsFilePath = path.join(workspaceDir, '.sandbox-results.json');
     const containerRunner = {
-      installDependencies: (_executionId: string, wp: string) =>
+      installDependencies: vi.fn((_executionId: string, wp: string) =>
         (options.installDependencies ?? (async () => okContainerResult()))(wp),
-      runTestCommand: () =>
+      ),
+      runTestCommand: vi.fn(() =>
         options.runTestCommand?.(hostResultsFilePath) ??
         fs
           .writeFile(hostResultsFilePath, PASSING_REPORT, 'utf8')
           .then(() => okContainerResult()),
-    } as unknown as ContainerRunner;
+      ),
+      restorePhpWorkspaceAccess: vi.fn(async () => {}),
+    };
 
     const pipeline = new ExecutionPipelineService(
       repository,
@@ -243,7 +247,7 @@ describe('ExecutionPipelineService', () => {
       downloadService,
       artifactMaterializer,
       runnerAdapterRegistry,
-      containerRunner,
+      containerRunner as unknown as ContainerRunner,
       fakeConfigService(options.configOverrides ?? {}),
     );
 
@@ -267,6 +271,21 @@ describe('ExecutionPipelineService', () => {
     expect(
       updated?.result?.stageDurations.map((d) => d.stage),
     ).toEqual(['PREPARING', 'INSTALLING_DEPENDENCIES', 'RUNNING_TESTS']);
+    // WI-SANDBOX-007: marcas ISO por etapa, ordenadas y coherentes con la
+    // duración; aditivas, no sustituyen a `durationMs`.
+    const stages = updated?.result?.stageDurations ?? [];
+    for (const stage of stages) {
+      expect(stage.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(stage.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(Date.parse(stage.completedAt!) - Date.parse(stage.startedAt!)).toBe(
+        stage.durationMs,
+      );
+    }
+    for (let index = 1; index < stages.length; index += 1) {
+      expect(Date.parse(stages[index]!.startedAt!)).toBeGreaterThanOrEqual(
+        Date.parse(stages[index - 1]!.completedAt!),
+      );
+    }
     expect(updated?.result?.evidence.map((e) => e.kind)).toEqual([
       'TEST_STDOUT',
       'TEST_STDERR',
@@ -291,7 +310,7 @@ describe('ExecutionPipelineService', () => {
       ],
       parseResult: (raw) => parsePhpunitJunitXml(raw),
     };
-    const { pipeline, repository, workspaceDir } = await build({
+    const { pipeline, repository, workspaceDir, containerRunner } = await build({
       withPnpmLockfile: false,
       resolveRunner: async () => phpFakeAdapter,
       runTestCommand: async (resultsFilePath) => {
@@ -312,6 +331,10 @@ describe('ExecutionPipelineService', () => {
     expect(updated?.result?.facts?.executionProfile).toBe('PHP_LARAVEL_PHPUNIT');
     expect(updated?.result?.facts?.runner).toBe('PHPUNIT');
     expect(updated?.result?.facts?.passed).toBe(true);
+    expect(containerRunner.restorePhpWorkspaceAccess).toHaveBeenCalledWith(
+      record.executionId,
+      workspaceDir,
+    );
   });
 
   it('fails PHP_LARAVEL_PHPUNIT executions with UNSUPPORTED_PACKAGE_MANAGER when composer.json is missing', async () => {
@@ -452,7 +475,7 @@ describe('ExecutionPipelineService', () => {
     // fakes), para que `readPackageJson`/`hasAnyConfigFile` — invocados
     // dentro de `supports()` — se ejerciten de verdad contra la ruta
     // resuelta, no una fake que ignora el contexto.
-    const record = baseRecord();
+    const record = baseRecord({ projectRoot: 'my-project' });
     const wrappedZip = await buildZip({
       'my-project/package.json':
         '{"name":"demo","devDependencies":{"vitest":"^3.0.0"}}',
@@ -562,6 +585,12 @@ describe('ExecutionPipelineService', () => {
 
     const updated = repository.findById(record.executionId);
     expect(updated?.status).toBe('FAILED');
+    // WI-SANDBOX-007: la etapa que falló también conserva sus marcas.
+    const failedStage = updated?.result?.stageDurations.at(-1);
+    expect(failedStage?.stage).toBe('INSTALLING_DEPENDENCIES');
+    expect(Date.parse(failedStage!.completedAt!)).toBeGreaterThanOrEqual(
+      Date.parse(failedStage!.startedAt!),
+    );
     expect(updated?.failureCode).toBe('OOM_KILLED');
     expect(updated?.result?.failure?.category).toBe('INFRASTRUCTURE');
     expect(updated?.result?.failure?.stage).toBe('INSTALLING_DEPENDENCIES');
@@ -810,6 +839,31 @@ describe('ExecutionPipelineService', () => {
       await pipeline.run(record.executionId);
 
       expect(contexts[0].testPaths).toEqual([]);
+    });
+
+    it('runs PHP install and PHPUnit with the nested cwd while artifacts remain repo-relative', async () => {
+      const record = phpRecord({
+        projectRoot: 'apps/api',
+        artifacts: [artifact('apps/api/tests/Unit/PriceTest.php')],
+      });
+      const { pipeline, repository, workspaceDir, containerRunner, contexts } =
+        await buildPhp({
+          runTestCommand: async (resultsFilePath) => {
+            await fs.writeFile(resultsFilePath, PHPUNIT_PASSING_REPORT, 'utf8');
+            return okContainerResult();
+          },
+        });
+      await fs.mkdir(path.join(workspaceDir, 'apps', 'api'), { recursive: true });
+      await fs.writeFile(path.join(workspaceDir, 'apps', 'api', 'composer.json'), '{}');
+      repository.save(record);
+
+      await pipeline.run(record.executionId);
+
+      expect(repository.findById(record.executionId)?.status).toBe('COMPLETED');
+      expect(contexts[0].workspacePath).toBe(path.join(workspaceDir, 'apps', 'api'));
+      expect(contexts[0].testPaths).toEqual(['tests/Unit/PriceTest.php']);
+      expect(containerRunner.installDependencies.mock.calls[0]?.[4]).toBe('/app/apps/api');
+      expect(containerRunner.runTestCommand.mock.calls[0]?.[5]).toBe('/app/apps/api');
     });
 
     it('fails with TEST_COMPILATION_FAILED/COMPILATION when PHPUnit leaves an empty report after a PHP syntax error', async () => {

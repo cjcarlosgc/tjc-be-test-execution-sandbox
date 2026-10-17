@@ -50,6 +50,20 @@ const CONTAINER_WORKSPACE_MOUNT = '/app';
 const MAX_EVIDENCE_BYTES = 8 * 1024;
 
 /**
+ * Duración y marcas ISO de inicio/fin de una etapa (hechos de tiempo; la
+ * ventana `[startedAt, completedAt]` es exactamente la que se mide).
+ */
+function stageTiming(stage: SandboxStage, startedAtMs: number): StageDuration {
+  const completedAtMs = Date.now();
+  return {
+    stage,
+    durationMs: completedAtMs - startedAtMs,
+    startedAt: new Date(startedAtMs).toISOString(),
+    completedAt: new Date(completedAtMs).toISOString(),
+  };
+}
+
+/**
  * Orquesta el pipeline completo: `PREPARING` (002/003) →
  * `INSTALLING_DEPENDENCIES` (004, `DEC-SBX-002` APROBADO: solo pnpm) →
  * `RUNNING_TESTS` (005) → `COMPLETED`/`FAILED`/`TIMED_OUT`. Nunca calcula
@@ -131,15 +145,13 @@ export class ExecutionPipelineService {
         await fs.rm(snapshotZipPath, { force: true });
       }
 
-      // `projectRoot` es una detección de solo lectura (nunca mueve/renombra
-      // nada en disco): si el snapshot vino envuelto en una única carpeta
-      // contenedora de nivel superior, resuelve a esa carpeta; si no, es el
-      // propio `workspacePath`. Un aplanado físico desalinearía
-      // `artifact.relativePath` — Core lo sigue enviando relativo a la
-      // estructura original, envoltorio incluido — así que
-      // `applyArtifacts` se resuelve siempre contra `workspacePath` en
-      // crudo, nunca contra `projectRoot`.
-      const projectRoot = await resolveProjectRoot(workspacePath);
+      // Core entrega la raíz efectiva ya congelada. Sandbox no detecta ni
+      // elige proyectos: solo comprueba que la ruta exista bajo el snapshot
+      // y que un symlink no pueda escapar del repositoryRoot.
+      const projectRoot = await resolveProjectRoot(
+        workspacePath,
+        record.projectRoot,
+      );
       const containerWorkingDir = this.toContainerWorkingDir(
         workspacePath,
         projectRoot,
@@ -173,10 +185,7 @@ export class ExecutionPipelineService {
         record.runnerHint,
         { workspacePath: projectRoot, resultsFilePath },
       );
-      stageDurations.push({
-        stage: 'PREPARING',
-        durationMs: Date.now() - preparingStartedAt,
-      });
+      stageDurations.push(stageTiming('PREPARING', preparingStartedAt));
 
       await assertSupportedManifest(record.executionProfile, projectRoot);
 
@@ -192,10 +201,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - installStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, installStartedAt));
       if (installResult.oomKilled) {
         throw new OomKilledError(
           'dependency installation was killed for exceeding the memory limit',
@@ -246,10 +252,7 @@ export class ExecutionPipelineService {
         deadlineAt - Date.now(),
         containerWorkingDir,
       );
-      stageDurations.push({
-        stage: currentStage,
-        durationMs: Date.now() - testStartedAt,
-      });
+      stageDurations.push(stageTiming(currentStage, testStartedAt));
       if (testResult.oomKilled) {
         throw new OomKilledError(
           'test execution was killed for exceeding the memory limit',
@@ -274,6 +277,11 @@ export class ExecutionPipelineService {
             ? testResult.stderrOriginalBytes
             : null,
         },
+      );
+      await this.recoverPhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+        record.executionProfile,
       );
       if (testResult.timedOut) {
         throw new SandboxTimeoutError(
@@ -351,8 +359,40 @@ export class ExecutionPipelineService {
         `execution ${executionId} ${status} during ${currentStage}: ${failure.code} ${failure.message}`,
       );
       if (workspacePath) {
+        // Failure paths (install error, OOM, timeout) skip the post-test
+        // recovery above; repair runner-owned entries before removal.
+        await this.recoverPhpWorkspaceAccess(
+          executionId,
+          workspacePath,
+          record.executionProfile,
+        );
         await this.workspaceManager.cleanup(workspacePath);
       }
+    }
+  }
+
+  /**
+   * Restores host access to runner-owned PHP workspace entries. Best effort:
+   * a recovery failure is observable in the log and must never replace the
+   * execution's own outcome (for example `TEST_TIMEOUT`).
+   */
+  private async recoverPhpWorkspaceAccess(
+    executionId: string,
+    workspacePath: string,
+    executionProfile: string,
+  ): Promise<void> {
+    if (executionProfile !== 'PHP_LARAVEL_PHPUNIT') {
+      return;
+    }
+    try {
+      await this.containerRunner.restorePhpWorkspaceAccess(
+        executionId,
+        workspacePath,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `execution ${executionId} workspace ACL recovery failed: ${(error as Error).message}`,
+      );
     }
   }
 

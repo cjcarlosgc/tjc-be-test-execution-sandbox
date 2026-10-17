@@ -1,0 +1,28 @@
+{
+  "id": "CS-CORE-20261012-002",
+  "source": "core",
+  "targets": [
+    "sandbox"
+  ],
+  "changedContractAreas": [
+    "phase",
+    "evidence"
+  ],
+  "requiredActions": [
+    "Provenance correction only (sourceRevision of CS-CORE-20261009-016). Console mirrors INTEROP-2.7 from the commit in sourceRevision. No functional or contract change for Sandbox."
+  ],
+  "sourceRevision": "a7c04cef12740941d8559c743f84ed287fb57ced",
+  "status": "ACKNOWLEDGED",
+  "createdAt": "2026-10-12T18:50:56.000Z",
+  "breaking": false,
+  "sourceWorkItem": "WI-CORE-013",
+  "originalTargets": [
+    "console",
+    "sandbox"
+  ],
+  "originalFormat": "YAML (Core outbox); not importable as-is: no changedContractAreas/createdAt and target 'console' is outside this harness schema",
+  "translationNotes": "changedContractAreas derived from the subject of the corrected event (failureKind, phase, TEST_COMPILATION_FAILED, IMAGE_UNAVAILABLE); createdAt is the import time. Original content preserved verbatim in sourceEventYaml.",
+  "sourceEventYaml": "type: CONTRACT_SYNC\nid: CS-CORE-20261012-002\nsource: core\nsourceWorkItem: WI-CORE-013\ntargets: [console, sandbox]\nscopePaths: [spec/contracts/interoperability-contract.md]\nbreaking: false\nchanged:\n  - Correccion de procedencia, solo sourceRevision, de CS-CORE-20261009-016 (INTEROP-2.7 §7: failureKind, phase, TEST_COMPILATION_FAILED, IMAGE_UNAVAILABLE). El evento original no se modifica; su sourceRevision 123f8ed pertenece a la rama PHP anterior a WI-CORE-027. El contenido contractual vigente es el del commit fusionado a7c04cef en feature/jean. Sin cambio de contrato ni de comportamiento.\nrequiredAction:\n  - Console: al espejar INTEROP-2.7, tomar spec/contracts/interoperability-contract.md del commit indicado en sourceRevision (fusion en feature/jean, a7c04cef) y NO de la revision original del evento corregido, que vive en la rama PHP con base anterior a WI-CORE-027 y regresionaria /evidence y las tasas nulas. Sin cambio funcional ni de contrato.\nsourceRevision: a7c04cef12740941d8559c743f84ed287fb57ced\nstatus: C-PENDING\n",
+  "acknowledgedAt": "2026-10-12T18:50:56.978Z",
+  "acknowledgementEvidence": "harness/reports/contract-sync-cs-core-20261012-002-acknowledgement.md"
+}

@@ -72,6 +72,7 @@ export class ContainerRunner {
   private readonly logger = new Logger(ContainerRunner.name);
   private readonly limits: ContainerLimitsConfig;
   private pnpmStoreVolumeReady?: Promise<void>;
+  private composerCacheVolumeReady?: Promise<void>;
   private readonly imageReady = new Map<string, Promise<void>>();
 
   constructor(
@@ -150,7 +151,7 @@ export class ContainerRunner {
             maxTimeoutMs,
             workingDir,
           )
-        : this.buildPhpInstallOptions(
+        : await this.buildPhpInstallOptions(
             executionId,
             workspacePath,
             profile,
@@ -203,13 +204,14 @@ export class ContainerRunner {
    * (Laravel regenera su manifest de paquetes al arrancar los tests).
    * Respeta `composer.lock` cuando existe (009, corte T-003).
    */
-  private buildPhpInstallOptions(
+  private async buildPhpInstallOptions(
     executionId: string,
     workspacePath: string,
     profile: ProfileContainerConfig,
     maxTimeoutMs: number | undefined,
     workingDir: string,
-  ): RunContainerOptions {
+  ): Promise<RunContainerOptions> {
+    await this.ensureComposerCacheVolumeOwnership();
     return {
       executionId,
       nameSuffix: 'install',
@@ -229,7 +231,6 @@ export class ContainerRunner {
       timeoutMs: clampTimeout(this.limits.installTimeoutMs, maxTimeoutMs),
       workingDir,
       env: {
-        COMPOSER_ALLOW_SUPERUSER: '1',
         COMPOSER_HOME: '/tmp',
         COMPOSER_CACHE_DIR: COMPOSER_CACHE_CONTAINER_PATH,
       },
@@ -237,6 +238,37 @@ export class ContainerRunner {
         `${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`,
       ],
     };
+  }
+
+  private async ensureComposerCacheVolumeOwnership(): Promise<void> {
+    if (!this.composerCacheVolumeReady) {
+      this.composerCacheVolumeReady = this.runComposerCacheVolumeBootstrap().catch((error: unknown) => {
+        this.composerCacheVolumeReady = undefined;
+        throw error;
+      });
+    }
+    return this.composerCacheVolumeReady;
+  }
+
+  private async runComposerCacheVolumeBootstrap(): Promise<void> {
+    const profile = this.limits.profiles.PHP_LARAVEL_PHPUNIT;
+    const bootstrapId = `composer-cache-init-${randomUUID()}`;
+    const result = await this.run({
+      executionId: bootstrapId,
+      nameSuffix: 'bootstrap',
+      image: profile.image,
+      command: ['chown', '-R', profile.user, COMPOSER_CACHE_CONTAINER_PATH],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+      extraBinds: [`${this.limits.composerCacheVolumeName}:${COMPOSER_CACHE_CONTAINER_PATH}`],
+      user: 'root',
+      capAdd: ['CHOWN'],
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(`composer cache volume bootstrap failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`);
+    }
   }
 
   async runTestCommand(
@@ -268,6 +300,40 @@ export class ContainerRunner {
       `run tests executionId=${executionId} exitCode=${result.exitCode} oomKilled=${result.oomKilled} timedOut=${result.timedOut} durationMs=${result.durationMs}`,
     );
     return result;
+  }
+
+  /**
+   * Restablece, antes de que el host lea evidencia, las ACL que el código
+   * ejecutado pudo enmascarar mediante chmod. El comando vive en la imagen
+   * gestionada y corre como el mismo usuario no-root que es dueño de esos
+   * descendientes: no recibe red, capacidades ni otro bind mount.
+   */
+  async restorePhpWorkspaceAccess(
+    executionId: string,
+    workspacePath: string,
+  ): Promise<void> {
+    const hostUid = process.getuid?.();
+    if (hostUid === undefined) {
+      throw new Error('Cannot determine host process UID for workspace ACL recovery');
+    }
+    const profile = this.limits.profiles.PHP_LARAVEL_PHPUNIT;
+    const result = await this.run({
+      executionId,
+      nameSuffix: 'acl-recovery',
+      image: profile.image,
+      user: profile.user,
+      workspacePath,
+      command: ['restore-workspace-acl', String(hostUid), DEFAULT_CONTAINER_WORKING_DIR],
+      network: false,
+      readOnlyWorkspace: false,
+      timeoutMs: this.limits.timeoutMs,
+      workingDir: DEFAULT_CONTAINER_WORKING_DIR,
+    });
+    if (result.timedOut || result.exitCode !== 0) {
+      throw new Error(
+        `workspace ACL recovery failed: exitCode=${result.exitCode} timedOut=${result.timedOut} stderr=${result.stderr}`,
+      );
+    }
   }
 
   /**
@@ -486,7 +552,10 @@ export class ContainerRunner {
     const stream =
       image === MANAGED_PHP_IMAGE
         ? await this.docker.buildImage(
-            { context: MANAGED_PHP_IMAGE_CONTEXT, src: ['Dockerfile'] },
+            {
+              context: MANAGED_PHP_IMAGE_CONTEXT,
+              src: ['Dockerfile', 'restore-workspace-acl'],
+            },
             { t: image },
           )
         : await this.docker.pull(image, {});
