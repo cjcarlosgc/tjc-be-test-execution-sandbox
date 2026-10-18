@@ -1,3 +1,5 @@
+import { isAbsolute } from 'node:path';
+
 /**
  * Validación de entorno al arrancar. Antes, un valor numérico mal escrito caía en silencio al valor por defecto
  * (`getNumberConfig`); ahora el proceso no arranca y lista todos los problemas a la vez.
@@ -14,6 +16,8 @@ const POSITIVE_INTEGERS = [
 const NON_NEGATIVE_INTEGERS = ['SANDBOX_DOWNLOAD_MAX_REDIRECTS', 'SANDBOX_DOWNLOAD_MAX_RETRIES'] as const;
 const PORTS = ['PORT', 'SANDBOX_DOCKER_PORT'] as const;
 const BOOLEANS = ['SANDBOX_RECONCILE_ORPHANS_ON_START'] as const;
+/** Si se define, debe ser una ruta absoluta (no vacía). Si no, se usa el directorio por defecto del usuario. */
+const ABSOLUTE_PATHS = ['SANDBOX_EXECUTION_STATE_DIR'] as const;
 
 const isSet = (value: unknown): boolean => value !== undefined && value !== null && String(value).trim() !== '';
 
@@ -33,6 +37,10 @@ export function validateSandboxEnv(config: Record<string, unknown>): Record<stri
   BOOLEANS.forEach((key) => {
     const raw = config[key];
     if (isSet(raw) && !['true', 'false'].includes(String(raw))) problems.push(`${key} debe ser "true" o "false" (recibido "${String(raw)}")`);
+  });
+  ABSOLUTE_PATHS.forEach((key) => {
+    const raw = config[key];
+    if (isSet(raw) && !isAbsolute(String(raw).trim())) problems.push(`${key} debe ser una ruta absoluta (recibido "${String(raw)}")`);
   });
   if (problems.length > 0) {
     throw new Error(`Configuración de entorno inválida:\n- ${problems.join('\n- ')}`);

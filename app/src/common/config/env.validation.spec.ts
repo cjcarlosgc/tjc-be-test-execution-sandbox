@@ -26,4 +26,15 @@ describe('validateSandboxEnv', () => {
     expect(() => validateSandboxEnv({ SANDBOX_DOWNLOAD_MAX_REDIRECTS: '0' })).not.toThrow();
     expect(() => validateSandboxEnv({ SANDBOX_POLL_AFTER_MS: '1.5' })).toThrow();
   });
+
+  it('acepta SANDBOX_EXECUTION_STATE_DIR ausente, vacío o como ruta absoluta', () => {
+    expect(() => validateSandboxEnv({})).not.toThrow();
+    expect(() => validateSandboxEnv({ SANDBOX_EXECUTION_STATE_DIR: '' })).not.toThrow();
+    expect(() => validateSandboxEnv({ SANDBOX_EXECUTION_STATE_DIR: '/var/lib/tjc-sandbox/executions' })).not.toThrow();
+  });
+
+  it('rechaza SANDBOX_EXECUTION_STATE_DIR relativa en lugar de resolverla contra el cwd', () => {
+    expect(() => validateSandboxEnv({ SANDBOX_EXECUTION_STATE_DIR: 'data/executions' })).toThrow(/SANDBOX_EXECUTION_STATE_DIR debe ser una ruta absoluta/);
+    expect(() => validateSandboxEnv({ SANDBOX_EXECUTION_STATE_DIR: './executions' })).toThrow(/SANDBOX_EXECUTION_STATE_DIR/);
+  });
 });

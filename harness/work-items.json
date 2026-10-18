@@ -35,7 +35,7 @@
       "id": "WI-SANDBOX-010",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-PLANNED",
+      "status": "W-IN_REVIEW",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Estabilizar el ciclo de vida y el estado en memoria del Sandbox",
@@ -46,9 +46,7 @@
         "ST-SANDBOX-010"
       ],
       "caseIds": [],
-      "dependsOn": [
-        "WI-SANDBOX-009"
-      ],
+      "dependsOn": [],
       "contractImpact": false,
       "publishesContract": false,
       "specPaths": [
@@ -57,11 +55,14 @@
         "spec/features/008-reliability-lifecycle/tasks.md"
       ],
       "acceptanceCriteria": [
-        "El repositorio de ejecuciones no crece sin límite: tiene expulsión o persistencia, y el comportamiento cuando Core consulta tras un reinicio queda definido y probado.",
-        "Hay un límite de concurrencia configurable y los containers huérfanos se reconcilian al arrancar.",
-        "El proceso llama a enableShutdownHooks() y el estado de lifecycle formal está especificado.",
-        "Las variables de entorno se validan con un esquema y .env.example queda completo (incluye SANDBOX_PNPM_STORE_VOLUME).",
-        "Lint, pruebas, build y validadores SDD/Harness pasan antes de la revisión independiente."
+        "Cada ejecución se persiste como un archivo JSON en SANDBOX_EXECUTION_STATE_DIR (valor por defecto persistente, no temporal), con escritura atómica, y se recarga al arrancar; un archivo corrupto o ilegible se ignora con un aviso sin impedir el arranque.",
+        "El archivo persistido NO contiene EphemeralDownloadRef ni URLs firmadas ni rutas: solo estado, resultado, evidencia acotada, tiempos, identificadores y la huella de idempotencia; una prueba lo verifica.",
+        "La retención (SANDBOX_EXECUTION_RETENTION_MS y SANDBOX_EXECUTION_MAX_RETAINED) también expulsa los archivos del disco.",
+        "Una ejecución que estaba en curso al reiniciar se recarga como FAILED con fallo de infraestructura SANDBOX_RESTARTED (categoría INFRASTRUCTURE); la idempotencia por requestId sigue funcionando para las persistidas; tras un reinicio GET /executions/{id} y /result responden con lo persistido en lugar de 404.",
+        "El repositorio de ejecuciones no crece sin límite; hay un límite de concurrencia configurable y los containers huérfanos se reconcilian al arrancar.",
+        "El proceso llama a enableShutdownHooks() y el estado de lifecycle (PENDING..FINALIZING, terminales y SANDBOX_RESTARTED) está especificado en 008-reliability-lifecycle.",
+        "Las variables de entorno se validan con un esquema (incluida la nueva SANDBOX_EXECUTION_STATE_DIR) y .env.example queda completo (incluye SANDBOX_PNPM_STORE_VOLUME).",
+        "El contrato HTTP (spec/contracts) no cambia; lint, pruebas, build, contracts:check y los validadores SDD/Harness pasan antes de la revisión independiente."
       ]
     }
   ]

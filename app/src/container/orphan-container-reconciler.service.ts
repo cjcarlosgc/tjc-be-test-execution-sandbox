@@ -8,8 +8,9 @@ const SANDBOX_CONTAINER_NAME = /^\/sandbox-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[
 
 /**
  * Al arrancar, elimina los contenedores `sandbox-*` que dejó un proceso anterior (caída, reinicio o despliegue en
- * mitad de una ejecución). El estado de las ejecuciones vive en memoria, así que al iniciar no puede haber ninguna
- * en curso y cualquier contenedor de ese tipo es huérfano. Nunca bloquea el arranque ni lanza.
+ * mitad de una ejecución). El estado se recarga de disco (`FileExecutionRepository`) y toda ejecución no terminal
+ * restaurada se marca `FAILED` con `SANDBOX_RESTARTED`, así que al iniciar no hay ejecuciones en curso reales y
+ * cualquier contenedor de ese tipo es huérfano. Nunca bloquea el arranque ni lanza.
  * Se desactiva con `SANDBOX_RECONCILE_ORPHANS_ON_START=false`.
  */
 @Injectable()
