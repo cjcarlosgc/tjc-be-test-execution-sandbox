@@ -1,0 +1,15 @@
+type: CONTRACT_SYNC
+id: CS-CORE-20261012-012
+source: core
+sourceWorkItem: WI-CORE-049
+targets: [sandbox]
+breaking: false
+changed:
+  - "areas: executions"
+requiredAction:
+  - "Ratify or adjust initial proxy rate-limit values and the 90-day token rotation procedure (owner: Jean); keep the IAP tunnel as fallback; no VM/firewall/proxy changes without operational authorization; keep SYSTEM-2.2. DEC-INF-002 approved as-built at source. No route, field, code or transport change. Replaces CS-CORE-20261012-010."
+sourceRevision: 864aa837b95fa379cc2c6d0a98f37521ff3eb3b6
+consumerImportedAt: 2026-10-12T22:58:41.000Z
+status: C-ACKNOWLEDGED
+acknowledgementEvidence: harness/reports/contract-sync-cs-core-20261012-012-acknowledgement.md
+supersedes: [CS-CORE-20261012-010]

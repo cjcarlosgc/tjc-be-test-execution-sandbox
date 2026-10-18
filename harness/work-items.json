@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "component": "SANDBOX",
+  "workItems": [
+    {
+      "id": "WI-SANDBOX-009",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-PLANNED",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Contract/e2e test contra el cliente real de Core",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-009"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Se verifica contra Core si ya implementa Bearer e identidad UUID v5 estable; si no, el WI queda BLOCKED con la causa.",
+        "Si Core ya los implementa, existe una prueba de contrato/e2e que usa el cliente real de Core contra este Sandbox y pasa.",
+        "Lint, pruebas, build y validadores SDD/Harness pasan antes de la revisión independiente."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-010",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-PLANNED",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Estabilizar el ciclo de vida y el estado en memoria del Sandbox",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-010"
+      ],
+      "caseIds": [],
+      "dependsOn": [
+        "WI-SANDBOX-009"
+      ],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/008-reliability-lifecycle/spec.md",
+        "spec/features/008-reliability-lifecycle/plan.md",
+        "spec/features/008-reliability-lifecycle/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "El repositorio de ejecuciones no crece sin límite: tiene expulsión o persistencia, y el comportamiento cuando Core consulta tras un reinicio queda definido y probado.",
+        "Hay un límite de concurrencia configurable y los containers huérfanos se reconcilian al arrancar.",
+        "El proceso llama a enableShutdownHooks() y el estado de lifecycle formal está especificado.",
+        "Las variables de entorno se validan con un esquema y .env.example queda completo (incluye SANDBOX_PNPM_STORE_VOLUME).",
+        "Lint, pruebas, build y validadores SDD/Harness pasan antes de la revisión independiente."
+      ]
+    }
+  ]
+}

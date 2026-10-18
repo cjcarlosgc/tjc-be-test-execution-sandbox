@@ -4,7 +4,7 @@
 - [x] `POST /executions`, status y result con persistencia de `executionId`.
 - [x] Idempotency-Key/requestId y detección de conflicto.
 - [x] Auth Bearer interna con `SANDBOX_SERVICE_TOKEN`, protección de todo `/executions`, health público y propagación de correlationId.
-- [ ] Contract/e2e test contra el cliente real de RAG Core cuando ese repositorio implemente Bearer e identidad UUID v5 estable.
+- [ ] **ST-SANDBOX-009 · T-BACKLOGGED · WI-SANDBOX-009 · HU11:** contract/e2e test contra el cliente real de RAG Core (Bearer e identidad UUID v5 estable); verificar primero si Core ya los implementa y, si es así, ejecutar la prueba; si no, registrar el bloqueo.
 - [x] Response DTOs y `ErrorEnvelope` centralizado.
 
 ## Calidad

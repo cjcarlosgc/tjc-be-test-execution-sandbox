@@ -11,7 +11,7 @@
 - [x] HU43: DTO y resolución estricta del profile.
 - [x] HU43: imagen PHP/Composer y adapter PHPUnit.
 - [x] HU43: contract, integration y security tests.
-- [ ] HU47: proveedor remoto, después de resolver `DEC-INF-001`.
+- [x] (legado SDD 2.1 · HU47) Proveedor remoto: resuelto por `DEC-INF-001`/`DEC-INF-002` (SYSTEM-2.12) y los WI históricos 004, 005 y 008; sin pendiente de implementación en Sandbox.
 
 Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARAVEL_PHPUNIT` (Composer + PHPUnit reales contra Docker) se corrió contra un daemon Docker real y quedó en verde, junto con el resto de la suite (`vitest run` + `tsc --noEmit`). El `php:8.3-cli` (Debian) base no trae `unzip`/`ext-zip`, necesarios para que Composer extraiga paquetes; el install del profile PHP instala `unzip` vía `apt-get` en cada ejecución (sin imagen custom), lo que exige `CapAdd: ['CHOWN','FOWNER','DAC_OVERRIDE']` y `-o APT::Sandbox::User=root` para operar bajo el `CapDrop: ['ALL']` base — confirmado en Docker real, ver `container-runner.service.ts`.
 
@@ -29,15 +29,15 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 
 ## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
 
-- [x] **ST-SANDBOX-004 · T-READY · WI-SANDBOX-001 · HU43:** validar `projectRoot` dentro de `repositoryRoot`, usarlo como cwd de Composer/PHPUnit y mantener artifacts repo-relative según INTEROP-2.8; omisión legacy equivale a `.`. No detectar ni seleccionar proyectos en Sandbox. Evidencia: `harness/reports/wi-sandbox-001-project-root.md`.
+- [x] (legado SDD 2.1 · WI-SANDBOX-001 · HU43; ST antigua 004) validar `projectRoot` dentro de `repositoryRoot`, usarlo como cwd de Composer/PHPUnit y mantener artifacts repo-relative según INTEROP-2.8; omisión legacy equivale a `.`. No detectar ni seleccionar proyectos en Sandbox. Evidencia: `harness/reports/wi-sandbox-001-project-root.md`.
 
 ## Próximo corte local — identidad de ejecución PHP (HU43)
 
-- [x] **ST-SANDBOX-005 · T-READY · WI-SANDBOX-002 · HU43:** containers PHP con identidad Unix no-root obligatoria `sandbox` (UID/GID 10001), sin `chown` manual por ejecución; `CapDrop: ['ALL']`, `no-new-privileges`, red solo durante instalación y aislamiento del workspace. El named volume de **caché** Composer se inicializa una vez, recursivamente y sin red para dar ownership al usuario no-root, sin descargar ni copiar el binario. Evidencia: `harness/reports/wi-sandbox-002-implementation.md`, 194 pruebas unitarias y E2E Docker (21); revisión independiente excepcional final APPROVED. Sin VM, GCE, despliegue ni Contract Sync.
+- [x] (legado SDD 2.1 · WI-SANDBOX-002 · HU43; ST antigua 005) containers PHP con identidad Unix no-root obligatoria `sandbox` (UID/GID 10001), sin `chown` manual por ejecución; `CapDrop: ['ALL']`, `no-new-privileges`, red solo durante instalación y aislamiento del workspace. El named volume de **caché** Composer se inicializa una vez, recursivamente y sin red para dar ownership al usuario no-root, sin descargar ni copiar el binario. Evidencia: `harness/reports/wi-sandbox-002-implementation.md`, 194 pruebas unitarias y E2E Docker (21); revisión independiente excepcional final APPROVED. Sin VM, GCE, despliegue ni Contract Sync.
 
 ## Corte técnico de permisos del workspace — HU11
 
-- [x] **WI-SANDBOX-005 · T-READY · `storyIds: ["HU11"]`:** conceder con ACL acceso mínimo del UID PHP 10001 al workspace de su ejecución y conservar la capacidad host de leer/limpiar. Cubre herencia, aislamiento entre workspaces, cambios de modo por contenido no confiable y fallo seguro si falta el soporte ACL. Prerequisito operativo `setfacl`/paquete `acl` en Linux; no se instala en la VM dentro de este corte. Sin cambio de API/contratos, SDD 2.1 ni SYSTEM-2.2.
+- [x] (legado SDD 2.1 · WI-SANDBOX-005 · HU11) conceder con ACL acceso mínimo del UID PHP 10001 al workspace de su ejecución y conservar la capacidad host de leer/limpiar. Cubre herencia, aislamiento entre workspaces, cambios de modo por contenido no confiable y fallo seguro si falta el soporte ACL. Prerequisito operativo `setfacl`/paquete `acl` en Linux; no se instala en la VM dentro de este corte. Sin cambio de API/contratos, SDD 2.1 ni SYSTEM-2.2.
 
 ## WI-SANDBOX-004 — registro Harness del E2E remoto fallido
 

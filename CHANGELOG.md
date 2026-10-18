@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- **SDD 3.1 / Harness V3 — migración desde SDD 2.1 / Harness V2 y homologación con Core, GitHub Integration y Console (2026-10-18, decisión del usuario):** el repositorio adopta los validadores V3, `work-items.json`, estado V4, roles y agentes `.claude`, vía rápida (`lane: FAST`) y revisión independiente por el agente `reviewer` (sin «Modo fuera de casa»). Contratos espejados desde Core (`SYSTEM-2.12`, `INTEROP-2.16`); `DEC-INF-001` queda aprobada según el canónico. El backlog de 47 HU pasa al catálogo común de 18 HU con mapa histórico; las subtareas abiertas pasan a `WI-SANDBOX-009` y `WI-SANDBOX-010`. El historial V2 se conserva en `spec/legacy/` y `harness/legacy/`; los WI históricos 001–008 no se re-registran en V3 y conservan sus reportes en `harness/reports/`.
+
 Todos los cambios notables de la línea base SDD se registran aquí. El contenido vigente vive en `spec/`; este archivo no reemplaza la especificación.
 
 ## [Unreleased]

@@ -1,0 +1,15 @@
+type: CONTRACT_SYNC
+id: CS-CORE-20261012-001
+source: core
+sourceWorkItem: WI-CORE-043
+targets: [sandbox]
+scopePaths: [spec/contracts/system-contract.md, spec/contracts/interoperability-contract.md]
+breaking: false
+changed:
+  - "areas: executions"
+requiredAction:
+  - "Apply only the DEC-INF-001 operational decision to local Sandbox planning: reuse the existing VM; preserve SDD 2.1 and SYSTEM-2.2; register a local WI; identify the deployed SHA before another remote run. This does not authorize firewall changes or deployment."
+sourceRevision: 76053463e1b073364861d417bc9c2217dccd11a2
+consumerImportedAt: 2026-10-12T08:44:16.000Z
+status: C-ACKNOWLEDGED
+acknowledgementEvidence: harness/reports/wi-sandbox-003-contract-sync-preflight.md

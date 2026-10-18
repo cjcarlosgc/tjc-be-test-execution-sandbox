@@ -1,18 +1,93 @@
-# Los nombres son aliases solicitados para el proyecto.
-# exactModelId permanece pendiente hasta mapear cada alias al identificador aceptado por la herramienta usada.
+# Política aprobada de agentes y modelos por proveedor. Los adaptadores (`.claude/agents/` y
+# `~/.codex/agents/`) materializan estos perfiles; no redefinen la verdad funcional.
+# `servedModel` se registra como `unknown` cuando la sesión no permite observarlo.
+# Escalamiento automático permitido solo implementer -> implementer-high (sin permiso del usuario,
+# con motivo breve trazado). Si implementer-high no basta, el leader registra BLOCKED o DECISION_REQUIRED.
+# implementer e implementer-high son el mismo rol lógico (harness/roles/implementer.md); cambia solo el esfuerzo.
 claude:
   leader:
-    modelAlias: "Sonnet 5"
-    exactModelId: null
-    reasoningEffort: "max"
-  workers:
-    modelAlias: "Sonnet 5"
-    exactModelId: null
-openai:
+    role: leader
+    modelAlias: "Sonnet 5.5"
+    exactModelId: "claude-sonnet-5-5"
+    reasoningEffort: "medium"
+  sdd-analyst:
+    role: sdd-analyst
+    modelAlias: "Sonnet 5.5"
+    exactModelId: "claude-sonnet-5-5"
+    reasoningEffort: "low"
+  implementer:
+    role: implementer
+    modelAlias: "Haiku 5.5"
+    exactModelId: "claude-haiku-5-5"
+    reasoningEffort: "low"
+    escalatesTo: implementer-high
+  implementer-high:
+    role: implementer
+    modelAlias: "Haiku 5.5"
+    exactModelId: "claude-haiku-5-5"
+    reasoningEffort: "high"
+  contract-reviewer:
+    role: contract-reviewer
+    modelAlias: "Sonnet 5.5"
+    exactModelId: "claude-sonnet-5-5"
+    reasoningEffort: "low"
+  reviewer:
+    role: reviewer
+    modelAlias: "Sonnet 5.5"
+    exactModelId: "claude-sonnet-5-5"
+    reasoningEffort: "medium"
+  merge-reviewer:
+    role: merge-reviewer
+    modelAlias: "Sonnet 5.5"
+    exactModelId: "claude-sonnet-5-5"
+    reasoningEffort: "medium"
+  human-reviewer:
+    role: human-reviewer
+    actor: user
+
+codex:
   leader:
-    modelAlias: "Sol"
-    exactModelId: null
-    reasoningEffort: "max"
-  workers:
-    modelAlias: "Terra"
-    exactModelId: null
+    role: leader
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "xhigh"
+  sdd-analyst:
+    role: sdd-analyst
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "high"
+  implementer:
+    role: implementer
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "medium"
+    escalatesTo: implementer-high
+  implementer-high:
+    role: implementer
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "high"
+  contract-reviewer:
+    role: contract-reviewer
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "high"
+  reviewer:
+    role: reviewer
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "xhigh"
+  merge-reviewer:
+    role: merge-reviewer
+    modelAlias: "GPT-6 Luna"
+    exactModelId: "gpt-6-luna"
+    reasoningEffort: "xhigh"
+  human-reviewer:
+    role: human-reviewer
+    actor: user
+
+# Roles permanentes: leader, sdd-analyst, implementer, contract-reviewer y human-reviewer.
+# contract-reviewer se activa solo para impacto contractual.
+# `reviewer` es el reviewer independiente por defecto de todo WI; `human-reviewer` (el usuario) aprueba alcance, arquitectura, contratos y decisiones DEC.
+# merge-reviewer revisa UNA FUSIÓN antes de integrar una rama de tercero o de integración en una línea
+# compartida (feature/jean, develop o main) o antes de publicarla. Rol canónico: harness/roles/merge-reviewer.md.
