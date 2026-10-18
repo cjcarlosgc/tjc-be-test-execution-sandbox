@@ -35,7 +35,7 @@
       "id": "WI-SANDBOX-010",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Estabilizar el ciclo de vida y el estado en memoria del Sandbox",

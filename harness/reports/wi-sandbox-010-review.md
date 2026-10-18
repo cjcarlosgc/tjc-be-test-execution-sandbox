@@ -52,3 +52,46 @@ app/src/executions/{file-execution.repository.ts,execution-state.codec.ts,execut
 
 ## Siguiente paso recomendado
 El implementer resuelve M1 (redacción en el serializador con prueba, o decisión explícita que ajuste AC/spec) y, preferiblemente, m1 y m2 (baratos). Luego nueva revisión acotada al delta.
+
+---
+
+## Ciclo 2
+
+Veredicto: **APPROVED** (0 BLOCKER, 0 MAJOR, 3 MINOR nuevos + residual m3-m6 documentado)
+
+Alcance: delta `git diff HEAD~1..HEAD -- app spec` (446ddb2).
+
+### Resolución de hallazgos del ciclo 1
+- **M1 resuelto.** `serializeExecutionRecord` redacta `failureMessage`, `result.failure.message`, `evidence[].content` y `testCases[].name/suitePath/errorMessage` (único texto libre del `result`; el resto son ids, enums, números, fechas o `failure.code`, que no se tocan). Verificado además que el registro original en memoria no se muta. Ataque manual contra `redactSensitiveText` (build en `dist`): URLs `http://`/`HTTPS://` con puerto, query, fragmento, entre paréntesis/comillas/`<>`/JSON: redactadas completas. Rutas del workspace, `tmpdir()` (también forma `/private/var/...` vía realpath), homedir y dir de estado: redactadas, incluido el resto del token (`/srv/ws/e1/a.ts`, `file:///srv/ws/...`). Prefijo común (`/srv/ws-old`, `/srv/wsx`) no se altera. ReDoS: entradas de 8 KiB patológicas (`/srv/ws`+`/a`*8192, `https://`+`a`*8192, `http://`*1500) en 0-1 ms (patrones lineales, sin cuantificadores anidados).
+- **`sensitiveHostPaths` y cableado:** `executions.module.ts` usa `resolveSandboxLimits(config).workspaceRoot`, la misma función y valor que `WorkspaceManager` (`path.resolve(limits.workspaceRoot)`); `sensitiveHostPaths` aplica `resolve` y añade `realpath`. OK.
+- **m1 resuelto:** `health.e2e-spec.ts` usa mkdtemp + limpieza; tras `pnpm test:e2e` no existe `~/.tjc-sandbox`.
+- **m2 resuelto:** `ensureDirectory` envuelve el fallo y nombra `SANDBOX_EXECUTION_STATE_DIR`, la ruta y la causa; dos pruebas (EEXIST y EACCES) afirman el mensaje.
+- **m3-m6:** pasan a «Residual aceptado» en spec 008 (explícito, sin implementar); `plan.md` alineado con la implementación (funciones puras, escritura síncrona). Aceptable.
+
+### Mutaciones manuales (restauradas con `git checkout`; `git status` limpio, 0 stashes)
+| Mutación | Resultado |
+|---|---|
+| redact = identidad en el serializador | 6 pruebas fallan |
+| repositorio pasa `[]` como rutas | 2 fallan |
+| sin redactar `testCase.name` / `errorMessage` | 1 falla cada una |
+| mensaje de `ensureDirectory` sin nombrar la variable | 2 fallan |
+| **módulo sin `sensitiveHostPaths(...)` (cableado)** | **sobrevive (0 fallan)** |
+| **dir de estado fuera de `redactionPaths`** | **sobrevive (0 fallan)** |
+
+Las pruebas verifican comportamiento (contenido real del archivo en disco y tras reinicio), no son tautológicas, salvo los dos huecos de la tabla.
+
+### Hallazgos nuevos
+- **MINOR n1.** El cableado de `executions.module.ts` (workspaceRoot → `sensitiveHostPaths` → repositorio) no tiene prueba: quitarlo no rompe nada. Un test de módulo/e2e con `SANDBOX_WORKSPACE_ROOT` y un fallo con ruta lo cubriría.
+- **MINOR n2.** La inclusión del directorio de estado en `redactionPaths` tampoco está probada (mutación E sobrevive).
+- **MINOR n3.** Límites de la redacción: (a) rutas con espacios dejan el resto tras el primer espacio (`'/srv/ws/my project/a.ts'` -> `[ruta-redactada] project/a.ts`; el prefijo del host sí se elimina, queda solo la parte relativa al workspace); (b) la comparación es sensible a mayúsculas (`/SRV/WS/...` no se redacta; relevante en macOS/Windows con FS insensible); (c) rutas Windows con `\` y `~/` no se cubren; (d) `ftp://` y otros esquemas no se tratan como URL. Ninguno es alcanzable por los caminos conocidos (rutas generadas por el propio Sandbox con casing exacto, URLs firmadas http/https).
+
+### (5) Respuesta HTTP de un proceso vivo con texto crudo
+Aceptable. La spec lo declara explícitamente («La respuesta HTTP de un proceso vivo no cambia (texto original); tras un reinicio se sirve la versión redactada»), el contrato HTTP está intacto y Core ya recibe ese texto hoy; el objetivo de AC2 es lo persistido en reposo. Nota: hay una diferencia observable pre/post reinicio solo en el texto de diagnóstico.
+
+### Evidencia de comandos (ciclo 2)
+- app: `pnpm lint` rc=0; `pnpm test`: 33 archivos pasan, 1 skip; 281 pasan, 4 skip; `pnpm build` OK; `pnpm contracts:check` rc=0; `pnpm test:e2e`: 2 archivos pasan, 1 skip (Docker no disponible, omitido); 15 pasan, 6 skip.
+- raíz: `sdd-check` OK; `validate-work-items` OK; `validate-harness` OK; `validate-completions` OK.
+- `git diff 3a8f8d6..HEAD -- spec/contracts`: 0 líneas.
+
+### Siguiente paso recomendado
+Cerrar el WI (APPROVED). Opcional: añadir las pruebas de n1/n2 en un seguimiento menor.
