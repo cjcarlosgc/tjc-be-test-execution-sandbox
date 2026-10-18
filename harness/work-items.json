@@ -64,6 +64,135 @@
         "Las variables de entorno se validan con un esquema (incluida la nueva SANDBOX_EXECUTION_STATE_DIR) y .env.example queda completo (incluye SANDBOX_PNPM_STORE_VOLUME).",
         "El contrato HTTP (spec/contracts) no cambia; lint, pruebas, build, contracts:check y los validadores SDD/Harness pasan antes de la revisión independiente."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-011",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "status": "W-PLANNED",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Regularizar la migración a SDD 3.1 / Harness V3 hecha desde cross (retroactivo)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-011"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Un reporte declara la retroactividad: cross ejecutó los commits 9198d55 (redacción de host/IP en la propuesta TLS) y c110f84 (migración a SDD 3.1/Harness V3) sin WI, y cross es el implementationAgent.",
+        "El reviewer independiente revisa el contenido de ambos commits (validadores V3, work-items.json, estado V4, roles y agentes .claude, backlog de 18 HU, Contract Sync en YAML, historial V2 en legacy) y emite veredicto con máximo 2 ciclos.",
+        "No quedan IP, hostname ni credenciales de la VM en archivos versionados del árbol actual.",
+        "Los 4 validadores SDD/Harness, lint, pruebas y build pasan."
+      ],
+      "lane": "FAST"
+    },
+    {
+      "id": "WI-SANDBOX-012",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-PLANNED",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Regularizar tipos generados desde esquemas y test HTTP de contrato hechos desde cross (retroactivo)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-012"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Un reporte declara la retroactividad: cross ejecutó el commit 9121d58 (tipos de /executions generados desde spec/contracts/schemas y test HTTP de contrato, INTEROP-2.17) sin WI, y cross es el implementationAgent.",
+        "El reviewer independiente revisa el generador, los tipos generados, la validación en runtime y el contract test, con máximo 2 ciclos.",
+        "contracts:check, lint, pruebas y build pasan; el comportamiento observable de la API no cambia."
+      ],
+      "lane": "FAST"
+    },
+    {
+      "id": "WI-SANDBOX-013",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-PLANNED",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.13 / INTEROP-2.17 y revisar el mapa de HU",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-013"
+      ],
+      "caseIds": [],
+      "dependsOn": [
+        "WI-SANDBOX-012"
+      ],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Se importa CS-CORE-20261018-003 y el espejo local de SYSTEM-2.13, INTEROP-2.17 y spec/contracts/schemas coincide byte a byte con Core (digests del evento); el Sandbox no espeja el contrato GH.",
+        "Se acusa CS-CORE-20261009-016 y los eventos de Core relevantes pendientes se resuelven; los tipos se regeneran y los contract tests C-06/C-07 Core↔Sandbox pasan como evidencia CT-06/CT-07.",
+        "El Sandbox emite executionProfile en RunnerFacts y un stage válido en la evidencia, y sigue aceptando requests sin phase, con prueba que lo verifica.",
+        "El mapa de HU queda contrastado con el catálogo compartido y las 18 HU de la tesis; el texto de HU17 coincide con el de Core y las referencias HU antiguas de las features pasan a HU vigentes.",
+        "Los residuales de WI-SANDBOX-010 (m3–m6, n1–n3) quedan registrados como ideas diferidas en el backlog.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-014",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-PLANNED",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "SANDBOX_MAX_CONCURRENT_EXECUTIONS por defecto 2",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-014"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/008-reliability-lifecycle/spec.md",
+        "spec/features/008-reliability-lifecycle/plan.md",
+        "spec/features/008-reliability-lifecycle/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "El valor por defecto de SANDBOX_MAX_CONCURRENT_EXECUTIONS pasa de 4 a 2 en código, spec, .env.example, validación de entorno, pruebas y CHANGELOG.",
+        "La spec documenta la razón (VM de referencia e2-medium 2 vCPU/4 GB con contenedores de 1 GiB, ADR-10) y que la latencia en cola es una medida diagnóstica y no de calidad (tesis 3.3).",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
     }
   ]
 }
