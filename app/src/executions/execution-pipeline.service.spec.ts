@@ -254,6 +254,33 @@ describe('ExecutionPipelineService', () => {
     return { pipeline, repository, workspaceManager, workspaceDir, containerRunner };
   }
 
+  it('limita las ejecuciones simultáneas: la segunda espera en PENDING hasta que la primera libera su hueco', async () => {
+    let releaseFirst!: () => void;
+    const firstInstallGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const { pipeline, repository } = await build({
+      configOverrides: { SANDBOX_MAX_CONCURRENT_EXECUTIONS: 1 },
+      installDependencies: async () => { await firstInstallGate; return okContainerResult(); },
+    });
+    const first = baseRecord({ executionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' });
+    const second = baseRecord({ executionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' });
+    repository.save(first);
+    repository.save(second);
+
+    const runFirst = pipeline.run(first.executionId);
+    const runSecond = pipeline.run(second.executionId);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(pipeline.load).toEqual({ active: 1, waiting: 1 });
+    expect(repository.findById(second.executionId)?.status).toBe('PENDING');
+
+    releaseFirst();
+    await Promise.all([runFirst, runSecond]);
+
+    expect(repository.findById(first.executionId)?.status).toBe('COMPLETED');
+    expect(repository.findById(second.executionId)?.status).toBe('COMPLETED');
+    expect(pipeline.load).toEqual({ active: 0, waiting: 0 });
+  });
+
   it('completes an execution end to end and stores RunnerFacts', async () => {
     const record = baseRecord();
     const { pipeline, repository } = await build({});

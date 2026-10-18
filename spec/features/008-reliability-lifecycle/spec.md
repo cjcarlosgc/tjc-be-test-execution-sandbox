@@ -21,3 +21,13 @@ Garantizar cleanup y límites confiables bajo fallos de dependencias, test, time
 
 - No ampliar a capacidades no mencionadas en esta spec.
 - No convertir decisiones PENDING en implementación definitiva sin aprobación.
+
+## Estabilidad del proceso (Fase 3, 2026-10-18)
+
+- **Estado en memoria acotado.** Las ejecuciones terminadas se conservan `SANDBOX_EXECUTION_RETENTION_MS` (24 h por defecto) y, como máximo, `SANDBOX_EXECUTION_MAX_RETAINED` (500); las más antiguas se expulsan. Las ejecuciones en curso nunca se expulsan.
+- **Tras un reinicio** todo el estado se pierde: una consulta de Core a una ejecución previa responde `404 EXECUTION_NOT_FOUND`, que Core trata como fallo no transitorio de esa ejecución. Persistir el estado queda fuera de este corte.
+- **Concurrencia.** `SANDBOX_MAX_CONCURRENT_EXECUTIONS` (4 por defecto) limita las ejecuciones simultáneas; las demás esperan en `PENDING`.
+- **Contenedores huérfanos.** Al arrancar se eliminan los contenedores `sandbox-<executionId>-*` que dejó un proceso anterior (no puede haber ejecuciones en curso al iniciar). `SANDBOX_RECONCILE_ORPHANS_ON_START=false` lo desactiva.
+- **Apagado ordenado.** `enableShutdownHooks()` ejecuta los `onModuleDestroy` (barrido de workspaces) ante SIGTERM/SIGINT; `unhandledRejection` se registra sin apagar y `uncaughtException` apaga de forma ordenada con código 1.
+- **Entorno validado.** Un valor numérico o booleano mal escrito impide arrancar y se listan todos los problemas, en lugar de caer en silencio al valor por defecto.
+

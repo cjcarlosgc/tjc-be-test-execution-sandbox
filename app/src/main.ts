@@ -1,6 +1,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { registerProcessSafetyNets } from './common/process-safety.js';
 import { HttpExceptionFilter } from './common/http/http-exception.filter.js';
 
 async function bootstrap() {
@@ -11,6 +12,13 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule);
+
+  // SIGTERM/SIGINT ejecutan onModuleDestroy (barrido de workspaces) en lugar de cortar en seco.
+  app.enableShutdownHooks();
+  registerProcessSafetyNets(new Logger('Process'), async (exitCode) => {
+    await app.close().catch(() => undefined);
+    process.exit(exitCode);
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
