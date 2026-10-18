@@ -6,7 +6,7 @@ Orden de lectura: `contracts/system-contract.md` -> `contracts/interoperability-
 
 ## Contrato entre componentes
 
-[`contracts/system-contract.md`](contracts/system-contract.md) e [`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) son copias espejo byte por byte de los contratos canónicos de RAG Core (hoy `SYSTEM-2.12` e `INTEROP-2.16`). Su propietario es Core; esta copia no puede redefinirlos y se actualiza con Contract Sync.
+[`contracts/system-contract.md`](contracts/system-contract.md) e [`contracts/interoperability-contract.md`](contracts/interoperability-contract.md) son copias espejo byte por byte de los contratos canónicos de RAG Core (hoy `SYSTEM-2.13` e `INTEROP-2.17`, más los esquemas JSON de `contracts/schemas/`). Su propietario es Core; esta copia no puede redefinirlos y se actualiza con Contract Sync.
 
 ## Versionado
 
