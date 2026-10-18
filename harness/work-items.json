@@ -69,7 +69,7 @@
       "id": "WI-SANDBOX-011",
       "component": "SANDBOX",
       "workItemType": "HARNESS",
-      "status": "W-PLANNED",
+      "status": "W-IN_REVIEW",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "Regularizar la migración a SDD 3.1 / Harness V3 hecha desde cross (retroactivo)",
