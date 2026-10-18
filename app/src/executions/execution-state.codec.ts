@@ -5,12 +5,14 @@
  * `artifacts` (URLs firmadas), `projectRoot` ni rutas. `deserializeExecutionRecord` valida la forma y reconstruye un
  * `ExecutionRecord` con valores inertes para lo que no se persiste.
  */
+import { isAbsolute, parse, resolve } from 'node:path';
 import type {
   ExecutionRecord,
   ExecutionResultFacts,
   ExecutionPhase,
   ExecutionProfile,
   ExecutionScope,
+  RunnerFacts,
   SandboxExecutionStatus,
   SandboxStage,
   TestRunner,
@@ -20,6 +22,14 @@ import { isTerminalStatus } from './domain/execution-record.js';
 export const EXECUTION_STATE_SCHEMA_VERSION = 1;
 export const SANDBOX_RESTARTED_CODE = 'SANDBOX_RESTARTED';
 export const SANDBOX_RESTARTED_MESSAGE = 'El Sandbox se reinició durante la ejecución.';
+
+export const REDACTED_URL = '[url-redactada]';
+export const REDACTED_PATH = '[ruta-redactada]';
+const URL_PATTERN = /https?:\/\/[^\s"'`()<>]+/gi;
+/** Tras una ruta del host se consume el resto del token (sin espacios ni comillas), para no dejar huellas del workspace. */
+const PATH_TAIL_SOURCE = /(?:[\\/][^\s"'`()<>,;]*)?/.source;
+/** Una ruta no termina a mitad de un nombre: `/srv/ws` no casa con `/srv/wsx` ni con `/srv/ws-old`. */
+const PATH_BOUNDARY_SOURCE = /(?![A-Za-z0-9_-]|\.\w)/.source;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SANDBOX_STATUSES: readonly SandboxExecutionStatus[] = [
@@ -57,17 +67,49 @@ export interface PersistedExecutionRecord {
 
 export class PersistedRecordError extends Error {}
 
-/** Solo los campos de la lista blanca, construidos uno a uno. Nunca `snapshot`, `artifacts`, `projectRoot`. */
-export function serializeExecutionRecord(record: ExecutionRecord): PersistedExecutionRecord {
-  const result = record.result === null
-    ? null
-    : {
-        facts: record.result.facts,
-        failure: record.result.failure,
-        stageDurations: record.result.stageDurations,
-        appliedArtifactIds: record.result.appliedArtifactIds,
-        evidence: record.result.evidence,
-      };
+/**
+ * Sustituye en un texto libre todas las URLs `http(s)://` por `[url-redactada]` y las rutas absolutas conocidas por el
+ * proceso (`hostPaths`) por `[ruta-redactada]`. Las rutas se comparan de forma literal, la más larga primero, y se
+ * descartan las relativas, la raíz del sistema y las vacías. Función pura: no toca el sistema de archivos.
+ */
+export function redactSensitiveText(text: string, hostPaths: readonly string[]): string {
+  const withoutUrls = text.replace(URL_PATTERN, REDACTED_URL);
+  return hostPathsLongestFirst(hostPaths).reduce(
+    (current, hostPath) => current.replace(hostPathPattern(hostPath), REDACTED_PATH),
+    withoutUrls,
+  );
+}
+
+function hostPathsLongestFirst(hostPaths: readonly string[]): string[] {
+  const normalized = new Set<string>();
+  for (const candidate of hostPaths) {
+    const trimmed = candidate.trim();
+    if (trimmed.length === 0 || !isAbsolute(trimmed)) continue;
+    const path = resolve(trimmed);
+    if (path === parse(path).root) continue;
+    normalized.add(path);
+  }
+  return [...normalized].sort((a, b) => b.length - a.length);
+}
+
+function hostPathPattern(hostPath: string): RegExp {
+  return new RegExp(`${escapeRegExp(hostPath)}${PATH_BOUNDARY_SOURCE}${PATH_TAIL_SOURCE}`, 'g');
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Solo los campos de la lista blanca, construidos uno a uno. Nunca `snapshot`, `artifacts`, `projectRoot`.
+ * Los textos libres (`failureMessage`, `failure.message`, `evidence[].content` y los textos de casos de prueba) pasan
+ * por `redactSensitiveText` con `hostPaths`. Ids, códigos, enums y fechas no se tocan.
+ */
+export function serializeExecutionRecord(
+  record: ExecutionRecord,
+  hostPaths: readonly string[] = [],
+): PersistedExecutionRecord {
+  const redact = (text: string): string => redactSensitiveText(text, hostPaths);
   return {
     schemaVersion: EXECUTION_STATE_SCHEMA_VERSION,
     executionId: record.executionId,
@@ -77,8 +119,8 @@ export function serializeExecutionRecord(record: ExecutionRecord): PersistedExec
     status: record.status,
     stage: record.stage,
     failureCode: record.failureCode,
-    failureMessage: record.failureMessage,
-    result,
+    failureMessage: record.failureMessage === null ? null : redact(record.failureMessage),
+    result: record.result === null ? null : redactResult(record.result, redact),
     requestFingerprint: record.requestFingerprint,
     scope: record.scope,
     targetIds: [...record.targetIds],
@@ -164,6 +206,34 @@ export function markInterruptedAsRestarted(record: ExecutionRecord, nowIso: stri
       evidence: [],
     },
   };
+}
+
+type Redact = (text: string) => string;
+
+function redactResult(result: ExecutionResultFacts, redact: Redact): ExecutionResultFacts {
+  return {
+    facts: result.facts === null ? null : redactFacts(result.facts, redact),
+    failure: result.failure === null ? null : { ...result.failure, message: redact(result.failure.message) },
+    stageDurations: result.stageDurations.map((duration) => ({ ...duration })),
+    appliedArtifactIds: [...result.appliedArtifactIds],
+    evidence: result.evidence.map((item) => ({ ...item, content: redact(item.content) })),
+  };
+}
+
+function redactFacts(facts: RunnerFacts, redact: Redact): RunnerFacts {
+  const testCases = Array.isArray(facts.testCases)
+    ? facts.testCases.map((testCase) => ({
+        ...testCase,
+        name: redactOptional(testCase.name, redact),
+        suitePath: redactOptional(testCase.suitePath, redact),
+        errorMessage: redactOptional(testCase.errorMessage, redact),
+      }))
+    : facts.testCases;
+  return { ...facts, testCases };
+}
+
+function redactOptional<T extends string | null>(value: T, redact: Redact): T {
+  return (typeof value === 'string' ? redact(value) : value) as T;
 }
 
 // --- validación mínima de forma -------------------------------------------------------------------------------------

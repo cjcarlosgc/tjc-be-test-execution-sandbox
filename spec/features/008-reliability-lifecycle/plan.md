@@ -10,7 +10,7 @@ LifecycleCoordinator mantiene state machine y finally cleanup. Sweeper periódic
 
 ## Persistencia de ejecuciones (WI-SANDBOX-010)
 
-`FileExecutionRepository` reemplaza al repositorio en memoria en el módulo: mantiene los mapas en memoria (lecturas síncronas, sin cambiar la interfaz `ExecutionRepository`) y escribe cada `save` a disco de forma atómica y síncrona o encolada por ejecución. Un `ExecutionStateSerializer` aplica la lista blanca de la spec, de modo que snapshot, artifacts, URLs y rutas no tienen camino hacia el disco. La carga ocurre en `onModuleInit`, antes de que el controlador acepte tráfico. La expulsión por retención borra también el archivo. El contrato HTTP no cambia.
+`FileExecutionRepository` reemplaza al repositorio en memoria en el módulo: mantiene los mapas en memoria (lecturas síncronas, sin cambiar la interfaz `ExecutionRepository`) y escribe cada `save` a disco de forma atómica y síncrona. Funciones puras de serialización (`execution-state.codec`) aplican la lista blanca de la spec, de modo que snapshot, artifacts, URLs y rutas no tienen camino hacia el disco. La carga ocurre en `onModuleInit`, antes de que el controlador acepte tráfico. La expulsión por retención borra también el archivo. El contrato HTTP no cambia.
 
 ## Validación
 

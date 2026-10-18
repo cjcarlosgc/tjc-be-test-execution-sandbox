@@ -11,13 +11,14 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   statSync,
   unlinkSync,
   writeSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import type { ExecutionRecord } from './domain/execution-record.js';
 import { isTerminalStatus } from './domain/execution-record.js';
 import {
@@ -45,19 +46,43 @@ export function defaultExecutionStateDir(): string {
 }
 
 /**
+ * Rutas absolutas del host que no deben aparecer en el estado persistido: el workspace efectivo (el mismo que usa
+ * `WorkspaceManager`), `os.tmpdir()` (scratch del snapshot) y `os.homedir()`, cada una con su forma real si existe
+ * (en macOS `/var/folders/...` es `/private/var/folders/...`).
+ */
+export function sensitiveHostPaths(workspaceRoot: string): string[] {
+  const paths = new Set<string>();
+  for (const candidate of [resolve(workspaceRoot), tmpdir(), homedir()]) {
+    paths.add(candidate);
+    try {
+      paths.add(realpathSync(candidate));
+    } catch {
+      // Inexistente todavía (p. ej. el workspace aún no se ha creado): basta con la ruta literal.
+    }
+  }
+  return [...paths];
+}
+
+/**
  * Repositorio con persistencia en disco: cada ejecución se escribe en `<dir>/<executionId>.json` y se recarga al
  * arrancar. Los fallos de escritura se registran y no interrumpen la ejecución: la memoria sigue siendo la fuente
  * mientras el proceso vive. La carga y la escritura son síncronas para que `save` siga siendo síncrono.
+ *
+ * `hostPaths` son rutas del host que se sustituyen por `[ruta-redactada]` en los textos libres al persistir; el
+ * directorio de estado se añade siempre. Las respuestas HTTP no cambian.
  */
 export class FileExecutionRepository extends RetainedExecutionRepository implements OnModuleInit {
   private readonly logger = new Logger(FileExecutionRepository.name);
+  private readonly redactionPaths: readonly string[];
 
   constructor(
     private readonly dir: string,
     policy: ExecutionRetentionPolicy = DEFAULT_RETENTION,
     now: () => number = Date.now,
+    hostPaths: readonly string[] = [],
   ) {
     super(policy, now);
+    this.redactionPaths = [dir, ...hostPaths];
   }
 
   /**
@@ -97,7 +122,7 @@ export class FileExecutionRepository extends RetainedExecutionRepository impleme
     }
     const temporary = join(this.dir, `.${record.executionId}.${randomUUID()}${TEMP_FILE_SUFFIX}`);
     try {
-      const json = `${JSON.stringify(serializeExecutionRecord(record))}\n`;
+      const json = `${JSON.stringify(serializeExecutionRecord(record, this.redactionPaths))}\n`;
       const fd = openSync(temporary, 'wx', FILE_MODE);
       try {
         writeSync(fd, json);
@@ -124,12 +149,20 @@ export class FileExecutionRepository extends RetainedExecutionRepository impleme
     }
   }
 
+  /** Crea o valida el directorio. Un fallo impide arrancar y nombra la variable, la ruta y la causa del sistema. */
   private ensureDirectory(): void {
-    mkdirSync(this.dir, { recursive: true, mode: DIRECTORY_MODE });
-    if (!statSync(this.dir).isDirectory()) {
-      throw new Error(`${this.dir} existe y no es un directorio`);
+    try {
+      mkdirSync(this.dir, { recursive: true, mode: DIRECTORY_MODE });
+      if (!statSync(this.dir).isDirectory()) {
+        throw new Error('existe y no es un directorio');
+      }
+      if (process.platform !== 'win32') chmodSync(this.dir, DIRECTORY_MODE);
+    } catch (error) {
+      throw new Error(
+        `SANDBOX_EXECUTION_STATE_DIR no es utilizable (directorio "${this.dir}"; si no se define, se usa el valor por defecto): ${errorMessage(error)}`,
+        { cause: error },
+      );
     }
-    if (process.platform !== 'win32') chmodSync(this.dir, DIRECTORY_MODE);
   }
 
   private removeTemporaryFiles(): void {
