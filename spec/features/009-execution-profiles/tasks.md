@@ -8,14 +8,14 @@
 
 ## Implementación posterior — requiere selección humana
 
-- [x] HU43: DTO y resolución estricta del profile.
-- [x] HU43: imagen PHP/Composer y adapter PHPUnit.
-- [x] HU43: contract, integration y security tests.
+- [x] HU11 (perfil PHP): DTO y resolución estricta del profile.
+- [x] HU11 (perfil PHP): imagen PHP/Composer y adapter PHPUnit.
+- [x] HU11 (perfil PHP): contract, integration y security tests.
 - [x] (legado SDD 2.1 · HU47) Proveedor remoto: resuelto por `DEC-INF-001`/`DEC-INF-002` (SYSTEM-2.12) y los WI históricos 004, 005 y 008; sin pendiente de implementación en Sandbox.
 
 Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARAVEL_PHPUNIT` (Composer + PHPUnit reales contra Docker) se corrió contra un daemon Docker real y quedó en verde, junto con el resto de la suite (`vitest run` + `tsc --noEmit`). El `php:8.3-cli` (Debian) base no trae `unzip`/`ext-zip`, necesarios para que Composer extraiga paquetes; el install del profile PHP instala `unzip` vía `apt-get` en cada ejecución (sin imagen custom), lo que exige `CapAdd: ['CHOWN','FOWNER','DAC_OVERRIDE']` y `-o APT::Sandbox::User=root` para operar bajo el `CapDrop: ['ALL']` base — confirmado en Docker real, ver `container-runner.service.ts`.
 
-## Corte T-003 — Validación PHP/Laravel (HU43)
+## Corte T-003 — Validación PHP/Laravel (HU11, perfil PHP)
 
 - [x] Imagen PHP gestionada (Dockerfile + build si falta) y sin `apt-get`/`capAdd` en la instalación.
 - [x] `composer install --no-scripts` y entorno de testing Laravel (`APP_ENV`, `APP_KEY`).
@@ -27,11 +27,11 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 - [x] Unit + e2e real en verde; reporte en `harness/reports/`.
 - [x] `CONTRACT_SYNC` publicado hacia Core.
 
-## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
+## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU11, perfil PHP)
 
 - [x] (legado SDD 2.1 · WI-SANDBOX-001 · HU43; ST antigua 004) validar `projectRoot` dentro de `repositoryRoot`, usarlo como cwd de Composer/PHPUnit y mantener artifacts repo-relative según INTEROP-2.8; omisión legacy equivale a `.`. No detectar ni seleccionar proyectos en Sandbox. Evidencia: `harness/reports/wi-sandbox-001-project-root.md`.
 
-## Próximo corte local — identidad de ejecución PHP (HU43)
+## Próximo corte local — identidad de ejecución PHP (HU11, perfil PHP)
 
 - [x] (legado SDD 2.1 · WI-SANDBOX-002 · HU43; ST antigua 005) containers PHP con identidad Unix no-root obligatoria `sandbox` (UID/GID 10001), sin `chown` manual por ejecución; `CapDrop: ['ALL']`, `no-new-privileges`, red solo durante instalación y aislamiento del workspace. El named volume de **caché** Composer se inicializa una vez, recursivamente y sin red para dar ownership al usuario no-root, sin descargar ni copiar el binario. Evidencia: `harness/reports/wi-sandbox-002-implementation.md`, 194 pruebas unitarias y E2E Docker (21); revisión independiente excepcional final APPROVED. Sin VM, GCE, despliegue ni Contract Sync.
 

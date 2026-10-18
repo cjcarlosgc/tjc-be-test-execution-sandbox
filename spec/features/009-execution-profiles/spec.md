@@ -1,7 +1,7 @@
 # 009 — Execution profiles
 
 **Estado:** APROBADO
-**Story IDs:** HU43
+**Story IDs:** HU11 (perfil PHP/Laravel; antes HU43 en SDD 2.1)
 **Contrato:** SYSTEM-2.2 (línea base Sandbox) / INTEROP-2.8 (campo Core→Sandbox `projectRoot`)
 
 ## Objetivo
@@ -26,9 +26,9 @@ Sandbox no recibe GitHub installation/repository/PR, identidad humana, prompts, 
 
 ## Fuera de alcance T-001
 
-La implementación Docker/PHP, imágenes y adapter PHPUnit pertenecen a HU43 posterior. El proveedor remoto permanece bloqueado solo por `DEC-INF-001`.
+La implementación Docker/PHP, imágenes y adapter PHPUnit pertenecen al perfil PHP de HU11 (antes HU43) posterior. El proveedor remoto permanece bloqueado solo por `DEC-INF-001`.
 
-## Corte T-003 — Validación PHP/Laravel utilizable como evidencia (HU43)
+## Corte T-003 — Validación PHP/Laravel utilizable como evidencia (HU11, perfil PHP)
 
 **Estado:** APROBADO por el usuario (2026-10-09) para implementar en `feature/php-profile`.
 **Motivo:** la validación empresarial y el piloto experimental son PHP/Laravel/PHPUnit. El corte 3 ejecuta PHPUnit real, pero sus hechos no distinguen el test generado del resto de la suite ni un error técnico de un fallo de aserción, y el entorno Laravel no queda preparado.
@@ -51,13 +51,13 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 
 ### Fuera de este corte
 
-Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
+Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (infraestructura remota de HU11 / `DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
 
-## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU43)
+## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU11, perfil PHP)
 
 **Estado:** implementado y verificado localmente.
 
-## WI-SANDBOX-002 — Identidad local PHP no-root (HU43)
+## WI-SANDBOX-002 — Identidad local PHP no-root (HU11, perfil PHP)
 
 **Estado:** aprobado por el usuario (2026-10-12) para Docker local.
 

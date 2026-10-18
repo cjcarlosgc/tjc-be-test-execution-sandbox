@@ -130,7 +130,7 @@
       "id": "WI-SANDBOX-013",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-PLANNED",
+      "status": "W-SELECTED",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "Homologar con SYSTEM-2.13 / INTEROP-2.17 y revisar el mapa de HU",

@@ -604,5 +604,87 @@
       "closedAt": "2026-10-18T23:48:41.000Z"
     }
   ],
-  "activeWorkItem": null
+  "activeWorkItem": {
+    "id": "WI-SANDBOX-013",
+    "component": "SANDBOX",
+    "workItemType": "PRODUCT",
+    "storyIds": [
+      "HU11"
+    ],
+    "taskIds": [
+      "ST-SANDBOX-013"
+    ],
+    "caseIds": [],
+    "sprint": "Estabilización 2026-10",
+    "status": "W-SELECTED",
+    "specPaths": [
+      "spec/features/001-execution-api/spec.md",
+      "spec/features/001-execution-api/plan.md",
+      "spec/features/001-execution-api/tasks.md"
+    ],
+    "transversalPaths": [],
+    "approved": false,
+    "decisionGate": {
+      "checked": false,
+      "blockingDecisionIds": [],
+      "nonBlockingDecisionIds": [],
+      "checkedAt": null
+    },
+    "execution": {
+      "leaderAgent": "leader",
+      "analysisAgent": null,
+      "implementationAgent": null,
+      "contractReviewAgent": null,
+      "reviewAgent": null,
+      "handoffs": [],
+      "reviewCycles": 0,
+      "maxReviewCycles": 2
+    },
+    "gates": {
+      "sddVerified": "G-NOT_RUN",
+      "implementationCompleted": "G-NOT_RUN",
+      "independentReviewPassed": "G-NOT_RUN",
+      "technicalChecksPassed": "G-NOT_RUN",
+      "contractReviewed": "G-NOT_RUN",
+      "canonicalContractSynced": "G-NOT_RUN",
+      "contractSyncPublished": "G-NOT_APPLICABLE",
+      "interopSyncChecked": "G-NOT_RUN",
+      "noBlockingDecisions": "G-NOT_RUN",
+      "retryLimitRespected": "G-NOT_RUN"
+    },
+    "coordination": {
+      "contractImpact": true,
+      "publishesContract": false,
+      "pullCheckpoints": [
+        {
+          "checkpoint": "start",
+          "workItem": "WI-SANDBOX-013",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [
+            "CS-CORE-20261009-016",
+            "CS-CORE-20261012-001",
+            "CS-CORE-20261018-003"
+          ],
+          "resolvedSyncIds": [
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-18T23:49:46.184Z"
+        }
+      ],
+      "publishedSyncIds": [],
+      "pendingRelevantSyncIds": []
+    },
+    "evidence": [],
+    "blockedReason": null,
+    "syncScopePaths": [
+      "spec/contracts/system-contract.md",
+      "spec/contracts/interoperability-contract.md",
+      "spec/contracts/schemas"
+    ]
+  }
 }

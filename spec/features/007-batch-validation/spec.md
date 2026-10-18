@@ -1,7 +1,7 @@
 # 007-batch-validation — Especificación
 
 **Estado:** aprobado para SDD 1.0 salvo elementos marcados PENDING/PROPOSED.  
-**Historias:** HU11, HU12, HU14, HU19
+**Historias:** HU11, HU12, HU17. *(HU antiguas de SDD 2.1 mapeadas a las 18 HU vigentes; ver «Mapa histórico» en `spec/backlog.md`.)*
 
 ## Objetivo
 
