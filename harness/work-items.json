@@ -6,7 +6,7 @@
       "id": "WI-SANDBOX-009",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Test contra el cliente HTTP real de Core servido por el Sandbox real (CT-06/CT-07)",
