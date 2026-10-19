@@ -11,5 +11,6 @@ requiredAction:
   - Re-espejar los 3 contratos y spec/contracts/schemas/ byte a byte desde Core (Sandbox espeja desde SYSTEM-2.2); emitir executionProfile en RunnerFacts y un stage valido en la evidencia; seguir aceptando requests sin phase; Core solo avisa en log ante desvio del esquema; ejecutar contracts:check, lint, build y test
 sourceRevision: 67519a20a5e061bd81a880fe539693c9a364bba3
 consumerImportedAt: 2026-10-18T23:49:10.731Z
-status: C-ACKNOWLEDGED
+status: C-RESOLVED
 acknowledgementEvidence: harness/reports/contract-sync-cs-core-20261018-003-and-20261009-016-acknowledgement.md
+resolutionEvidence: harness/reports/contract-sync-wi-sandbox-013-resolution.md

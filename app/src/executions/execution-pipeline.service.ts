@@ -345,7 +345,7 @@ export class ExecutionPipelineService {
         originalBytes: reportTruncated ? reportBytes : null,
       });
 
-      const facts: RunnerFacts = adapter.parseResult(rawResults);
+      const facts: RunnerFacts = adapter.parseResult(rawResults, containerWorkingDir);
 
       currentStage = 'FINALIZING';
       const now = new Date().toISOString();

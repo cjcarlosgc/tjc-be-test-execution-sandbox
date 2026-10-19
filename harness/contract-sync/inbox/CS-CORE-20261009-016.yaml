@@ -11,5 +11,6 @@ requiredAction:
   - Console: sincronizar el espejo INTEROP-2.7 byte a byte; sin cambio funcional requerido (failureKind no se expone en DTOs de Console).
 sourceRevision: 123f8ed
 consumerImportedAt: 2026-10-18T23:49:10.728Z
-status: C-ACKNOWLEDGED
+status: C-RESOLVED
 acknowledgementEvidence: harness/reports/contract-sync-cs-core-20261018-003-and-20261009-016-acknowledgement.md
+resolutionEvidence: harness/reports/contract-sync-wi-sandbox-013-resolution.md
