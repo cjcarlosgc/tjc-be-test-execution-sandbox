@@ -44,6 +44,12 @@ import {
 } from './execution.repository.js';
 import { getNumberConfig } from '../common/config/get-number-config.js';
 
+/**
+ * Tope por defecto de ejecuciones simultáneas. Pensado para la VM de referencia (e2-medium, 2 vCPU / 4 GB) con
+ * contenedores de 1 GiB. La espera en cola es una medida diagnóstica, no de calidad; ver spec 008 («Concurrencia»).
+ */
+export const DEFAULT_MAX_CONCURRENT_EXECUTIONS = 2;
+
 const SNAPSHOT_STAGING_PREFIX = 'sandbox-snapshot-';
 const RESULTS_FILENAME = '.sandbox-results.json';
 /** El workspace siempre se monta en `/app` dentro del container (container-runner.service.ts). */
@@ -94,7 +100,7 @@ export class ExecutionPipelineService {
     const limits = resolveSandboxLimits(configService);
     this.executionDeadlineMs = limits.executionDeadlineMs;
     this.maxWorkspaceBytes = limits.maxWorkspaceBytes;
-    this.maxConcurrent = Math.max(1, Math.floor(getNumberConfig(configService, 'SANDBOX_MAX_CONCURRENT_EXECUTIONS', 4)));
+    this.maxConcurrent = Math.max(1, Math.floor(getNumberConfig(configService, 'SANDBOX_MAX_CONCURRENT_EXECUTIONS', DEFAULT_MAX_CONCURRENT_EXECUTIONS)));
   }
 
   /**
@@ -117,7 +123,7 @@ export class ExecutionPipelineService {
   }
 
   /**
-   * Limita las ejecuciones simultáneas (`SANDBOX_MAX_CONCURRENT_EXECUTIONS`, por defecto 4): cada una usa un
+   * Limita las ejecuciones simultáneas (`SANDBOX_MAX_CONCURRENT_EXECUTIONS`, por defecto 2): cada una usa un
    * contenedor con CPU y memoria acotadas, y sin tope una ráfaga de peticiones agota la VM. Las que esperan
    * conservan el estado `PENDING`, que es lo que Core ya sabe consultar.
    */

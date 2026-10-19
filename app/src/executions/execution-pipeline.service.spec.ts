@@ -281,6 +281,63 @@ describe('ExecutionPipelineService', () => {
     expect(pipeline.load).toEqual({ active: 0, waiting: 0 });
   });
 
+  it('usa 2 huecos por defecto sin la variable: la tercera espera en PENDING y ninguna falla por esperar', async () => {
+    let releaseAll!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseAll = resolve; });
+    const { pipeline, repository } = await build({
+      installDependencies: async () => { await gate; return okContainerResult(); },
+    });
+    const records = [
+      baseRecord({ executionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }),
+      baseRecord({ executionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }),
+      baseRecord({ executionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', requestId: 'ffffffff-ffff-4fff-8fff-ffffffffffff' }),
+    ];
+    records.forEach((record) => repository.save(record));
+
+    const runs = records.map((record) => pipeline.run(record.executionId));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(pipeline.load).toEqual({ active: 2, waiting: 1 });
+    expect(repository.findById(records[2]!.executionId)?.status).toBe('PENDING');
+
+    releaseAll();
+    await Promise.all(runs);
+
+    for (const record of records) {
+      const updated = repository.findById(record.executionId);
+      expect(updated?.status).toBe('COMPLETED');
+      expect(updated?.result?.failure).toBeNull();
+      expect(updated?.failureCode).toBeNull();
+    }
+    expect(pipeline.load).toEqual({ active: 0, waiting: 0 });
+  });
+
+  it('acepta un override explícito de 3 y permite 3 ejecuciones simultáneas', async () => {
+    let releaseAll!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseAll = resolve; });
+    const { pipeline, repository } = await build({
+      configOverrides: { SANDBOX_MAX_CONCURRENT_EXECUTIONS: 3 },
+      installDependencies: async () => { await gate; return okContainerResult(); },
+    });
+    const records = [
+      baseRecord({ executionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }),
+      baseRecord({ executionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }),
+      baseRecord({ executionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', requestId: 'ffffffff-ffff-4fff-8fff-ffffffffffff' }),
+    ];
+    records.forEach((record) => repository.save(record));
+
+    const runs = records.map((record) => pipeline.run(record.executionId));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(pipeline.load).toEqual({ active: 3, waiting: 0 });
+
+    releaseAll();
+    await Promise.all(runs);
+    for (const record of records) {
+      expect(repository.findById(record.executionId)?.status).toBe('COMPLETED');
+    }
+  });
+
   it('completes an execution end to end and stores RunnerFacts', async () => {
     const record = baseRecord();
     const { pipeline, repository } = await build({});

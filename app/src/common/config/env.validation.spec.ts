@@ -21,6 +21,14 @@ describe('validateSandboxEnv', () => {
     for (const key of ['PORT', 'SANDBOX_TEST_TIMEOUT_MS', 'SANDBOX_RECONCILE_ORPHANS_ON_START']) expect(message).toContain(key);
   });
 
+  it('SANDBOX_MAX_CONCURRENT_EXECUTIONS: rechaza -1, 1.5 y abc; acepta 2 y ausencia', () => {
+    for (const raw of ['-1', '1.5', 'abc']) {
+      expect(() => validateSandboxEnv({ SANDBOX_MAX_CONCURRENT_EXECUTIONS: raw })).toThrow(/SANDBOX_MAX_CONCURRENT_EXECUTIONS/);
+    }
+    expect(() => validateSandboxEnv({ SANDBOX_MAX_CONCURRENT_EXECUTIONS: '2' })).not.toThrow();
+    expect(() => validateSandboxEnv({})).not.toThrow();
+  });
+
   it('exige enteros positivos en los límites y permite 0 solo donde tiene sentido', () => {
     expect(() => validateSandboxEnv({ SANDBOX_MAX_CONCURRENT_EXECUTIONS: '0' })).toThrow();
     expect(() => validateSandboxEnv({ SANDBOX_DOWNLOAD_MAX_REDIRECTS: '0' })).not.toThrow();

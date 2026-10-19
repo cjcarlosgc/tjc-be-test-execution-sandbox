@@ -169,7 +169,7 @@
       "id": "WI-SANDBOX-014",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-PLANNED",
+      "status": "W-IN_REVIEW",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "SANDBOX_MAX_CONCURRENT_EXECUTIONS por defecto 2",
