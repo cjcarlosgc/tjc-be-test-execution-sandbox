@@ -6,10 +6,10 @@
       "id": "WI-SANDBOX-009",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-PLANNED",
+      "status": "W-IN_REVIEW",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
-      "title": "Contract/e2e test contra el cliente real de Core",
+      "title": "Test contra el cliente HTTP real de Core servido por el Sandbox real (CT-06/CT-07)",
       "storyIds": [
         "HU11"
       ],
@@ -26,10 +26,14 @@
         "spec/features/001-execution-api/tasks.md"
       ],
       "acceptanceCriteria": [
-        "Se verifica contra Core si ya implementa Bearer e identidad UUID v5 estable; si no, el WI queda BLOCKED con la causa.",
-        "Si Core ya los implementa, existe una prueba de contrato/e2e que usa el cliente real de Core contra este Sandbox y pasa.",
-        "Lint, pruebas, build y validadores SDD/Harness pasan antes de la revisión independiente."
-      ]
+        "Existe un test en el Sandbox que importa el cliente real de Core (SandboxExecutionService, en ../tjc-be-rag-core-api/app/src/sandbox, solo lectura, sin modificar Core ni añadir dependencias) y lo ejecuta contra el Sandbox real servido por HTTP en un puerto local, con Bearer e identidad requestId UUID v5 estables.",
+        "Caso feliz: la ejecución termina COMPLETED con facts y Core (cliente real) devuelve un resultado mapeado sin desvíos de esquema ni advertencias de validación.",
+        "Caso de fallo: un resultado FAILED/INFRASTRUCTURE (SANDBOX_RESTARTED tras reinicio del repositorio persistido, o timeout) es entendido por el cliente de Core como fallo terminal, no como sondeo infinito ni error de contrato.",
+        "El test se omite con aviso explícito si ../tjc-be-rag-core-api no existe, de modo que el CI del Sandbox no depende de Core; no duplica los contract tests de executions.contract-real.spec.ts.",
+        "El reporte lo declara evidencia CT-06/CT-07 (tesis Anexo E) y registra cualquier desajuste Core↔Sandbox encontrado.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan antes de la revisión independiente."
+      ],
+      "lane": "FAST"
     },
     {
       "id": "WI-SANDBOX-010",

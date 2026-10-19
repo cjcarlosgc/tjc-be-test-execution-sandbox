@@ -1,310 +1,34 @@
-import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { resolve } from 'node:path';
-import { ValidationPipe } from '@nestjs/common';
-import type { INestApplication } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ZipFile } from 'yazl';
-import { BearerAuthGuard } from '../common/auth/bearer-auth.guard.js';
-import { CorrelationIdMiddleware } from '../common/http/correlation-id.middleware.js';
-import { HttpExceptionFilter } from '../common/http/http-exception.filter.js';
-import {
-  ImageUnavailableError,
-  InputDownloadFailedError,
-} from '../common/errors/sandbox-fact-error.js';
-import type {
-  ContainerRunner,
-  ContainerRunResult,
-} from '../container/container-runner.service.js';
+import { ImageUnavailableError } from '../common/errors/sandbox-fact-error.js';
 import { validateContract } from '../contracts/contract-validator.js';
-import { ArtifactMaterializer } from '../materialization/artifact-materializer.js';
-import { JestTestRunnerAdapter } from '../runner-adapters/jest-test-runner.adapter.js';
-import { PhpunitTestRunnerAdapter } from '../runner-adapters/phpunit-test-runner.adapter.js';
-import { RunnerAdapterRegistry } from '../runner-adapters/runner-adapter-registry.js';
-import { VitestTestRunnerAdapter } from '../runner-adapters/vitest-test-runner.adapter.js';
-import type { ExecutionInputDownloadService } from '../workspace/execution-input-download.service.js';
-import { SafeArchiveExtractor } from '../workspace/safe-archive-extractor.js';
-import { WorkspaceManager } from '../workspace/workspace-manager.js';
-import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import {
-  EXECUTION_REPOSITORY,
-  InMemoryExecutionRepository,
-} from './execution.repository.js';
-import { ExecutionsController } from './executions.controller.js';
-import { ExecutionsService } from './executions.service.js';
+  auth,
+  closeOpenSandboxes,
+  envelopeErrors,
+  fixture,
+  finish,
+  get,
+  nodeRequest,
+  phpRequest,
+  PHP_PROJECT,
+  post,
+  runToResult,
+  type Sandbox,
+  SCHEMA,
+  schemaErrors,
+  SNAPSHOT_URL,
+  startSandbox,
+  zip,
+} from '../../test/support/contract-real-sandbox.js';
 
 /*
  * Contrato Core ↔ Sandbox sobre resultados REALES del ExecutionPipelineService (evidencia CT-06 / CT-07).
- *
- * Real: HTTP (Nest, guard de Bearer, ValidationPipe, HttpExceptionFilter), ExecutionsService, ExecutionPipelineService,
- * ArtifactMaterializer, SafeArchiveExtractor, WorkspaceManager (salvo creación/limpieza de directorios), RunnerAdapterRegistry
- * con los adapters Jest/Vitest/PHPUnit y sus parsers, y la validación contra spec/contracts/schemas.
- * Fakes en los bordes: el contenedor (ContainerRunner: instalación y ejecución de tests), las descargas de snapshot y
- * artefactos (ExecutionInputDownloadService) y la creación de workspace. La salida del runner son fixtures reales de
- * Jest/Vitest (JSON) y PHPUnit (JUnit XML) de src/runner-adapters/fixtures.
+ * El montaje (Nest real, fakes en los bordes, fixtures de runner) vive en test/support/contract-real-sandbox.ts y lo
+ * comparte core-client.contract.spec.ts, que sirve el mismo Sandbox por HTTP real y usa el cliente de Core.
  */
 
-const SCHEMA = 'sandbox-execution.schema.json' as const;
-const ENVELOPE = 'error-envelope.schema.json' as const;
-const TOKEN = 'contract-real-test-token';
-const auth = { Authorization: `Bearer ${TOKEN}` };
-const TERMINAL = ['COMPLETED', 'FAILED', 'TIMED_OUT'];
-
-const FIXTURES = resolve(__dirname, '../runner-adapters/fixtures');
-const EXAMPLES = resolve(__dirname, '../../../spec/contracts/schemas/examples');
-const fixture = (name: string): string => readFileSync(resolve(FIXTURES, name), 'utf8');
-const example = <T = Record<string, any>>(name: string): T =>
-  JSON.parse(readFileSync(resolve(EXAMPLES, name), 'utf8')) as T;
-
-const SNAPSHOT_URL = 'https://storage.example.test/snapshot.zip?sig=EXAMPLE';
-const EXAMPLE_ARTIFACT_URL = 'https://storage.example.test/foo.spec.ts?sig=EXAMPLE';
-
-const NODE_PROJECT: Record<string, string> = {
-  'package.json': JSON.stringify({ name: 'demo', devDependencies: { vitest: '^3.0.0' } }),
-  'pnpm-lock.yaml': "lockfileVersion: '9.0'\n",
-  'src/math.ts': 'export const add = (a: number, b: number) => a + b;\n',
-};
-const PHP_PROJECT: Record<string, string> = {
-  'composer.json': JSON.stringify({ 'require-dev': { 'phpunit/phpunit': '^11.0' } }),
-  'apps/api/composer.json': JSON.stringify({ 'require-dev': { 'phpunit/phpunit': '^11.0' } }),
-};
-
-interface ContainerScript {
-  /** Si se define, la instalación espera a esta promesa (para observar estados intermedios). */
-  gate?: Promise<void>;
-  installError?: Error;
-  install: Partial<ContainerRunResult>;
-  testError?: Error;
-  test: Partial<ContainerRunResult>;
-  /** Contenido que el runner escribe en `.sandbox-results.json`; undefined = no escribe reporte. */
-  report?: string;
-}
-
-interface Sandbox {
-  app: INestApplication;
-  repository: InMemoryExecutionRepository;
-  script: ContainerScript;
-  /** Comando que el pipeline pasó al contenedor en cada ejecución de tests. */
-  commands: string[][];
-  serve(url: string, body: Buffer | string): void;
-  artifact(relativePath: string, content: string): Record<string, unknown>;
-  close(): Promise<void>;
-}
-
-const open: Sandbox[] = [];
-
-afterEach(async () => {
-  await Promise.all(open.splice(0).map((sandbox) => sandbox.close()));
-});
-
-function okContainerResult(overrides: Partial<ContainerRunResult> = {}): ContainerRunResult {
-  return {
-    exitCode: 0,
-    oomKilled: false,
-    stdout: '',
-    stdoutTruncated: false,
-    stdoutOriginalBytes: 0,
-    stderr: '',
-    stderrTruncated: false,
-    stderrOriginalBytes: 0,
-    timedOut: false,
-    durationMs: 1,
-    ...overrides,
-  };
-}
-
-function zip(files: Record<string, string>): Promise<Buffer> {
-  return new Promise((resolveZip, reject) => {
-    const archive = new ZipFile();
-    for (const [entryPath, content] of Object.entries(files)) {
-      archive.addBuffer(Buffer.from(content, 'utf8'), entryPath);
-    }
-    const chunks: Buffer[] = [];
-    archive.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-    archive.outputStream.on('end', () => resolveZip(Buffer.concat(chunks)));
-    archive.outputStream.on('error', reject);
-    archive.end();
-  });
-}
-
-async function startSandbox(): Promise<Sandbox> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contract-real-'));
-  const overrides: Record<string, unknown> = {
-    SANDBOX_SERVICE_TOKEN: TOKEN,
-    SANDBOX_WORKSPACE_ROOT: root,
-  };
-  const config = {
-    get: (key: string, fallback?: unknown) => (key in overrides ? overrides[key] : fallback),
-  } as unknown as ConfigService;
-
-  const objects = new Map<string, Buffer>();
-  const script: ContainerScript = { install: {}, test: {} };
-  const commands: string[][] = [];
-
-  // Borde de descargas: sirve bytes por URL; el extractor y el materializador reales hacen el resto.
-  const downloads = {
-    downloadToFile: async (ref: { url: string; role: string }, destinationPath: string) => {
-      const body = objects.get(ref.url);
-      if (body === undefined) {
-        throw new InputDownloadFailedError(`no object served for ${ref.role}`);
-      }
-      await fs.writeFile(destinationPath, body);
-      return { path: destinationPath, sizeBytes: body.length, sha256: 'x' };
-    },
-  } as unknown as ExecutionInputDownloadService;
-
-  // Borde de workspace: directorios planos (sin ACL de Linux); el resto de WorkspaceManager es real.
-  const realWorkspaces = new WorkspaceManager(config);
-  const workspaces = Object.assign(Object.create(realWorkspaces) as WorkspaceManager, {
-    createWorkspace: async (executionId: string) => {
-      const dir = path.join(root, executionId);
-      await fs.mkdir(dir, { recursive: true });
-      return dir;
-    },
-    cleanup: async (dir: string) => {
-      await fs.rm(dir, { recursive: true, force: true });
-      return true;
-    },
-  });
-
-  // Borde de contenedor: simula instalación y ejecución; escribe el reporte del runner en la ruta montada.
-  const containerRunner = {
-    installDependencies: async () => {
-      if (script.gate) await script.gate;
-      if (script.installError) throw script.installError;
-      return okContainerResult(script.install);
-    },
-    runTestCommand: async (_executionId: string, workspacePath: string, command: string[]) => {
-      commands.push(command);
-      if (script.testError) throw script.testError;
-      if (script.report !== undefined) {
-        await fs.writeFile(path.join(workspacePath, '.sandbox-results.json'), script.report, 'utf8');
-      }
-      return okContainerResult(script.test);
-    },
-    restorePhpWorkspaceAccess: async () => undefined,
-  } as unknown as ContainerRunner;
-
-  const repository = new InMemoryExecutionRepository();
-  const pipeline = new ExecutionPipelineService(
-    repository,
-    workspaces,
-    new SafeArchiveExtractor(config),
-    downloads,
-    new ArtifactMaterializer(workspaces, downloads),
-    new RunnerAdapterRegistry(
-      new JestTestRunnerAdapter(),
-      new VitestTestRunnerAdapter(),
-      new PhpunitTestRunnerAdapter(),
-    ),
-    containerRunner,
-    config,
-  );
-
-  const moduleRef = await Test.createTestingModule({
-    controllers: [ExecutionsController],
-    providers: [
-      ExecutionsService,
-      BearerAuthGuard,
-      { provide: EXECUTION_REPOSITORY, useValue: repository },
-      { provide: ExecutionPipelineService, useValue: pipeline },
-      { provide: ConfigService, useValue: config },
-    ],
-  }).compile();
-  const app = moduleRef.createNestApplication();
-  app.use((req: any, res: any, next: any) => new CorrelationIdMiddleware().use(req, res, next));
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  app.useGlobalFilters(new HttpExceptionFilter());
-  await app.init();
-
-  const serve = (url: string, body: Buffer | string) => {
-    objects.set(url, Buffer.from(body));
-  };
-  const sandbox: Sandbox = {
-    app,
-    repository,
-    script,
-    commands,
-    serve,
-    artifact(relativePath, content) {
-      const artifactId = randomUUID();
-      const url = `https://storage.example.test/artifacts/${artifactId}?sig=EXAMPLE`;
-      serve(url, content);
-      return {
-        artifactId,
-        relativePath,
-        artifactType: 'CREATED',
-        download: {
-          role: 'GENERATED_ARTIFACT',
-          url,
-          expiresAt: '2099-01-01T00:00:00.000Z',
-          sha256: 'b'.repeat(64),
-          sizeBytes: Buffer.byteLength(content),
-        },
-      };
-    },
-    async close() {
-      await app.close();
-      await fs.rm(root, { recursive: true, force: true });
-    },
-  };
-  // Por defecto, el ejemplo canónico de artefacto y el proyecto Node del snapshot.
-  serve(EXAMPLE_ARTIFACT_URL, 'export {};\n');
-  serve(SNAPSHOT_URL, await zip(NODE_PROJECT));
-  open.push(sandbox);
-  return sandbox;
-}
-
-const post = (sandbox: Sandbox, body: Record<string, unknown>, idempotencyKey?: string) =>
-  request(sandbox.app.getHttpServer())
-    .post('/executions')
-    .set(auth)
-    .set('Idempotency-Key', idempotencyKey ?? (body.requestId as string))
-    .send(body);
-
-const get = (sandbox: Sandbox, route: string) =>
-  request(sandbox.app.getHttpServer()).get(route).set(auth);
-
-/** Consulta el estado por HTTP hasta un estado terminal (el POST lanza el pipeline sin esperar). */
-async function finish(sandbox: Sandbox, executionId: string) {
-  const deadline = Date.now() + 10_000;
-  for (;;) {
-    const response = await get(sandbox, `/executions/${executionId}`);
-    if (TERMINAL.includes(response.body.status)) return response;
-    if (Date.now() > deadline) {
-      throw new Error(`execution ${executionId} did not finish (last status ${response.body.status})`);
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 5));
-  }
-}
-
-async function runToResult(sandbox: Sandbox, body: Record<string, unknown>) {
-  const accepted = await post(sandbox, body);
-  expect(accepted.status, JSON.stringify(accepted.body)).toBe(202);
-  await finish(sandbox, accepted.body.executionId);
-  const result = await get(sandbox, `/executions/${accepted.body.executionId}/result`);
-  expect(result.status, JSON.stringify(result.body)).toBe(200);
-  return { executionId: accepted.body.executionId as string, result: result.body };
-}
-
-const envelopeErrors = (body: unknown) => validateContract(ENVELOPE, null, body).errors;
-const schemaErrors = (definition: string, body: unknown) =>
-  validateContract(SCHEMA, definition, body).errors;
-
-const nodeRequest = (overrides: Record<string, unknown> = {}) => ({
-  ...example('sandbox-create-request.node.json'),
-  ...overrides,
-});
-const phpRequest = (overrides: Record<string, unknown> = {}) => ({
-  ...example('sandbox-create-request.php.json'),
-  ...overrides,
-});
+afterEach(closeOpenSandboxes);
 
 describe('C-06 Execution Coordinator → Sandbox', () => {
   it('T4: POST sin phase de extremo a extremo; la fase efectiva es GENERATED_TESTS y solo corre el artefacto', async () => {

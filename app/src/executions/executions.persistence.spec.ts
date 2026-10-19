@@ -131,9 +131,9 @@ describe('ExecutionsService con estado persistido (reinicio)', () => {
       ...finished!,
       status: 'COMPLETED',
       stage: 'FINALIZING',
-      startedAt: '2026-10-18T12:00:00.000Z',
-      completedAt: '2026-10-18T12:00:05.000Z',
-      updatedAt: '2026-10-18T12:00:05.000Z',
+      startedAt: new Date(Date.now() - 5000).toISOString(),
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       result: { facts: null, failure: null, stageDurations: [], appliedArtifactIds: [], evidence: [] },
     });
     const beforeRestart = before.service.getResult(accepted.executionId);
