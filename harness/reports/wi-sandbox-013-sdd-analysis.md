@@ -54,3 +54,5 @@ status SPEC_GAPS · blockers ninguno · recommendedNextStep: implementar T1–T1
 
 ## Cierre del leader
 Los huecos son de pruebas, no de spec: el implementer añade T1–T10 y el reporte de implementación. Veredicto tras el cierre: **SPEC_VERIFIED** (`contractImpact: true` por el espejo; sin decisión bloqueante). `retryable?` y `pollAfterMs` no se emiten y se toleran si llegan.
+
+**Corrección (leader, tras la implementación):** `pollAfterMs` SÍ se emite en el `202` (requerido por el esquema); solo el GET de estado no lo repite. `retryable` no se emite.

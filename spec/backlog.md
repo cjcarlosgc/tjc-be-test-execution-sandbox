@@ -106,3 +106,5 @@ Residuales de la revisión independiente de WI-SANDBOX-010, sin urgencia y sin t
 | I-SANDBOX-006 | Pruebas del cableado de `sensitiveHostPaths` en el módulo y de incluir el directorio de estado entre las rutas redactadas. | WI-010 · n1, n2 |
 | I-SANDBOX-007 | Ampliar la redacción a rutas con espacios, diferencias de mayúsculas, rutas Windows y esquemas distintos de http/https. | WI-010 · n3 |
 | I-SANDBOX-008 | Derivar `TestCaseFactStatus` y `TestCaseFailureKind` del contrato generado y atar la excepción de 5 ciclos de revisión de `validate-harness.mjs` al WI correspondiente. | WI-011/012 · MINOR |
+| I-SANDBOX-009 | Rechazar `\u0000` y normalizar formas raras (`C:foo\a.ts`, `file:///…`, barra final) en `toRelativeSuitePath`; distinguir suites homónimas fuera de la raíz. | WI-013 · MINOR 1, 2, 4 |
+| I-SANDBOX-010 | Responder `422 UNSUPPORTED_*` antes del `202` cuando perfil y runner sean incompatibles (INTEROP §7.4) y emitir `TEST_COMPILATION_FAILED` también para errores de compilación de Jest. | WI-013 · observaciones D |
