@@ -197,6 +197,42 @@
         "La spec documenta la razón (VM de referencia e2-medium 2 vCPU/4 GB con contenedores de 1 GiB, ADR-10) y que la latencia en cola es una medida diagnóstica y no de calidad (tesis 3.3).",
         "Lint, pruebas, build, contracts:check y los 4 validadores pasan."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-015",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-IN_REVIEW",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con INTEROP-2.18 (CS-CORE-20261021-003)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-015"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ],
+      "acceptanceCriteria": [
+        "Se importa solo CS-CORE-20261021-003 y el espejo local de interoperability-contract.md (INTEROP-2.18, sha256 22b880d1…e311), system-contract.md (sin cambio, b70f9358…0444) y spec/contracts/schemas con examples/ (árbol a1ba9a19…9091) coincide byte a byte con Core; el Sandbox no espeja el contrato GH.",
+        "Los tipos generados se regeneran con contracts:generate y contracts:check pasa; el Sandbox sigue sin usar Socket.IO.",
+        "Los contract tests C-06/C-07 (executions.contract-real.spec.ts) y el test con el cliente real de Core (WI-009) se reejecutan en verde; el Sandbox tolera un `code` abierto en errores genéricos y no cambia su comportamiento observable.",
+        "Un cuerpo JSON mayor que el límite de Express responde 413 PAYLOAD_TOO_LARGE (ErrorEnvelope válido, sin `retryable`) en lugar de 500 INTERNAL_ERROR; alcance ampliado por el usuario el 2026-10-21 tras detectarlo con las pruebas de errores genéricos.",
+        "El evento se acusa y se resuelve con reporte; lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
     }
   ]
 }
