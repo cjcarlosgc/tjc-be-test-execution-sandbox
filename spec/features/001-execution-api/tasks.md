@@ -11,7 +11,7 @@
 - [x] **ST-SANDBOX-015 · T-DONE · WI-SANDBOX-015 · HU11:** homologar el espejo con INTEROP-2.18 y los esquemas (CS-CORE-20261021-003): re-espejar byte a byte, regenerar tipos, reejecutar los contract tests C-06/C-07 y el del cliente real de Core; sin cambio de comportamiento esperado.
 - [x] **ST-SANDBOX-016 · T-DONE · WI-SANDBOX-016 · HU11:** endurecer el hook de títulos de subagente `.claude/hooks/check-subagent-title.mjs` para que valide también las menciones abreviadas de WI (p. ej. `WI-015`) y cubrirlo con un test del harness.
 - [x] **ST-SANDBOX-017 · T-DONE · WI-SANDBOX-017 · HU11:** homologar el espejo con SYSTEM-2.14 / INTEROP-2.19 (CS-CORE-20261021-004, DEC-EXP-005): re-espejar byte a byte; solo documental, sin cambio de código ni de esquemas.
-- [ ] **ST-SANDBOX-018 · T-IN_PROGRESS · WI-SANDBOX-018 · HU11:** aislar los tests e2e del `app/.env` local del usuario para que no dependan de él (hoy el `.env` se captura al importar `AppModule` y da 401); solo configuración de pruebas, sin leer ni tocar el `.env`.
+- [x] **ST-SANDBOX-018 · T-DONE · WI-SANDBOX-018 · HU11:** aislar los tests e2e del `app/.env` local del usuario para que no dependan de él (hoy el `.env` se captura al importar `AppModule` y da 401); solo configuración de pruebas, sin leer ni tocar el `.env`.
 - [x] Response DTOs y `ErrorEnvelope` centralizado.
 
 ## Calidad
