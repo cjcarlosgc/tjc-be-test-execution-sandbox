@@ -62,6 +62,7 @@ async function pollExecutionStatus(
 describe('Executions API (e2e)', () => {
   let app: INestApplication;
   let workspaceRoot: string;
+  let executionStateDir: string;
   let fixtureServer: FixtureServer;
   let snapshotSha256: string;
   let snapshotZip: Buffer;
@@ -78,6 +79,11 @@ describe('Executions API (e2e)', () => {
       path.join(os.tmpdir(), 'sandbox-e2e-workspace-'),
     );
     process.env.SANDBOX_WORKSPACE_ROOT = workspaceRoot;
+    // Estado de ejecuciones aislado por corrida: sin esto, los requestId fijos de estas pruebas se reproducirían entre corridas.
+    executionStateDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'sandbox-e2e-state-'),
+    );
+    process.env.SANDBOX_EXECUTION_STATE_DIR = executionStateDir;
 
     snapshotZip = await buildZipFixture(snapshotContent);
     snapshotSha256 = createHash('sha256').update(snapshotZip).digest('hex');
@@ -113,6 +119,7 @@ describe('Executions API (e2e)', () => {
     await app.close();
     await fixtureServer.close();
     await fs.rm(workspaceRoot, { recursive: true, force: true });
+    await fs.rm(executionStateDir, { recursive: true, force: true });
   });
 
   it('rejects requests without a bearer token', async () => {

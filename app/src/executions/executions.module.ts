@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { getNumberConfig } from '../common/config/get-number-config.js';
+import { resolveSandboxLimits } from '../common/config/sandbox-limits.config.js';
 import { ContainerModule } from '../container/container.module.js';
 import { MaterializationModule } from '../materialization/materialization.module.js';
 import { RunnerAdaptersModule } from '../runner-adapters/runner-adapters.module.js';
@@ -6,10 +9,8 @@ import { WorkspaceModule } from '../workspace/workspace.module.js';
 import { ExecutionPipelineService } from './execution-pipeline.service.js';
 import { ExecutionsController } from './executions.controller.js';
 import { ExecutionsService } from './executions.service.js';
-import {
-  EXECUTION_REPOSITORY,
-  InMemoryExecutionRepository,
-} from './execution.repository.js';
+import { DEFAULT_RETENTION, EXECUTION_REPOSITORY } from './execution.repository.js';
+import { FileExecutionRepository, defaultExecutionStateDir, sensitiveHostPaths } from './file-execution.repository.js';
 
 @Module({
   imports: [
@@ -22,7 +23,22 @@ import {
   providers: [
     ExecutionsService,
     ExecutionPipelineService,
-    { provide: EXECUTION_REPOSITORY, useClass: InMemoryExecutionRepository },
+    {
+      provide: EXECUTION_REPOSITORY,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const configuredDir = String(config.get('SANDBOX_EXECUTION_STATE_DIR') ?? '').trim();
+        return new FileExecutionRepository(
+          configuredDir || defaultExecutionStateDir(),
+          {
+            terminalTtlMs: getNumberConfig(config, 'SANDBOX_EXECUTION_RETENTION_MS', DEFAULT_RETENTION.terminalTtlMs),
+            maxTerminalRecords: getNumberConfig(config, 'SANDBOX_EXECUTION_MAX_RETAINED', DEFAULT_RETENTION.maxTerminalRecords),
+          },
+          Date.now,
+          sensitiveHostPaths(resolveSandboxLimits(config).workspaceRoot),
+        );
+      },
+    },
   ],
 })
 export class ExecutionsModule {}

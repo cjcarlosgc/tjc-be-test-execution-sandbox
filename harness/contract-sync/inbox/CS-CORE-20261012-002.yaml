@@ -1,0 +1,15 @@
+type: CONTRACT_SYNC
+id: CS-CORE-20261012-002
+source: core
+sourceWorkItem: WI-CORE-013
+targets: [sandbox]
+breaking: false
+changed:
+  - "areas: phase, evidence"
+requiredAction:
+  - "Provenance correction only (sourceRevision of CS-CORE-20261009-016). Console mirrors INTEROP-2.7 from the commit in sourceRevision. No functional or contract change for Sandbox."
+sourceRevision: a7c04cef12740941d8559c743f84ed287fb57ced
+consumerImportedAt: 2026-10-12T18:50:56.000Z
+status: C-RESOLVED
+acknowledgementEvidence: harness/reports/contract-sync-cs-core-20261012-002-acknowledgement.md
+resolutionEvidence: harness/reports/contract-sync-historical-events-regularization-2026-10-18.md

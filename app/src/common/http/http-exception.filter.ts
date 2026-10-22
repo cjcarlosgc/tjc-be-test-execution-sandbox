@@ -81,12 +81,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
       };
     }
 
+    if (this.isBodyTooLarge(exception)) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'El cuerpo de la solicitud excede el límite permitido.',
+        details: null,
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_ERROR',
       message: 'Unexpected internal error.',
       details: null,
     };
+  }
+
+  /** Error de body-parser (no es HttpException) por cuerpo por encima del límite: `type` entity.too.large o status 413. */
+  private isBodyTooLarge(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') {
+      return false;
+    }
+    const error = exception as { type?: unknown; status?: unknown; statusCode?: unknown };
+    return error.type === 'entity.too.large' || error.status === 413 || error.statusCode === 413;
   }
 
   private extractMessage(body: unknown, fallback: string): string {

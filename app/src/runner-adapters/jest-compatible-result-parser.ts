@@ -8,6 +8,7 @@ import type {
 } from '../common/contracts/sandbox-execution.contract.js';
 import { InvalidArchiveError } from '../common/errors/sandbox-fact-error.js';
 import { MAX_TEST_CASES } from './runner-result-limits.js';
+import { toRelativeSuitePath } from './runner-result-paths.js';
 
 interface JestCompatibleAssertion {
   title: string;
@@ -43,6 +44,7 @@ export function parseJestCompatibleJson(
   executionProfile: ExecutionProfile,
   runner: TestRunner,
   rawOutput: string,
+  containerRoot?: string,
 ): RunnerFacts {
   let report: JestCompatibleReport;
   try {
@@ -69,7 +71,7 @@ export function parseJestCompatibleJson(
       }
       const status = mapAssertionStatus(assertion.status);
       testCases.push({
-        suitePath: suite.name ?? null,
+        suitePath: toRelativeSuitePath(suite.name, containerRoot),
         name: assertion.title,
         status,
         durationMs:

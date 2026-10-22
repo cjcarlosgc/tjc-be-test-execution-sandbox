@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 3,
+  "awayMode": {
+    "enabled": true,
+    "activatedBy": "user",
+    "activatedAt": "2026-10-11T10:09:24.000Z",
+    "quote": "Modo fuera de casa"
+  },
+  "sddVersion": "2.1",
+  "allowedStatuses": [
+    "SELECTED",
+    "SPEC_VERIFIED",
+    "AWAITING_APPROVAL",
+    "IN_PROGRESS",
+    "IN_REVIEW",
+    "BLOCKED",
+    "DECISION_REQUIRED",
+    "DONE"
+  ],
+  "completedWorkItems": [
+    {
+      "id": "WI-SANDBOX-003",
+      "status": "DONE",
+      "evidence": [
+        "harness/reports/wi-sandbox-003-contract-sync-preflight.md"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-004",
+      "status": "DONE",
+      "scope": "HARNESS record only; E2E remains failed and cleanup/process/tunnel are unknown",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "PASSED",
+        "contractReviewed": "NOT_APPLICABLE",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-implementation-delivery: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/wi-sandbox-004-remote-e2e-authorization.md",
+        "harness/reports/wi-sandbox-004-review.md"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-005",
+      "status": "DONE",
+      "scope": "ACL acotada UID 10001 para workspace PHP; plataforma Linux-only; fallo INFRASTRUCTURE/WORKSPACE_PROVISIONING_FAILED",
+      "storyIds": [
+        "HU11"
+      ],
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "PASSED",
+        "contractReviewed": "NOT_APPLICABLE",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "PASSED",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/contract-sync/inbox/CS-CORE-20261012-001.json",
+        "harness/reports/wi-sandbox-005-sdd-analysis.md",
+        "harness/reports/wi-sandbox-005-review.md",
+        "harness/reports/wi-sandbox-005-linux-acl-evidence.md",
+        "harness/reports/wi-sandbox-005-linux-acl-check.sh",
+        "No Contract Sync impact; contractReviewed es NOT_APPLICABLE. Trazabilidad HU11 por decisión del usuario. executionEvidencePassed sigue NOT_RUN hasta el smoke PHP real en la VM.",
+        "harness/reports/contract-sync-cs-core-20261012-002-acknowledgement.md",
+        "harness/reports/wi-sandbox-005-execution-evidence.md"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-007",
+      "status": "DONE",
+      "storyIds": [
+        "HU11"
+      ],
+      "scope": "StageDuration agrega startedAt/completedAt opcionales por etapa (aditivo); Contract Sync CS-SANDBOX-20261014-001 a Core; sin push ni despliegue",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "NOT_APPLICABLE",
+        "contractReviewed": "PASSED",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/wi-sandbox-007-review.md",
+        "harness/contract-sync/outbox/CS-SANDBOX-20261014-001.json",
+        "commit 19dfde45"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-008",
+      "status": "DONE",
+      "storyIds": [
+        "HU11"
+      ],
+      "scope": "restore-workspace-acl agrupa la pasada de archivos con {} +; despliegue pendiente (reconstruir imagen en la VM con 2FA de Jean); sin cambios de contrato ni de código Node",
+      "review": "APPROVED",
+      "gates": {
+        "sddVerified": "PASSED",
+        "implementationCompleted": "PASSED",
+        "independentReviewPassed": "PASSED",
+        "technicalChecksPassed": "PASSED",
+        "executionEvidencePassed": "PASSED",
+        "contractReviewed": "NOT_APPLICABLE",
+        "interopSyncChecked": "PASSED",
+        "isolationChecksPassed": "NOT_APPLICABLE",
+        "noBlockingDecisions": "PASSED",
+        "retryLimitRespected": "PASSED"
+      },
+      "pullCheckpoints": [
+        "start: PASSED, no relevant syncs",
+        "before-review: PASSED, no relevant syncs",
+        "before-done: PASSED, no relevant syncs"
+      ],
+      "evidence": [
+        "harness/reports/acl-recovery-12s-diagnostic-2026-10-14.md",
+        "harness/reports/wi-sandbox-008-review.md",
+        "harness/reports/wi-sandbox-008-vm-deploy-runbook.md",
+        "commit f6b8e41",
+        "executionEvidencePassed: prueba conductual con Docker local (rojo 500 invocaciones -> verde <=10); smoke en la VM pendiente del despliegue"
+      ]
+    }
+  ],
+  "activeWorkItem": null,
+  "lastUpdatedAt": "2026-10-14T02:15:00Z"
+}

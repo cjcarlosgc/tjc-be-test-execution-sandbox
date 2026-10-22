@@ -79,11 +79,15 @@ describe.skipIf(!hasDocker)('restore-workspace-acl (conductual, Docker real)', (
       }
 
       shimDir = await fs.mkdtemp(path.join(os.tmpdir(), 'acl-shim-'));
+      // mkdtemp crea 0700: el UID 10001 del contenedor no podría entrar y el shim se ignoraría en silencio (Linux).
+      await fs.chmod(shimDir, 0o755);
       await fs.writeFile(
         path.join(shimDir, 'setfacl'),
         '#!/bin/sh\nprintf "%s\\n" "$*" >> /tmp/setfacl.log\nexec /usr/bin/setfacl "$@"\n',
         { mode: 0o755 },
       );
+      // `mode` de writeFile depende del umask: se fija de forma explícita.
+      await fs.chmod(path.join(shimDir, 'setfacl'), 0o755);
 
       const docker = (args: string[]) =>
         execFileAsync('docker', args, { timeout: 120_000 });
@@ -111,7 +115,9 @@ describe.skipIf(!hasDocker)('restore-workspace-acl (conductual, Docker real)', (
           'echo FILE_CALLS=$(grep -c "u::rw-" /tmp/setfacl.log)',
       ]);
       expect(recovery.stdout).toContain('EXIT=0');
-      const fileCalls = Number(/FILE_CALLS=(\d+)/.exec(recovery.stdout)?.[1]);
+      const fileCallsMatch = /FILE_CALLS=(\d+)/.exec(recovery.stdout);
+      expect(fileCallsMatch, 'el shim setfacl no se ejecutó (¿permisos del directorio del shim?)').not.toBeNull();
+      const fileCalls = Number(fileCallsMatch?.[1]);
       // 500 archivos: con `\;` serían ~500 invocaciones; agrupadas, una o pocas.
       expect(fileCalls).toBeGreaterThan(0);
       expect(fileCalls).toBeLessThanOrEqual(10);

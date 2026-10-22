@@ -9,7 +9,7 @@ Decisión de Jean (vía Cross): «rate limit sí, rotación de 90 días y IAP re
 | Elemento | Valor |
 |---|---|
 | Proxy | Caddy v2.11.7 en la VM `rag-test-execution-sandbox` |
-| Hostname | `136-115-2-208.sslip.io` (IP estática `rag-sandbox-ip`) |
+| Hostname | `<SANDBOX_HOST>.sslip.io` (IP estática `rag-sandbox-ip`) |
 | `/etc/caddy/Caddyfile` | `encode zstd gzip`, `request_body { max_size 5MB }`, `reverse_proxy 127.0.0.1:3001` |
 | Certificado | Let's Encrypt por HTTP-01 (80/443 abiertos) |
 | Firewall | `rag-sandbox-https-allow` (prio 899, tcp:80,443 desde `0.0.0.0/0`; sin IPs de Render por ser rangos compartidos); 22/3001 solo IAP (900 allow / 901 deny) |
@@ -69,7 +69,7 @@ Contenido propuesto de `/etc/caddy/Caddyfile`:
 	order rate_limit before basicauth
 }
 
-136-115-2-208.sslip.io {
+<SANDBOX_HOST>.sslip.io {
 	encode zstd gzip
 
 	request_body {
@@ -128,7 +128,7 @@ sudo systemctl reload caddy
 ### Verificación (desde una IP que NO sea la de Core: consume su propia cuota)
 
 ```bash
-H=136-115-2-208.sslip.io
+H=<SANDBOX_HOST>.sslip.io
 # 65 POST sin credenciales: sin efecto (401 del guard); esperado: 60 de 401 y luego 429
 for i in $(seq 1 65); do curl -s -o /dev/null -w '%{http_code} ' -X POST https://$H/executions; done; echo
 # 12 GET sin credenciales a /executions/<id>: esperado ~10 de 401 y luego 429 (zona sin bearer)
@@ -173,7 +173,7 @@ Ventana mínima (Core actualiza y el Sandbox reinicia en seguida):
 3. Verificar sin mostrar el valor (el header va por stdin, no por argv):
 
 ```bash
-H=136-115-2-208.sslip.io
+H=<SANDBOX_HOST>.sslip.io
 # nuevo token → 404 en un id inexistente (autenticado), NO 401
 printf 'header = "Authorization: Bearer %s"\n' "$(cat ~/sandbox.token.new)" \
   | curl -s -o /dev/null -w '%{http_code}\n' -K - https://$H/executions/00000000-0000-4000-8000-000000000000
