@@ -333,7 +333,7 @@
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
       "lane": "FAST",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "Arreglar la fixture del test ACL que falla en CI (permisos del directorio del shim)",

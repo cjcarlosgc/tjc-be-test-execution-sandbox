@@ -86,6 +86,8 @@ describe.skipIf(!hasDocker)('restore-workspace-acl (conductual, Docker real)', (
         '#!/bin/sh\nprintf "%s\\n" "$*" >> /tmp/setfacl.log\nexec /usr/bin/setfacl "$@"\n',
         { mode: 0o755 },
       );
+      // `mode` de writeFile depende del umask: se fija de forma explícita.
+      await fs.chmod(path.join(shimDir, 'setfacl'), 0o755);
 
       const docker = (args: string[]) =>
         execFileAsync('docker', args, { timeout: 120_000 });
