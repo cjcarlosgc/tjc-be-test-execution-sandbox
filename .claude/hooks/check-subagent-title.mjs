@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PreToolUse(Agent): si la descripcion del subagente menciona un WI, debe seguir
+// PreToolUse(Agent): si la descripcion del subagente menciona un WI (incluso abreviado, p. ej. `WI-015`), debe seguir
 // `[<perfil>::<modelo>] · <WI> · <corte en espanol>` (harness/roles/leader.md).
 let raw = ''
 process.stdin.on('data', (chunk) => { raw += chunk })
@@ -10,7 +10,7 @@ process.stdin.on('end', () => {
   } catch {
     process.exit(0)
   }
-  if (!/WI-[A-Z]+-\d{3}/.test(description)) process.exit(0)
+  if (!/\bWI-/.test(description)) process.exit(0)
   if (/^\[[a-z][a-z-]*::[^\]]+\] · WI-[A-Z]+-\d{3} · \S.*$/.test(description)) process.exit(0)
   process.stderr.write(
     `Titulo de subagente invalido: "${description}".\n` +

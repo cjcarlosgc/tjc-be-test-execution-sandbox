@@ -233,6 +233,37 @@
         "Un cuerpo JSON mayor que el límite de Express responde 413 PAYLOAD_TOO_LARGE (ErrorEnvelope válido, sin `retryable`) en lugar de 500 INTERNAL_ERROR; alcance ampliado por el usuario el 2026-10-21 tras detectarlo con las pruebas de errores genéricos.",
         "El evento se acusa y se resuelve con reporte; lint, pruebas, build, contracts:check y los 4 validadores pasan."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-016",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "lane": "FAST",
+      "status": "W-IN_REVIEW",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Endurecer el hook de títulos de subagente (menciones abreviadas de WI)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-016"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "El hook .claude/hooks/check-subagent-title.mjs valida el formato `[<perfil>::<modelo>] · <WI-COMP-NNN> · <corte en español>` ante cualquier mención de un WI, incluidas las abreviadas (`WI-015`), que hoy pasan sin validar.",
+        "Un test en harness/ (node --test) cubre títulos válidos, inválidos, abreviados y sin mención de WI, y pasa junto con los demás tests del harness.",
+        "La causa se documenta: el script no estaba activo en la sesión en curso (settings.json creado a mitad de sesión); basta reiniciar la sesión para que cargue el hook.",
+        "Los 4 validadores y los tests del harness pasan; revisión independiente del reviewer."
+      ]
     }
   ]
 }
