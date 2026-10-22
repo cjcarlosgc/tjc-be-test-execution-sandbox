@@ -28,6 +28,11 @@ test('no exige formato cuando la descripción no menciona un WI', () => {
   assert.equal(run('explorar el repositorio').status, 0);
 });
 
+test('rechaza `::` sin corte y no confunde palabras que contienen WI-', () => {
+  assert.equal(run('[implementer::Haiku 5.5] · WI-SANDBOX-015').status, 2);
+  assert.equal(run('revisar SWI-1 y Wi-Fi').status, 0);
+});
+
 test('entrada no JSON no bloquea', () => {
   const result = spawnSync(process.execPath, [hook], { input: 'no json', encoding: 'utf8' });
   assert.equal(result.status, 0);

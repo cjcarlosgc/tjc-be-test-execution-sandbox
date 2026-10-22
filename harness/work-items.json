@@ -239,7 +239,7 @@
       "component": "SANDBOX",
       "workItemType": "HARNESS",
       "lane": "FAST",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Endurecer el hook de títulos de subagente (menciones abreviadas de WI)",
@@ -261,7 +261,7 @@
       "acceptanceCriteria": [
         "El hook .claude/hooks/check-subagent-title.mjs valida el formato `[<perfil>::<modelo>] · <WI-COMP-NNN> · <corte en español>` ante cualquier mención de un WI, incluidas las abreviadas (`WI-015`), que hoy pasan sin validar.",
         "Un test en harness/ (node --test) cubre títulos válidos, inválidos, abreviados y sin mención de WI, y pasa junto con los demás tests del harness.",
-        "La causa se documenta: el script no estaba activo en la sesión en curso (settings.json creado a mitad de sesión); basta reiniciar la sesión para que cargue el hook.",
+        "La causa se documenta: el script solo validaba IDs completos y, como hipótesis razonable a confirmar al reiniciar la sesión, el hook no estaba activo en la sesión en curso (settings.json creado a mitad de sesión).",
         "Los 4 validadores y los tests del harness pasan; revisión independiente del reviewer."
       ]
     }
