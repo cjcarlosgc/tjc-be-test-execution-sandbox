@@ -303,7 +303,7 @@
       "component": "SANDBOX",
       "workItemType": "HARNESS",
       "lane": "FAST",
-      "status": "W-PLANNED",
+      "status": "W-IN_REVIEW",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Aislar los e2e del app/.env local",
