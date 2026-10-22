@@ -269,7 +269,7 @@
       "id": "WI-SANDBOX-017",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P2",
       "sprint": "Estabilización 2026-10",
       "title": "Homologar con SYSTEM-2.14 / INTEROP-2.19 (CS-CORE-20261021-004)",
