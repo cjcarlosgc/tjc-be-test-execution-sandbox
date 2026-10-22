@@ -327,6 +327,36 @@
         "Sin leer ni modificar app/.env y sin cambio de producto; con un .env local presente y sin él, `pnpm test:e2e` da el mismo resultado.",
         "Lint, pruebas, build, contracts:check y los 4 validadores pasan; revisión independiente del reviewer."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-019",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "lane": "FAST",
+      "status": "W-IN_REVIEW",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Arreglar la fixture del test ACL que falla en CI (permisos del directorio del shim)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-019"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "restore-workspace-acl.spec.ts (conductual, Docker real) deja el directorio del shim legible por el UID 10001 del contenedor (mkdtemp crea 0700) y falla con un mensaje claro si el shim no se ejecutó (en vez de NaN).",
+        "El test pasa con Docker local y en la CI de GitHub (Linux); el PR #7 queda con la CI en verde.",
+        "Solo cambia el test; sin cambio de producto; los 4 validadores, lint, pruebas y build pasan; revisión independiente del reviewer."
+      ]
     }
   ]
 }
