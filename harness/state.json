@@ -1646,5 +1646,207 @@
       "closedAt": "2026-10-22T01:13:02.000Z"
     }
   ],
-  "activeWorkItem": null
+  "activeWorkItem": {
+    "id": "WI-SANDBOX-017",
+    "component": "SANDBOX",
+    "workItemType": "PRODUCT",
+    "storyIds": [
+      "HU11"
+    ],
+    "taskIds": [
+      "ST-SANDBOX-017"
+    ],
+    "caseIds": [],
+    "sprint": "Estabilización 2026-10",
+    "status": "W-IN_REVIEW",
+    "specPaths": [
+      "spec/features/001-execution-api/spec.md",
+      "spec/features/001-execution-api/plan.md",
+      "spec/features/001-execution-api/tasks.md"
+    ],
+    "transversalPaths": [],
+    "approved": true,
+    "decisionGate": {
+      "checked": true,
+      "blockingDecisionIds": [],
+      "nonBlockingDecisionIds": [],
+      "checkedAt": "2026-10-21T17:00:00.000Z"
+    },
+    "execution": {
+      "leaderAgent": "leader",
+      "analysisAgent": "sdd-analyst",
+      "implementationAgent": "leader",
+      "contractReviewAgent": "contract-reviewer",
+      "reviewAgent": "reviewer",
+      "handoffs": [
+        {
+          "agent": "sdd-analyst",
+          "status": "APPROVED",
+          "summary": "Spec suficiente; actualizar AGENTS.md y spec/README.md.",
+          "evidence": [
+            "harness/reports/wi-sandbox-017-sdd-analysis.md"
+          ],
+          "executedBy": {
+            "agent": "sdd-analyst",
+            "configuredModel": "claude-sonnet-5-5",
+            "servedModel": "unknown",
+            "effort": "low"
+          }
+        },
+        {
+          "agent": "contract-reviewer",
+          "status": "APPROVED",
+          "summary": "Espejo byte a byte; sin impacto en el contrato del Sandbox.",
+          "evidence": [
+            "harness/reports/wi-sandbox-017-contract-review.md"
+          ],
+          "executedBy": {
+            "agent": "contract-reviewer",
+            "configuredModel": "claude-sonnet-5-5",
+            "servedModel": "unknown",
+            "effort": "low"
+          }
+        },
+        {
+          "agent": "leader",
+          "status": "APPROVED",
+          "summary": "Re-espejo documental y actualización de versiones citadas (AGENTS.md, spec/README.md, CHANGELOG); sin código.",
+          "evidence": [
+            "harness/reports/wi-sandbox-017-sdd-analysis.md"
+          ],
+          "filesAffected": [
+            "spec/contracts/system-contract.md",
+            "spec/contracts/interoperability-contract.md",
+            "AGENTS.md",
+            "spec/README.md",
+            "CHANGELOG.md"
+          ],
+          "reason": "cambio de texto/espejo documental",
+          "executedBy": {
+            "agent": "leader",
+            "configuredModel": "claude-sonnet-5-5",
+            "servedModel": "unknown",
+            "effort": "medium"
+          }
+        }
+      ],
+      "reviewCycles": 0,
+      "maxReviewCycles": 2
+    },
+    "gates": {
+      "sddVerified": "G-PASSED",
+      "implementationCompleted": "G-PASSED",
+      "independentReviewPassed": "G-NOT_RUN",
+      "technicalChecksPassed": "G-PASSED",
+      "contractReviewed": "G-PASSED",
+      "canonicalContractSynced": "G-PASSED",
+      "contractSyncPublished": "G-NOT_APPLICABLE",
+      "interopSyncChecked": "G-PASSED",
+      "noBlockingDecisions": "G-PASSED",
+      "retryLimitRespected": "G-NOT_RUN"
+    },
+    "coordination": {
+      "contractImpact": true,
+      "publishesContract": false,
+      "pullCheckpoints": [
+        {
+          "checkpoint": "start",
+          "workItem": "WI-SANDBOX-017",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [
+            "CS-CORE-20261021-004"
+          ],
+          "resolvedSyncIds": [
+            "CS-CORE-20261009-016",
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-001",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012",
+            "CS-CORE-20261018-003",
+            "CS-CORE-20261021-003"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-22T01:13:24.011Z"
+        },
+        {
+          "checkpoint": "implementation-delivery",
+          "workItem": "WI-SANDBOX-017",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [],
+          "resolvedSyncIds": [
+            "CS-CORE-20261009-016",
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-001",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012",
+            "CS-CORE-20261018-003",
+            "CS-CORE-20261021-003",
+            "CS-CORE-20261021-004"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-22T01:14:44.755Z"
+        },
+        {
+          "checkpoint": "before-review",
+          "workItem": "WI-SANDBOX-017",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [],
+          "resolvedSyncIds": [
+            "CS-CORE-20261009-016",
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-001",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012",
+            "CS-CORE-20261018-003",
+            "CS-CORE-20261021-003",
+            "CS-CORE-20261021-004"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-22T01:14:44.846Z"
+        }
+      ],
+      "publishedSyncIds": [],
+      "pendingRelevantSyncIds": []
+    },
+    "evidence": [
+      "harness/reports/wi-sandbox-017-sdd-analysis.md",
+      "harness/reports/wi-sandbox-017-contract-review.md"
+    ],
+    "blockedReason": null,
+    "syncScopePaths": [
+      "spec/contracts/system-contract.md",
+      "spec/contracts/interoperability-contract.md"
+    ],
+    "gateEvidence": {
+      "sddVerified": [
+        "harness/reports/wi-sandbox-017-sdd-analysis.md"
+      ],
+      "noBlockingDecisions": [
+        "harness/reports/wi-sandbox-017-sdd-analysis.md"
+      ],
+      "contractReviewed": [
+        "harness/reports/wi-sandbox-017-contract-review.md"
+      ],
+      "canonicalContractSynced": [
+        "harness/reports/wi-sandbox-017-contract-review.md"
+      ],
+      "implementationCompleted": [
+        "harness/reports/wi-sandbox-017-sdd-analysis.md",
+        "harness/reports/wi-sandbox-017-contract-review.md"
+      ],
+      "technicalChecksPassed": [
+        "harness/reports/wi-sandbox-017-sdd-analysis.md",
+        "harness/reports/wi-sandbox-017-contract-review.md"
+      ],
+      "interopSyncChecked": [
+        "harness/reports/contract-sync-cs-core-20261021-004-acknowledgement.md"
+      ]
+    }
+  }
 }

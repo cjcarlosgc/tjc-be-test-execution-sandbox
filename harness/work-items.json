@@ -264,6 +264,69 @@
         "La causa se documenta: el script solo validaba IDs completos y, como hipótesis razonable a confirmar al reiniciar la sesión, el hook no estaba activo en la sesión en curso (settings.json creado a mitad de sesión).",
         "Los 4 validadores y los tests del harness pasan; revisión independiente del reviewer."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-017",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-IN_REVIEW",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.14 / INTEROP-2.19 (CS-CORE-20261021-004)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-017"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md"
+      ],
+      "acceptanceCriteria": [
+        "Se importa solo CS-CORE-20261021-004 y el espejo local de system-contract.md (SYSTEM-2.14, sha256 f60d6c4b…6ce3) e interoperability-contract.md (INTEROP-2.19, sha256 f9866d16…c6f9) coincide byte a byte con Core; el árbol spec/contracts/schemas no cambia (a1ba9a19…9091) y el Sandbox no espeja el contrato GH.",
+        "Es una homologación documental (DEC-EXP-005, configuración del LLM): sin cambio de código, esquemas ni comportamiento; contracts:check, lint, pruebas y build siguen en verde.",
+        "El evento se acusa y se resuelve con reporte; los 4 validadores pasan."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-018",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "lane": "FAST",
+      "status": "W-PLANNED",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Aislar los e2e del app/.env local",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-018"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "`pnpm test:e2e` no depende del app/.env local: ConfigModule captura el .env al importar AppModule, antes de que cada spec fije su entorno, y hoy produce 401; un setup de pruebas ejecuta los e2e desde un directorio vacío.",
+        "Sin leer ni modificar app/.env y sin cambio de producto; con un .env local presente y sin él, `pnpm test:e2e` da el mismo resultado.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan; revisión independiente del reviewer."
+      ]
     }
   ]
 }
