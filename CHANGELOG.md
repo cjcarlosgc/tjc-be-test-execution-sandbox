@@ -6,6 +6,7 @@ Todos los cambios notables de la línea base SDD se registran aquí. El contenid
 
 ## [Unreleased]
 
+- **WI-SANDBOX-020 / HU11 (2026-10-24, solo documental):** el espejo pasa directo a `SYSTEM-2.16` / `INTEROP-2.21` (CS-CORE-20261024-002 y -004, tomado del commit `2318b9df` de Core): nuevo esquema canónico `github-webhook-event` (CT-01; sin uso en el Sandbox), ejemplo `sandbox-result.failed.json` con `DEPENDENCY_INSTALL_FAILED` y prosa neutral del proveedor del LLM. Tipos regenerados; sin cambio de lógica.
 - **WI-SANDBOX-017 / HU11 (2026-10-21, solo documental):** el espejo pasa a `SYSTEM-2.14` / `INTEROP-2.19` (CS-CORE-20261021-004, DEC-EXP-005: configuración única del LLM de Core). Sin cambio de código, esquemas ni comportamiento del Sandbox.
 - **WI-SANDBOX-015 / HU11 (2026-10-21):** homologación con `INTEROP-2.18` (CS-CORE-20261021-003), tipos regenerados y `413 PAYLOAD_TOO_LARGE` para cuerpos que exceden el límite (antes `500`).
 - **WI-SANDBOX-014 / HU11 (2026-10-18, decisión del usuario vía cross):** `SANDBOX_MAX_CONCURRENT_EXECUTIONS` pasa de 4 a 2 por defecto (VM de referencia e2-medium 2 vCPU / 4 GB con contenedores de 1 GiB, ADR-10). Las ejecuciones por encima del tope esperan en `PENDING`; la latencia en cola es una medida diagnóstica y no de calidad. Contrato HTTP sin cambios.

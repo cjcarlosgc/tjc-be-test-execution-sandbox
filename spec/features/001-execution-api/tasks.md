@@ -13,6 +13,7 @@
 - [x] **ST-SANDBOX-017 · T-DONE · WI-SANDBOX-017 · HU11:** homologar el espejo con SYSTEM-2.14 / INTEROP-2.19 (CS-CORE-20261021-004, DEC-EXP-005): re-espejar byte a byte; solo documental, sin cambio de código ni de esquemas.
 - [x] **ST-SANDBOX-018 · T-DONE · WI-SANDBOX-018 · HU11:** aislar los tests e2e del `app/.env` local del usuario para que no dependan de él (hoy el `.env` se captura al importar `AppModule` y da 401); solo configuración de pruebas, sin leer ni tocar el `.env`.
 - [x] **ST-SANDBOX-019 · T-DONE · WI-SANDBOX-019 · HU11:** arreglar la fixture del test conductual `restore-workspace-acl.spec.ts` que falla en la CI de GitHub: el directorio del shim (`mkdtemp`, 0700) no es legible por el UID 10001 del contenedor y el shim `setfacl` se ignora en silencio; solo test.
+- [ ] **ST-SANDBOX-020 · T-IN_PROGRESS · WI-SANDBOX-020 · HU11:** homologar el espejo con SYSTEM-2.16 / INTEROP-2.21 y los esquemas (CS-CORE-20261024-002 y -004, un solo re-espejo): re-espejar byte a byte, regenerar tipos, verificar el ejemplo `sandbox-result.failed.json` (DEPENDENCY_INSTALL_FAILED) y reejecutar los contract tests; sin cambio de lógica.
 - [x] Response DTOs y `ErrorEnvelope` centralizado.
 
 ## Calidad

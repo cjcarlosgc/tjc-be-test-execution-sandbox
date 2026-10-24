@@ -357,6 +357,41 @@
         "El test pasa con Docker local y en la CI de GitHub (Linux); el PR #7 queda con la CI en verde.",
         "Solo cambia el test; sin cambio de producto; los 4 validadores, lint, pruebas y build pasan; revisión independiente del reviewer."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-020",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-IN_REVIEW",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.16 / INTEROP-2.21 (CS-CORE-20261024-002 y -004)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-020"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ],
+      "acceptanceCriteria": [
+        "Se importan CS-CORE-20261024-002 y CS-CORE-20261024-004 y se hace UN solo re-espejo directo a SYSTEM-2.16 / INTEROP-2.21: system-contract.md (sha256 d0a492b4…ea77), interoperability-contract.md (sha256 7f946d55…d29d) y spec/contracts/schemas con examples/ (árbol 8079ab73…9718) coinciden byte a byte con Core en el commit 2318b9df y con los digests de ambos eventos; el Sandbox no espeja el contrato GH.",
+        "Los tipos generados se regeneran con contracts:generate (el esquema github-webhook-event cambia generated/, sin uso en el Sandbox) y contracts:check pasa.",
+        "El ejemplo corregido sandbox-result.failed.json (DEPENDENCY_INSTALL_FAILED) coincide con el código y los tipos del Sandbox (sandbox-fact-error.ts); los contract tests C-06/C-07 y el del cliente real de Core se reejecutan en verde; sin cambio de lógica.",
+        "Ambos eventos se acusan y se resuelven con reporte; las versiones citadas en AGENTS.md y spec/README.md pasan a 2.16/2.21; lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
     }
   ]
 }
