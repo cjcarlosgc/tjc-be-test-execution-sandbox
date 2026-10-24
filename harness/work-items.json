@@ -363,7 +363,7 @@
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
       "lane": "STANDARD",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "Agregar ext-intl a la imagen PHP gestionada del Sandbox",

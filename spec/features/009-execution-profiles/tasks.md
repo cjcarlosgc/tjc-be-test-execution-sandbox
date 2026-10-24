@@ -45,4 +45,4 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 
 ## WI-SANDBOX-020 — `ext-intl` en la imagen PHP (HU11, perfil PHP)
 
-- [ ] **ST-SANDBOX-020 · T-IN_PROGRESS · WI-SANDBOX-020 · HU11:** agregar `ext-intl` a la imagen gestionada `tjc-sandbox-php:8.3-nonroot` (compilada con `libicu-dev`, que luego se purga), afirmarla en el e2e PHP real y documentar la reconstrucción manual de la imagen en cada host.
+- [x] **ST-SANDBOX-020 · T-DONE · WI-SANDBOX-020 · HU11:** agregar `ext-intl` a la imagen gestionada `tjc-sandbox-php:8.3-nonroot` (compilada con `libicu-dev`, que luego se purga), afirmarla en el e2e PHP real y documentar la reconstrucción manual de la imagen en cada host.
