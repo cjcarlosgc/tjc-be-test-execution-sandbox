@@ -125,3 +125,9 @@ Con la imagen final y tras los cambios de `zz-sandbox.ini` y `container-runner`:
 3. Vouchers: no apto para el piloto en el Sandbox tal como está (requiere BD y migraciones). Decisión de piloto o de fork, no de imagen.
 4. money: sin bloqueo de ICU con 76.1.
 5. Core (`pilotos-runbook-operativo.md`, líneas ~60-61 y §1.2) afirma «sin intl/gd/zip/bcmath/gmp» y no menciona `memory_limit`. Lo debe actualizar el dueño de Core. No se tocó.
+
+
+## Notas del leader tras la revisión
+- El tag local `tjc-sandbox-php:8.3-nonroot-prev` (b5839ef3…) es una iteración intermedia de este WI (intl y gd con `memory_limit` 128M), **no** la imagen anterior a 021; en la VM sí será la imagen previa.
+- Las menciones «sin commit ni push» de este reporte describen el momento de la entrega del implementer; el WI se commiteó después (a4231d7).
+- La base `php:8.3-cli` no está fijada por digest (hoy Debian trixie, ICU 76.1): una reconstrucción puede variar; el digest de la imagen construida se registra en el runbook (idea diferida I-SANDBOX-015).

@@ -397,7 +397,7 @@
       "id": "WI-SANDBOX-021",
       "component": "SANDBOX",
       "workItemType": "PRODUCT",
-      "status": "W-IN_REVIEW",
+      "status": "W-DONE",
       "priority": "P1",
       "sprint": "Estabilización 2026-10",
       "title": "Ampliar la imagen PHP gestionada con las extensiones de los pilotos y verificarla con smoke",
