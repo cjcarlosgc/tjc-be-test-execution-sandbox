@@ -10,7 +10,7 @@
 
 T-001 solo consolida contrato y planificación; no modifica `app/` ni infraestructura.
 
-## Corte T-003 — Validación PHP/Laravel (HU43)
+## Corte T-003 — Validación PHP/Laravel (HU11, perfil PHP)
 
 1. Imagen gestionada: Dockerfile `app/docker/php/Dockerfile`, build vía Docker API si falta; quitar `apt-get` y `capAdd` de la instalación PHP.
 2. Instalación sin scripts y entorno de testing (`APP_ENV`, `APP_KEY` aleatorio) solo en el container de tests PHP.
@@ -20,7 +20,7 @@ T-001 solo consolida contrato y planificación; no modifica `app/` ni infraestru
 6. Unit tests por cada regla; e2e real PHP (selección + `ERROR` vs `ASSERTION`) sobre Docker API (Docker Desktop o socket Podman).
 7. `CONTRACT_SYNC` hacia Core por `failureKind` y por la tolerancia de `phase`.
 
-## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
+## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU11, perfil PHP)
 
 1. Importar y validar el `projectRoot` opcional de INTEROP-2.8; ausencia significa `.`.
 2. Resolverlo bajo la raíz lógica extraída del snapshot y rechazar path absoluto, traversal, inexistencia, normalización no válida o escape por symlink antes de instalar dependencias o ejecutar código.

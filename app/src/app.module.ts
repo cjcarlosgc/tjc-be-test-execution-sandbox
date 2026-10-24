@@ -5,13 +5,14 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { validateSandboxEnv } from './common/config/env.validation.js';
 import { CorrelationIdMiddleware } from './common/http/correlation-id.middleware.js';
 import { ExecutionsModule } from './executions/executions.module.js';
 import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateSandboxEnv }),
     ExecutionsModule,
     HealthModule,
   ],

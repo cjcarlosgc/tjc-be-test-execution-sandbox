@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 1,
+  "component": "SANDBOX",
+  "workItems": [
+    {
+      "id": "WI-SANDBOX-009",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Test contra el cliente HTTP real de Core servido por el Sandbox real (CT-06/CT-07)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-009"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Existe un test en el Sandbox que importa el cliente real de Core (SandboxExecutionService, en ../tjc-be-rag-core-api/app/src/sandbox, solo lectura, sin modificar Core ni añadir dependencias) y lo ejecuta contra el Sandbox real servido por HTTP en un puerto local, con Bearer e identidad requestId UUID v5 estables.",
+        "Caso feliz: la ejecución termina COMPLETED con facts y Core (cliente real) devuelve un resultado mapeado sin desvíos de esquema ni advertencias de validación.",
+        "Caso de fallo: un resultado FAILED/INFRASTRUCTURE (SANDBOX_RESTARTED tras reinicio del repositorio persistido, o timeout) es entendido por el cliente de Core como fallo terminal, no como sondeo infinito ni error de contrato.",
+        "El test se omite con aviso explícito si ../tjc-be-rag-core-api no existe, de modo que el CI del Sandbox no depende de Core; no duplica los contract tests de executions.contract-real.spec.ts.",
+        "El reporte lo declara evidencia CT-06/CT-07 (tesis Anexo E) y registra cualquier desajuste Core↔Sandbox encontrado.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan antes de la revisión independiente."
+      ],
+      "lane": "FAST"
+    },
+    {
+      "id": "WI-SANDBOX-010",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Estabilizar el ciclo de vida y el estado en memoria del Sandbox",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-010"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/008-reliability-lifecycle/spec.md",
+        "spec/features/008-reliability-lifecycle/plan.md",
+        "spec/features/008-reliability-lifecycle/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Cada ejecución se persiste como un archivo JSON en SANDBOX_EXECUTION_STATE_DIR (valor por defecto persistente, no temporal), con escritura atómica, y se recarga al arrancar; un archivo corrupto o ilegible se ignora con un aviso sin impedir el arranque.",
+        "El archivo persistido NO contiene EphemeralDownloadRef ni URLs firmadas ni rutas: solo estado, resultado, evidencia acotada, tiempos, identificadores y la huella de idempotencia; una prueba lo verifica.",
+        "La retención (SANDBOX_EXECUTION_RETENTION_MS y SANDBOX_EXECUTION_MAX_RETAINED) también expulsa los archivos del disco.",
+        "Una ejecución que estaba en curso al reiniciar se recarga como FAILED con fallo de infraestructura SANDBOX_RESTARTED (categoría INFRASTRUCTURE); la idempotencia por requestId sigue funcionando para las persistidas; tras un reinicio GET /executions/{id} y /result responden con lo persistido en lugar de 404.",
+        "El repositorio de ejecuciones no crece sin límite; hay un límite de concurrencia configurable y los containers huérfanos se reconcilian al arrancar.",
+        "El proceso llama a enableShutdownHooks() y el estado de lifecycle (PENDING..FINALIZING, terminales y SANDBOX_RESTARTED) está especificado en 008-reliability-lifecycle.",
+        "Las variables de entorno se validan con un esquema (incluida la nueva SANDBOX_EXECUTION_STATE_DIR) y .env.example queda completo (incluye SANDBOX_PNPM_STORE_VOLUME).",
+        "El contrato HTTP (spec/contracts) no cambia; lint, pruebas, build, contracts:check y los validadores SDD/Harness pasan antes de la revisión independiente."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-011",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Regularizar la migración a SDD 3.1 / Harness V3 hecha desde cross (retroactivo)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-011"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Un reporte declara la retroactividad: cross ejecutó los commits 9198d55 (redacción de host/IP en la propuesta TLS) y c110f84 (migración a SDD 3.1/Harness V3) sin WI, y cross es el implementationAgent.",
+        "El reviewer independiente revisa el contenido de ambos commits (validadores V3, work-items.json, estado V4, roles y agentes .claude, backlog de 18 HU, Contract Sync en YAML, historial V2 en legacy) y emite veredicto con máximo 2 ciclos.",
+        "No quedan IP, hostname ni credenciales de la VM en archivos versionados del árbol actual.",
+        "Los 4 validadores SDD/Harness, lint, pruebas y build pasan."
+      ],
+      "lane": "FAST"
+    },
+    {
+      "id": "WI-SANDBOX-012",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Regularizar tipos generados desde esquemas y test HTTP de contrato hechos desde cross (retroactivo)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-012"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Un reporte declara la retroactividad: cross ejecutó el commit 9121d58 (tipos de /executions generados desde spec/contracts/schemas y test HTTP de contrato, INTEROP-2.17) sin WI, y cross es el implementationAgent.",
+        "El reviewer independiente revisa el generador, los tipos generados, la validación en runtime y el contract test, con máximo 2 ciclos.",
+        "contracts:check, lint, pruebas y build pasan; el comportamiento observable de la API no cambia."
+      ],
+      "lane": "FAST"
+    },
+    {
+      "id": "WI-SANDBOX-013",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.13 / INTEROP-2.17 y revisar el mapa de HU",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-013"
+      ],
+      "caseIds": [],
+      "dependsOn": [
+        "WI-SANDBOX-012"
+      ],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "Se importa CS-CORE-20261018-003 y el espejo local de SYSTEM-2.13, INTEROP-2.17 y spec/contracts/schemas coincide byte a byte con Core (digests del evento); el Sandbox no espeja el contrato GH.",
+        "Se acusa CS-CORE-20261009-016 y los eventos de Core relevantes pendientes se resuelven; los tipos se regeneran y los contract tests C-06/C-07 Core↔Sandbox pasan como evidencia CT-06/CT-07.",
+        "El Sandbox emite executionProfile en RunnerFacts y un stage válido en la evidencia, y sigue aceptando requests sin phase, con prueba que lo verifica.",
+        "El mapa de HU queda contrastado con el catálogo compartido y las 18 HU de la tesis; el texto de HU17 coincide con el de Core y las referencias HU antiguas de las features pasan a HU vigentes.",
+        "Los residuales de WI-SANDBOX-010 (m3–m6, n1–n3) quedan registrados como ideas diferidas en el backlog.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-014",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "SANDBOX_MAX_CONCURRENT_EXECUTIONS por defecto 2",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-014"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/008-reliability-lifecycle/spec.md",
+        "spec/features/008-reliability-lifecycle/plan.md",
+        "spec/features/008-reliability-lifecycle/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "El valor por defecto de SANDBOX_MAX_CONCURRENT_EXECUTIONS pasa de 4 a 2 en código, spec, .env.example, validación de entorno, pruebas y CHANGELOG.",
+        "La spec documenta la razón (VM de referencia e2-medium 2 vCPU/4 GB con contenedores de 1 GiB, ADR-10) y que la latencia en cola es una medida diagnóstica y no de calidad (tesis 3.3).",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-015",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con INTEROP-2.18 (CS-CORE-20261021-003)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-015"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ],
+      "acceptanceCriteria": [
+        "Se importa solo CS-CORE-20261021-003 y el espejo local de interoperability-contract.md (INTEROP-2.18, sha256 22b880d1…e311), system-contract.md (sin cambio, b70f9358…0444) y spec/contracts/schemas con examples/ (árbol a1ba9a19…9091) coincide byte a byte con Core; el Sandbox no espeja el contrato GH.",
+        "Los tipos generados se regeneran con contracts:generate y contracts:check pasa; el Sandbox sigue sin usar Socket.IO.",
+        "Los contract tests C-06/C-07 (executions.contract-real.spec.ts) y el test con el cliente real de Core (WI-009) se reejecutan en verde; el Sandbox tolera un `code` abierto en errores genéricos y no cambia su comportamiento observable.",
+        "Un cuerpo JSON mayor que el límite de Express responde 413 PAYLOAD_TOO_LARGE (ErrorEnvelope válido, sin `retryable`) en lugar de 500 INTERNAL_ERROR; alcance ampliado por el usuario el 2026-10-21 tras detectarlo con las pruebas de errores genéricos.",
+        "El evento se acusa y se resuelve con reporte; lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-016",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "lane": "FAST",
+      "status": "W-DONE",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Endurecer el hook de títulos de subagente (menciones abreviadas de WI)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-016"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "El hook .claude/hooks/check-subagent-title.mjs valida el formato `[<perfil>::<modelo>] · <WI-COMP-NNN> · <corte en español>` ante cualquier mención de un WI, incluidas las abreviadas (`WI-015`), que hoy pasan sin validar.",
+        "Un test en harness/ (node --test) cubre títulos válidos, inválidos, abreviados y sin mención de WI, y pasa junto con los demás tests del harness.",
+        "La causa se documenta: el script solo validaba IDs completos y, como hipótesis razonable a confirmar al reiniciar la sesión, el hook no estaba activo en la sesión en curso (settings.json creado a mitad de sesión).",
+        "Los 4 validadores y los tests del harness pasan; revisión independiente del reviewer."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-017",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.14 / INTEROP-2.19 (CS-CORE-20261021-004)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-017"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md"
+      ],
+      "acceptanceCriteria": [
+        "Se importa solo CS-CORE-20261021-004 y el espejo local de system-contract.md (SYSTEM-2.14, sha256 f60d6c4b…6ce3) e interoperability-contract.md (INTEROP-2.19, sha256 f9866d16…c6f9) coincide byte a byte con Core; el árbol spec/contracts/schemas no cambia (a1ba9a19…9091) y el Sandbox no espeja el contrato GH.",
+        "Es una homologación documental (DEC-EXP-005, configuración del LLM): sin cambio de código, esquemas ni comportamiento; contracts:check, lint, pruebas y build siguen en verde.",
+        "El evento se acusa y se resuelve con reporte; los 4 validadores pasan."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-018",
+      "component": "SANDBOX",
+      "workItemType": "HARNESS",
+      "lane": "FAST",
+      "status": "W-DONE",
+      "priority": "P2",
+      "sprint": "Estabilización 2026-10",
+      "title": "Aislar los e2e del app/.env local",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-018"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "`pnpm test:e2e` no depende del app/.env local: ConfigModule captura el .env al importar AppModule, antes de que cada spec fije su entorno, y hoy produce 401; un setup de pruebas ejecuta los e2e desde un directorio vacío.",
+        "Sin leer ni modificar app/.env y sin cambio de producto; con un .env local presente y sin él, `pnpm test:e2e` da el mismo resultado.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan; revisión independiente del reviewer."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-019",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "lane": "FAST",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Arreglar la fixture del test ACL que falla en CI (permisos del directorio del shim)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-019"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "restore-workspace-acl.spec.ts (conductual, Docker real) deja el directorio del shim legible por el UID 10001 del contenedor (mkdtemp crea 0700) y falla con un mensaje claro si el shim no se ejecutó (en vez de NaN).",
+        "El test pasa con Docker local y en la CI de GitHub (Linux); el PR #7 queda con la CI en verde.",
+        "Solo cambia el test; sin cambio de producto; los 4 validadores, lint, pruebas y build pasan; revisión independiente del reviewer."
+      ]
+    },
+    {
+      "id": "WI-SANDBOX-020",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Homologar con SYSTEM-2.16 / INTEROP-2.21 (CS-CORE-20261024-002 y -004)",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-020"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": true,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/001-execution-api/spec.md",
+        "spec/features/001-execution-api/plan.md",
+        "spec/features/001-execution-api/tasks.md"
+      ],
+      "syncScopePaths": [
+        "spec/contracts/system-contract.md",
+        "spec/contracts/interoperability-contract.md",
+        "spec/contracts/schemas"
+      ],
+      "acceptanceCriteria": [
+        "Se importan CS-CORE-20261024-002 y CS-CORE-20261024-004 y se hace UN solo re-espejo directo a SYSTEM-2.16 / INTEROP-2.21: system-contract.md (sha256 d0a492b4…ea77), interoperability-contract.md (sha256 7f946d55…d29d) y spec/contracts/schemas con examples/ (árbol 8079ab73…9718) coinciden byte a byte con Core en el commit 2318b9df y con los digests de ambos eventos; el Sandbox no espeja el contrato GH.",
+        "Los tipos generados se regeneran con contracts:generate (el esquema github-webhook-event cambia generated/, sin uso en el Sandbox) y contracts:check pasa.",
+        "El ejemplo corregido sandbox-result.failed.json (DEPENDENCY_INSTALL_FAILED) coincide con el código y los tipos del Sandbox (sandbox-fact-error.ts); los contract tests C-06/C-07 y el del cliente real de Core se reejecutan en verde; sin cambio de lógica.",
+        "Ambos eventos se acusan y se resuelven con reporte; las versiones citadas en AGENTS.md y spec/README.md pasan a 2.16/2.21; lint, pruebas, build, contracts:check y los 4 validadores pasan."
+      ]
+    }
+  ]
+}

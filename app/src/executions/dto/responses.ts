@@ -1,48 +1,11 @@
 import type {
-  ExecutionEvidenceFact,
-  RunnerFacts,
-  SandboxExecutionStatus,
-  SandboxFailureFact,
-  SandboxStage,
-  StageDuration,
-} from '../domain/execution-record.js';
+  SandboxExecutionAcceptedResponse as ContractAccepted,
+  SandboxExecutionResultResponse as ContractResult,
+  SandboxExecutionStatusResponse as ContractStatus,
+} from '../../contracts/generated/contract-types.js';
 
-export interface AsyncAccepted {
-  status: 'PENDING';
-  pollAfterMs: number;
-}
-
-export interface SandboxExecutionAcceptedResponse extends AsyncAccepted {
-  executionId: string;
-  requestId: string;
-  projectVersionId: string;
-}
-
-export interface SandboxExecutionStatusResponse {
-  executionId: string;
-  requestId: string;
-  projectVersionId: string;
-  status: SandboxExecutionStatus;
-  stage: SandboxStage | null;
-  failureCode: string | null;
-  failureMessage: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SandboxExecutionResultResponse {
-  executionId: string;
-  requestId: string;
-  testRunId: string;
-  projectVersionId: string;
-  status: 'COMPLETED' | 'FAILED' | 'TIMED_OUT';
-  facts: RunnerFacts | null;
-  failure: SandboxFailureFact | null;
-  stageDurations: StageDuration[];
-  appliedArtifactIds: string[];
-  evidence: ExecutionEvidenceFact[];
-  startedAt: string;
-  completedAt: string;
-}
+// Respuestas HTTP de §7: se derivan del contrato generado (spec/contracts/schemas); no se redefinen a mano.
+export type AsyncAccepted = Pick<ContractAccepted, 'status' | 'pollAfterMs'>; // INTEROP §5
+export type SandboxExecutionAcceptedResponse = ContractAccepted;
+export type SandboxExecutionStatusResponse = ContractStatus;
+export type SandboxExecutionResultResponse = ContractResult;

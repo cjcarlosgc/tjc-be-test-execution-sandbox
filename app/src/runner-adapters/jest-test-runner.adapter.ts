@@ -48,7 +48,7 @@ export class JestTestRunnerAdapter implements TestRunnerAdapter {
     ];
   }
 
-  parseResult(rawOutput: string): RunnerFacts {
-    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST', rawOutput);
+  parseResult(rawOutput: string, containerRoot?: string): RunnerFacts {
+    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'JEST', rawOutput, containerRoot);
   }
 }

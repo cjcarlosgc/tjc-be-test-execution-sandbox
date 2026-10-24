@@ -1,16 +1,23 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { HttpExceptionFilter } from '../src/common/http/http-exception.filter.js';
 
 describe('Health API (e2e)', () => {
   let app: INestApplication;
+  let executionStateDir: string;
 
   beforeAll(async () => {
     process.env.SANDBOX_SERVICE_TOKEN = 'health-e2e-token';
     process.env.SANDBOX_ALLOWED_DOWNLOAD_HOSTS = 'storage.example.com';
+    // Estado de ejecuciones aislado: sin esto, arrancar AppModule crea ~/.tjc-sandbox/executions del usuario.
+    executionStateDir = await mkdtemp(join(tmpdir(), 'sandbox-health-state-'));
+    process.env.SANDBOX_EXECUTION_STATE_DIR = executionStateDir;
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -23,6 +30,7 @@ describe('Health API (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+    await rm(executionStateDir, { recursive: true, force: true });
   });
 
   it('GET /health/live never requires auth and always reports ok', async () => {

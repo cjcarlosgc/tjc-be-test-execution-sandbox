@@ -1,17 +1,18 @@
 # Contrato universal de interoperabilidad
 
-**Versión:** INTEROP-2.8
-**Compatible con:** SYSTEM-2.7
-**Fecha de corte:** 2026-10-11
+**Versión:** INTEROP-2.21
+**Compatible con:** SYSTEM-2.16
+**Fecha de corte:** 2026-10-24
 **Estado:** APROBADO salvo decisiones externas referenciadas explícitamente
 **Propietario canónico:** `tjc-be-rag-core-api/spec/contracts/interoperability-contract.md`
 
-Este documento define el contrato HTTP operativo entre Developer Console, RAG Core y Test Execution Sandbox. Core y Console conservan una copia espejo byte por byte; Sandbox mantiene la línea base anterior mientras otro desarrollador trabaja allí. `GH-INTEROP-1.5` especifica además la superficie autenticada Console→GitHub Integration y el callback privado Integration→Core. Las rutas actuales Core de discovery, verificación y ramas se mantienen durante la compatibilidad; no se retiran en este corte.
+Este documento define el contrato HTTP operativo entre Developer Console, RAG Core y Test Execution Sandbox. Core, GitHub Integration, Console y Sandbox conservan una copia espejo byte por byte. `GH-INTEROP-1.9` especifica además la superficie autenticada Console→GitHub Integration y el callback privado Integration→Core. Las rutas actuales Core de discovery, verificación y ramas se mantienen durante la compatibilidad; no se retiran en este corte.
 
 ## 1. Compatibilidad y autoridad
 
 - El único disparador de análisis productivo es un PR/HEAD vinculado a un `AnalysisRun`. El snapshot ZIP interno se transfiere a Docker/Sandbox y no constituye una entrada manual.
-- `INTEROP-2.8` es la versión documental vigente. Sobre la base de `INTEROP-2.7` agrega `projectRoot`/`effectiveProjectRoot`, el aislamiento de paths al subproyecto y el transporte de la raíz efectiva en Core→Sandbox (§6.1, §6.2 y §7.2); la selección automática se limita a un único candidato PHP y conserva un repositorio por Project. El consumidor Sandbox debe importar y aceptar el campo antes de que Core lo envíe en ejecuciones PHP; omitirlo conserva el comportamiento legacy de raíz `.` durante la transición. `INTEROP-2.7` (preparado en `WI-CORE-017`) agregó el rol Writer (§6.13), `UNKNOWN` auditado y procedencia/escenarios de Functional Knowledge (§6.11), OE5 (§6.5.1), comparación de retrieval OE2 (§6.15) y trace/evidencia (§6.16). Cada sección indica su estado: las capacidades implementadas en Core incluyen `UNKNOWN`/Functional Knowledge (`WI-CORE-018`–`020`), OE5 (`WI-CORE-023`–`025`), retrieval (`WI-CORE-022`, `028`), trace/evidencia (`WI-CORE-026`, `027`), PHP/PHPUnit (`WI-CORE-013`, `029`) y el rol Writer (`WI-CORE-019`); el resto sigue pendiente del WI indicado en su sección. Nada se infiere implementado por el número de versión. Antes de `INTEROP-2.7` regía `INTEROP-2.6`, que mantuvo rutas Core→Console y Core↔Sandbox, agregó el límite directo de UI GitHub (§6.14) y declaró el lenguaje de `ProjectVersion` y framework PHPUNIT. La compatibilidad durante el cambio se valida antes de retirar rutas anteriores.
+- `INTEROP-2.21` es la versión documental vigente (`WI-CORE-089`, alcance aprobado por el usuario el 2026-10-24, documental y no incompatible): §6.5 y §6.5.1 describen la configuración del LLM como comportamiento del adaptador configurado y no como parte del contrato; el modelo y el esfuerzo por defecto del adaptador de OpenAI quedan como hechos de ese adaptador. Sin cambio de rutas, DTO, enums, códigos de error ni esquemas (`schemas/` no cambia).
+- `INTEROP-2.20` fue la versión documental vigente (`WI-CORE-079`, ronda única de contratos aprobada por el usuario el 2026-10-24, documental y no incompatible: §6.5 documenta `targetId` en `ExperimentResultsResponse` (E-01; `analysisRunId` y `symbol` quedan pendientes de HU17 y opcionales); §6.9 cita el esquema canónico CT-01 `schemas/github-webhook-event.schema.json` y `GH-INTEROP-1.9`; §10 enumera ese esquema. Sin cambio de rutas, DTO, enums ni códigos de error; el árbol `schemas/` cambia (esquema y ejemplos nuevos, y el ejemplo `sandbox-result.failed.json` pasa a `DEPENDENCY_INSTALL_FAILED`). `INTEROP-2.19` fue la versión documental vigente (`WI-CORE-076`, documental: §6.5 y §6.5.1 adoptan la configuración única del LLM de `DEC-EXP-005`; sin cambio de rutas, DTO, enums ni códigos de error). `INTEROP-2.18` fue la versión documental de `WI-CORE-073` y `WI-CORE-074`; en conjunto **aditiva salvo un cambio incompatible**, el handshake WebSocket sin sesión descrito abajo; sin cambio de rutas HTTP ni de campos existentes de las respuestas. Parte de `WI-CORE-073` (documental): §4.1 enumera los códigos genéricos de error (`UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `NOT_ACCEPTABLE`, `CONFLICT`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `UNPROCESSABLE_ENTITY`, `TOO_MANY_REQUESTS`, `SERVICE_UNAVAILABLE`, `HTTP_ERROR`, y `INTERNAL_ERROR` para 5xx sin código) con estado, `retryable` y mensaje fijo; un código explícito de la aplicación siempre prevalece. Se registra `DEC-ERR-001` (PROPOSED). `retryable` solo lo emiten los genéricos y `phase` sigue opcional. El parser de body no cambia. Esta versión no se publica por Contract Sync en `WI-CORE-073`; la publicación única de `INTEROP-2.18` (incluida §6.6) la realiza `WI-CORE-074`. Alineación de prosa de `WI-CORE-074` con el servidor: §6.5 documenta la forma real de `ExperimentStatusResponse` (`targetId`; `analysisRunId` y `symbol` quedan definidos por HU17 como pendientes y opcionales) y §6.10 marca `history?` como pendiente; ningún consumidor depende de ellos. `WI-CORE-074` (cortes 1 y 2) añade en §6.6 el tiempo real de `AnalysisRun` y de experimento (suscripciones `subscribe:analysis-run` y `subscribe:experiment`, eventos `analysis-run:update` y `experiment:update`, con `DEC-RT-001`), y la fila Reader de §6.13. Es el único cambio incompatible de `INTEROP-2.18`: el handshake WebSocket sin sesión se rechaza con `AUTH_REQUIRED` (§6.6). No cambia rutas HTTP ni campos existentes. `INTEROP-2.17` fue la versión documental vigente (homologación SDD 3.1, aditiva): §4 agrega `retryable?` al `ErrorEnvelope` y declara que todos los servicios (Core, Sandbox y GitHub Integration) usan esa misma forma; se añaden los esquemas JSON canónicos de `schemas/` (§10) para el error envelope y para §7 (Core↔Sandbox), y la forma de `RunnerFacts` y de la evidencia queda fijada por el esquema (`executionProfile` requerido en `RunnerFacts`, `stage` de la evidencia siempre un `SandboxStage`). No cambia rutas, códigos, autenticación, idempotencia ni aislamiento. `INTEROP-2.16` fue la versión documental vigente (`WI-CORE-062`, documental y aditiva): `StageDuration` (§7.3) agrega `startedAt?` y `completedAt?` opcionales (ISO-8601 UTC) que el Sandbox emite por etapa desde `WI-SANDBOX-007` (`CS-SANDBOX-20261014-001`); no cambia rutas, códigos, autenticación, idempotencia, aislamiento ni los tipos existentes. `INTEROP-2.15` fue la versión documental vigente (`WI-CORE-058`, aditiva y retrocompatible): `RagDependencyEntryResponse` (§6.7) agrega `final?: true`; no cambia rutas, §6.16, `contextTokens` ni el ranking. `INTEROP-2.14` fue la versión documental vigente (`WI-CORE-057`, aditiva y retrocompatible): el detalle de traza RAG (§6.7) agrega el campo opcional `dependencyContext` (FQCN de las dependencias del target PHP); no cambia rutas, §6.16, `contextTokens` ni el ranking. `INTEROP-2.13` fue la versión documental vigente (`WI-CORE-054`, aditiva y retrocompatible): `StrategyMetricsResponse` (§6.5.1) agrega `technicallyValidRate` y `assertionFailureCount`; no cambia rutas ni campos existentes ni §6.16. `INTEROP-2.12` fue la versión documental vigente (`WI-CORE-049`, documental): solo alinea la cabecera con `SYSTEM-2.12`; no toca ninguna sección §6.x ni el transporte. `INTEROP-2.11` (`WI-CORE-049`, documental): corrige en §6.10 el estado del mensaje de un compare no verificable, ya implementado en `WI-CORE-046`, y alinea la cabecera con `SYSTEM-2.11`; no cambia rutas, campos, códigos, estados ni transporte. `INTEROP-2.10` (`WI-CORE-047`, aclaratoria): corrige el estado del mensaje de un PR cuyo compare no puede verificarse (§6.10) y alinea la cabecera con `SYSTEM-2.10`; no cambia rutas, campos, códigos ni estados. `INTEROP-2.9` (`WI-CORE-045`, aditiva y aclaratoria, sin cambio de rutas, campos ni códigos ya emitidos por Core): fija en §6.11 el `404 FUNCTIONAL_QUESTION_NOT_FOUND` de una respuesta a una pregunta no accionable y el orden de errores de `POST …/answers`, cuándo `continuationAttemptId` es `null` y su carácter opaco, y en §6.10/§6.11 la semántica de `functionalBehaviorValidated` y el `resultSummary` objetivo de un PR que excede el límite del compare. `INTEROP-2.8`, sobre la base de `INTEROP-2.7`, agrega `projectRoot`/`effectiveProjectRoot`, el aislamiento de paths al subproyecto y el transporte de la raíz efectiva en Core→Sandbox (§6.1, §6.2 y §7.2); la selección automática se limita a un único candidato PHP y conserva un repositorio por Project. El consumidor Sandbox debe importar y aceptar el campo antes de que Core lo envíe en ejecuciones PHP; omitirlo conserva el comportamiento legacy de raíz `.` durante la transición. `INTEROP-2.7` (preparado en `WI-CORE-017`) agregó el rol Writer (§6.13), `UNKNOWN` auditado y procedencia/escenarios de Functional Knowledge (§6.11), OE5 (§6.5.1), comparación de retrieval OE2 (§6.15) y trace/evidencia (§6.16). Cada sección indica su estado: las capacidades implementadas en Core incluyen `UNKNOWN`/Functional Knowledge (`WI-CORE-018`–`020`), OE5 (`WI-CORE-023`–`025`), retrieval (`WI-CORE-022`, `028`), trace/evidencia (`WI-CORE-026`, `027`), PHP/PHPUnit (`WI-CORE-013`, `029`) y el rol Writer (`WI-CORE-019`); el resto sigue pendiente del WI indicado en su sección. Nada se infiere implementado por el número de versión. Antes de `INTEROP-2.7` regía `INTEROP-2.6`, que mantuvo rutas Core→Console y Core↔Sandbox, agregó el límite directo de UI GitHub (§6.14) y declaró el lenguaje de `ProjectVersion` y framework PHPUNIT. La compatibilidad durante el cambio se valida antes de retirar rutas anteriores.
 - Las capacidades de experimento sobre `AnalysisRun`, historial de transiciones, listado transversal de Runs y conflicto de Functional Knowledge se especifican en §6.5, §6.10 y §6.11. Cada sección indica por separado si está implementada o pendiente; no se infiere de una nota histórica.
 - Los consumidores deben ignorar campos de respuesta desconocidos, pero los servidores rechazan campos de request no declarados.
 - Los DTO HTTP son explícitos y no exponen entidades ORM, tipos del SDK de Supabase ni modelos internos del LLM.
@@ -63,8 +64,11 @@ interface ErrorEnvelope {
   correlationId: string
   timestamp: IsoDateTime
   path: string
+  retryable?: boolean // opcional; GitHub Integration lo emite en todos sus errores (GH-INTEROP); Core solo en los códigos genéricos (§4.1)
 }
 ```
+
+Forma normativa: `schemas/error-envelope.schema.json` (§10). Core, Sandbox y GitHub Integration devuelven esta misma forma completa; GitHub Integration agrega `retryable` en todos sus errores y Core lo agrega solo en los códigos genéricos de §4.1. Los consumidores ignoran campos desconocidos.
 
 Reglas:
 
@@ -79,9 +83,39 @@ Reglas:
 - Un fallo de compilación, test, dependencia del proyecto o timeout ocurrido después de un `202` es resultado persistido de la ejecución, no un HTTP 5xx.
 - Controllers validan DTOs mediante pipes globales con whitelist y rechazo de campos desconocidos; el formato se centraliza mediante filtros de excepción.
 
+### 4.1 Códigos genéricos de error (INTEROP-2.18, DEC-ERR-001)
+
+Una excepción HTTP del framework sin código propio se traduce en Core (`AllExceptionsFilter`) a un código genérico. El estado HTTP de la respuesta se conserva; `code`, `message`, `details` y `retryable` siguen esta tabla (`code` es string abierto, §4).
+
+| Estado | `code` | `retryable` | `message` (fijo, en español) |
+|---|---|---|---|
+| 401 | `UNAUTHORIZED` | `false` | Se requiere una credencial válida. |
+| 403 | `FORBIDDEN` | `false` | No tienes permiso para realizar esta operación. |
+| 404 | `NOT_FOUND` | `false` | El recurso solicitado no existe. |
+| 405 | `METHOD_NOT_ALLOWED` | `false` | El método HTTP no está permitido para esta ruta. |
+| 406 | `NOT_ACCEPTABLE` | `false` | El servicio no puede responder en el formato solicitado. |
+| 409 | `CONFLICT` | `false` | El estado actual del recurso no permite la operación. |
+| 413 | `PAYLOAD_TOO_LARGE` | `false` | El cuerpo de la solicitud excede el límite permitido. |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | `false` | El tipo de contenido no es compatible. |
+| 422 | `UNPROCESSABLE_ENTITY` | `false` | La solicitud es reconocible pero no se puede procesar. |
+| 429 | `TOO_MANY_REQUESTS` | `true` | Se superó el límite de solicitudes; reintenta más tarde. |
+| 503 | `SERVICE_UNAVAILABLE` | `true` | El servicio no está disponible temporalmente. |
+| 500, 502, 504 y cualquier otro 5xx sin código | `INTERNAL_ERROR` | `false` | Error interno del servidor. |
+| Otro 4xx sin código | `HTTP_ERROR` | `false` | La solicitud no pudo procesarse. |
+
+Reglas:
+
+- **Precedencia:** un código explícito de la aplicación (p. ej. `AppException`) siempre prevalece sobre los genéricos y conserva su `code`, `message`, `details` y estado. Los códigos vigentes del catálogo no cambian.
+- **400:** una validación o `BadRequestException` sin código propio sigue siendo `INVALID_REQUEST` con `details` (lista de mensajes de validación); no es genérico.
+- **Mensaje fijo:** los genéricos devuelven el `message` de la tabla y `details: null`. No repiten el texto de la excepción ni exponen internals; la excepción puede registrarse en log.
+- **`retryable`:** es opcional en el esquema. Core lo emite solo en los genéricos (`true` en `TOO_MANY_REQUESTS` y `SERVICE_UNAVAILABLE`, `false` en el resto); los demás errores de Core no lo incluyen y el consumidor no debe asumir reintento. `phase` sigue opcional (§10).
+- **Parser de body:** los errores de `request-body-parsers` (413 y 400 `INVALID_REQUEST`, 401 `AUTH_REQUIRED`) se escriben antes del filtro y no cambian en INTEROP-2.18.
+- **Nombres y otros servicios:** los nombres se alinean con los genéricos de Test Execution Sandbox. GitHub Integration conserva su política propia para 4xx no previstos (`INVALID_REQUEST`) y no se modifica en este corte.
+- **Referencia normativa:** Anexo E de la tesis (criterios C-01 a C-10), citado solo por referencia; su texto no se transcribe en este repositorio.
+
 ## 5. Operaciones asíncronas
 
-Toda creación asíncrona responde `202` con identidad estable y `pollAfterMs`. Los GET de estado son ligeros; los resultados detallados tienen una ruta separada.
+Toda creación asíncrona responde `202` con identidad estable y `pollAfterMs`. Los GET de estado son ligeros; los resultados detallados tienen una ruta separada. El GET de estado del Sandbox puede repetir `pollAfterMs` como sugerencia opcional (no figura en el esquema de estado); Core la acota a 30 s. Core reintenta los GET de estado y resultado ante fallos transitorios (red, tiempo de espera, 408/425/429/5xx) con espera creciente (`SANDBOX_POLL_RETRIES`, `SANDBOX_POLL_RETRY_DELAY_MS`); el POST de creación no se reintenta.
 
 ```ts
 interface AsyncAccepted {
@@ -268,10 +302,9 @@ type ExperimentStrategy = 'RAG' | 'GENERALIST_AGENT'
 
 interface ExperimentStatusResponse {
   id: Id
-  analysisRunId: Id
   projectId: Id
   projectVersionId: Id
-  symbol: AnalysisSymbolResponse
+  targetId: Id // `TestTarget` del experimento (emitido por Core hoy)
   status: ExperimentStatus
   completedRepetitions: number
   totalRepetitions: number // 6: 3 por estrategia
@@ -280,6 +313,8 @@ interface ExperimentStatusResponse {
   startedAt: IsoDateTime | null
   completedAt: IsoDateTime | null
 }
+
+// Nota (INTEROP-2.18, alineación con el servidor): `analysisRunId` y `symbol` (`AnalysisSymbolResponse`) figuraban en esta interfaz por el diseño de HU17, pero `GET /experiments/{id}` y el evento `experiment:update` (§6.6) NO los emiten; Core emite `targetId`. Siguen **definidos por HU17, pendientes de implementación y opcionales** (`analysisRunId?: Id`, `symbol?: AnalysisSymbolResponse`); los consumidores no deben depender de ellos hasta que un WI los implemente. Los campos de `ExperimentStatusV27Additions` (§6.5.1) se emiten siempre (`null` en corridas previas a OE5).
 
 // Nota informativa sobre ExperimentStatusResponse.failureCode: el campo sigue siendo `string | null` abierto; los consumidores deben tolerar valores desconocidos. Valores que Core emite hoy cuando status = FAILED: `EXPERIMENT_FAILED` (el handler capturó un error durante la ejecución y marcó el run) y `EXPERIMENT_WORKER_LOST` (la cola agotó los intentos tras la muerte del worker y cerró el run). Un run FAILED puede reanudarse; si completa, vuelve a COMPLETED y failureCode/failureMessage se limpian a null.
 
@@ -291,6 +326,7 @@ interface StrategyMetricsResponse {
   compilationRate: number | null
   executionRate: number | null
   passedRate: number | null
+  technicallyValidRate: number | null // INTEROP-2.13: fracción de repeticiones evaluables con compiled === true ∧ executed === true ∧ failureType ∈ {NONE, TEST_ASSERTION}; null si evaluableRepetitions = 0
   generationDurationMs: number | null // media de los valores no nulos de las repeticiones evaluables; null si ninguna lo registró (siempre null si evaluableRepetitions = 0)
   executionDurationMs: number | null // media de los valores no nulos; null si ninguna repetición evaluable invocó el Sandbox
   totalDurationMs: number | null // ídem generationDurationMs
@@ -304,6 +340,7 @@ interface StrategyMetricsResponse {
   toolCalls: number | null
   filesInspected: number | null
   failures: Partial<Record<FailureType, number>>
+  assertionFailureCount: number // INTEROP-2.13: repeticiones evaluables con failureType = TEST_ASSERTION; 0 si no hay evaluables; igual a failures.TEST_ASSERTION ?? 0
 }
 
 interface ExperimentRepetitionResponse {
@@ -322,14 +359,14 @@ interface ExperimentRepetitionResponse {
 
 interface ExperimentResultsResponse {
   experimentId: Id
-  analysisRunId: Id
   projectVersionId: Id
-  symbol: AnalysisSymbolResponse
+  targetId: Id // `TestTarget` del experimento (emitido por Core hoy)
   repetitionsPerStrategy: 3
   strategies: StrategyMetricsResponse[]
   repetitions: ExperimentRepetitionResponse[]
   completedAt: IsoDateTime
 }
+// Nota (INTEROP-2.20, alineación con el servidor): `analysisRunId` y `symbol` (`AnalysisSymbolResponse`) figuraban en esta interfaz por el diseño de HU17, pero `GET /experiments/{id}/results` NO los emite; Core emite `targetId`. Siguen definidos por HU17, pendientes de implementación y opcionales (`analysisRunId?: Id`, `symbol?: AnalysisSymbolResponse`); los consumidores no deben depender de ellos hasta que un WI los implemente.
 ```
 
 Las tasas usan el intervalo `[0,1]`. Un valor no observable se representa con `null`, nunca con cero. La moneda y metodología de `estimatedCost` deben viajar en la configuración persistida del experimento; este campo no implica una divisa universal.
@@ -338,16 +375,17 @@ El contrato HTTP queda definido. `DEC-EXP-002` queda `APROBADO` (herramientas, l
 
 ### 6.5.1 Extensiones de OE5 (INTEROP-2.7)
 
-**Implementado** en `WI-CORE-023`, `WI-CORE-024`, `WI-CORE-025`, `WI-CORE-027` y `WI-CORE-029` (experimentos PHP/PHPUnit) (2026-10-09). Desde `WI-CORE-027` las tasas y las medias de duración de `StrategyMetricsResponse` son `number | null` y se añaden `evaluableRepetitions` y `nonEvaluableRepetitions` (`DEC-EVID-001`). Bajo `DEC-EXP-FK-001`, `DEC-EXP-003` y `DEC-EXP-004`, OE5 compara la arquitectura RAG completa con un agente generalista competente de solo lectura bajo condiciones experimentales externas controladas; no mide solo retrieval y no afirma paridad estricta de información.
+**Implementado** en `WI-CORE-023`, `WI-CORE-024`, `WI-CORE-025`, `WI-CORE-027` y `WI-CORE-029` (experimentos PHP/PHPUnit) (2026-10-09). Desde `WI-CORE-027` las tasas y las medias de duración de `StrategyMetricsResponse` son `number | null` y se añaden `evaluableRepetitions` y `nonEvaluableRepetitions` (`DEC-EVID-001`). Bajo `DEC-EXP-FK-001`, `DEC-EXP-003` y `DEC-EXP-004` (enmendada por `DEC-EXP-005`), OE5 compara la arquitectura RAG completa con un agente generalista competente de solo lectura bajo condiciones experimentales externas controladas; no mide solo retrieval y no afirma paridad estricta de información.
 
-- Ambos brazos comparten repositorio, PR/HEAD, snapshot, target, proveedor, modelo y versión, esfuerzo de razonamiento, parámetros comunes, perfil de Sandbox y presupuesto comparable. Por `DEC-EXP-004` el modelo es `gpt-6-luna` vía la API de OpenAI y el esfuerzo es el máximo soportado por el modelo y el runtime, idénticos en ambos brazos y registrados en la evidencia; el flujo de producto conserva su configuración actual. Core no degrada el razonamiento en silencio: si el proveedor no admite el esfuerzo pedido, el experimento falla al crearse en lugar de ejecutarse con otro. El esfuerzo y los parámetros efectivos se persisten.
+- Ambos brazos comparten repositorio, PR/HEAD, snapshot, target, proveedor, modelo y versión, esfuerzo de razonamiento, parámetros comunes, perfil de Sandbox y presupuesto comparable. Por `DEC-EXP-004`, enmendada por `DEC-EXP-005`, el modelo y el esfuerzo son los de la configuración única del LLM: `LLM_MODEL` y `LLM_REASONING_EFFORT`, obligatorio y fijado por cada entorno. Los valores admitidos y su interpretación son comportamiento del adaptador configurado, no del contrato: con el adaptador de OpenAI vigente, `LLM_MODEL` tiene por defecto `gpt-6-luna`, el esfuerzo se envía a la API Responses y la escala es `none`, `minimal`, `low`, `medium`, `high`, `xhigh` o `max`. El flujo de producto usa la misma configuración. Ambos brazos usan exactamente el mismo modelo y esfuerzo, registrados en la evidencia. Core no degrada el razonamiento en silencio: no valida el esfuerzo contra una lista; si el proveedor lo rechaza, la llamada falla con error explícito y la repetición queda como fallo (véase Autorización y errores). El esfuerzo y los parámetros efectivos se persisten.
 - RAG usa recuperación SE, `ContextBuilder` y el conocimiento funcional `ACTIVE` aplicable. El agente generalista explora en modo solo lectura, sin retriever RAG, sin `ContextBuilder` y sin conocimiento funcional persistente. Ninguno recibe el oráculo. El agente puede descubrir y leer las pruebas existentes; no se le entregan directamente ni se ocultan.
 - Herramientas permitidas del agente: `list_files`, `read_file`, `search_text` e `inspect_symbol`/referencias. Prohibidos: shell, Composer/PHPUnit/Jest/Vitest, escritura, Internet y GitHub API. Se persisten el tope de tool calls, el presupuesto de contexto, tokens, archivos y duración, y la secuencia observable de herramientas.
 - Diseño pareado: 3 repeticiones RAG y 3 GA forman 3 pares, cada repetición en sesión fresca. El orden dentro de cada par es aleatorio y reproducible a partir de `randomizationSeed`, que se persiste por experimento.
 - Reintentos: un fallo de la estrategia no tiene reintento de calidad; un fallo externo demostrado admite como máximo un reintento; un segundo fallo de infraestructura deja la repetición `technicallyEvaluable: false`. Implementación en Core: son fallos externos solo el fallo del proveedor LLM por HTTP 5xx, 429 o error de conexión, la excepción del cliente de Sandbox (`SandboxUnavailableError` u otra) y el resultado `INFRASTRUCTURE` del Sandbox salvo `TIMED_OUT`. El reintento es único (intento 2, inmediato, sesión fresca, mismo `pairId` y `pairPosition`); la fila vigente de cada repetición es su último intento (`attempt` 1 o 2). `technicallyEvaluable` es `false` tras el segundo fallo externo o si el intento 2 queda interrumpido (huérfano). Los experimentos creados antes de OE5 (`randomizationSeed` `null`) conservan su comportamiento anterior: sin pareado ni reintento. El sufijo `:2` de la identidad Core→Sandbox (§3) es interno y solo informativo para los consumidores.
+- `technicallyValidRate` y `assertionFailureCount` (INTEROP-2.13): `technicallyValidRate` es la fracción de las repeticiones evaluables cuya prueba generada se compiló (`compiled === true`) y se ejecutó (`executed === true`) y cuyo `failureType` es `NONE` o `TEST_ASSERTION`: una prueba técnicamente válida cuya aserción falla cuenta como válida para esta tasa. `TEST_RUNTIME`, `COMPILATION`, `DEPENDENCY`, `CONFIGURATION`, `INFRASTRUCTURE`, `UNKNOWN` y las repeticiones sin invocación al Sandbox no cuentan; `validRate` no cambia y `validRate ≤ technicallyValidRate`. Mismo denominador y reglas de `null` que las demás tasas (`null` solo si `evaluableRepetitions = 0`; un `0` es cero real). `assertionFailureCount` es un conteo no nulo (`0` sin evaluables) igual a `failures.TEST_ASSERTION ?? 0`. Son diagnóstico técnico: no declaran ganador ni se derivan en CF/CO, y la exportación de evidencia (§6.16, `schemaVersion` `'1'`) no cambia. Los consumidores deben tolerar su ausencia en respuestas de un Core anterior.
 - Ningún DTO declara un ganador. `validRate`, `passedRate` y similares son diagnóstico técnico y no se derivan en CF/CO (SYSTEM-2.6, «Calidad, métricas y evidencia»).
-- Autorización y errores: `POST /experiments` exige Writer y `Idempotency-Key`; los GET exigen Reader y un experimento inexistente o no visible responde el mismo `404` que ya devuelve `GET /experiments/{experimentId}`. Si el proveedor no admite el esfuerzo de razonamiento pedido, la creación responde `422 REASONING_EFFORT_UNSUPPORTED` y no se crea el experimento; `details` incluye `supportedEfforts: string[]` (esfuerzos admitidos por el modelo configurado). Si el modelo de experimentos no está disponible (`MODEL_UNAVAILABLE` interno), la creación responde `503 LLM_PROVIDER_UNAVAILABLE` (§4, dependencia de plataforma) y tampoco crea el experimento. `TIMED_OUT` del Sandbox es fallo de la prueba generada y no cuenta como fallo externo para el reintento.
-- PHP/PHPUnit (`PHP_LARAVEL_PHPUNIT`, `PHPUNIT`) se admite en experimentos desde `WI-CORE-029` (2026-10-09): `runnerHint` `PHPUNIT` y perfil `PHP_LARAVEL_PHPUNIT`; ambos brazos ubican el test según `DEC-PHP-GEN-001` (archivo nuevo, `CREATED`) y una respuesta sin `<?php` es resultado técnico desfavorable de la estrategia, sin reintento. `POST /experiments` responde `422 UNSUPPORTED_PROJECT` y no crea el experimento ni encola el job cuando la versión no tiene framework `JEST`/`VITEST`/`PHPUNIT` detectado (un proyecto PHP sin PHPUnit incluido). Precedencia: Core valida este `422` después de Writer, indexación, versión completada y target, y antes de resolver el modelo (`REASONING_EFFORT_UNSUPPORTED`/`503`).
+- Autorización y errores: `POST /experiments` exige Writer y `Idempotency-Key`; los GET exigen Reader y un experimento inexistente o no visible responde el mismo `404` que ya devuelve `GET /experiments/{experimentId}`. La creación responde `422 REASONING_EFFORT_UNSUPPORTED` y no crea el experimento solo si `EXPERIMENT_LLM_TEMPERATURE` es incompatible con razonamiento activo; `details` incluye `model`, `requestedEffort` y `supportedEfforts: ['none']`. Un esfuerzo que la API rechace no se detecta al crear: el experimento se crea y cada repetición falla en la llamada con `failureType: UNKNOWN`, sin reintento; el detalle de la API queda en el log del servidor con modelo y esfuerzo. Si el modelo de experimentos no está disponible (`MODEL_UNAVAILABLE` interno), la creación responde `503 LLM_PROVIDER_UNAVAILABLE` (§4, dependencia de plataforma) y tampoco crea el experimento. `TIMED_OUT` del Sandbox es fallo de la prueba generada y no cuenta como fallo externo para el reintento.
+- PHP/PHPUnit (`PHP_LARAVEL_PHPUNIT`, `PHPUNIT`) se admite en experimentos desde `WI-CORE-029` (2026-10-09): `runnerHint` `PHPUNIT` y perfil `PHP_LARAVEL_PHPUNIT`; ambos brazos ubican el test según `DEC-PHP-GEN-001` (archivo nuevo, `CREATED`) y una respuesta sin `<?php` es resultado técnico desfavorable de la estrategia, sin reintento. `POST /experiments` responde `422 UNSUPPORTED_PROJECT` y no crea el experimento ni encola el job cuando la versión no tiene framework `JEST`/`VITEST`/`PHPUNIT` detectado (un proyecto PHP sin PHPUnit incluido). Precedencia: Core valida este `422` después de Writer, indexación, versión completada y target, y antes de resolver el modelo (`422 REASONING_EFFORT_UNSUPPORTED` por temperatura, o `503`).
 - Semántica observable de las métricas agregadas: `StrategyMetricsResponse` calcula `validRate`, `compilationRate`, `executionRate`, `passedRate`, los promedios y `failures` únicamente sobre las repeticiones vigentes con `technicallyEvaluable !== false` (ese es el denominador; los slots no evaluables no entran). `evaluableRepetitions` es el número de esas repeticiones y `nonEvaluableRepetitions` el de las vigentes con `technicallyEvaluable: false`; su suma es el número de repeticiones vigentes devueltas de la estrategia (3 en un experimento completo). Cuando `evaluableRepetitions` vale `0`, las tasas y las medias de duración (`generationDurationMs`, `executionDurationMs`, `totalDurationMs`) valen `null`; con repeticiones evaluables, cada media de duración es la de los valores no nulos y es `null` si ninguna repetición evaluable la registró; y los promedios de tokens, costo, chunks, herramientas y archivos siguen siendo `null`; `failures` queda vacío. Un `0` en una tasa o duración significa cero real sobre al menos una repetición evaluable (por ejemplo `passedRate: 0` = ninguna pasó). Los consumidores deben tolerar `null` y mostrar «sin datos» en lugar de `0 %`; `evaluableRepetitions` y `nonEvaluableRepetitions` distinguen «sin datos» de un valor real sin recurrir a `repetitions[]`. `ExperimentRepetitionResponse.executionDurationMs` es `null` si el Sandbox nunca se invocó y en corridas previas (antes se emitía `0`); si la llamada al Sandbox se hizo y falló (p. ej. `SandboxUnavailableError`), registra el tiempo transcurrido de esa llamada. `StrategyMetricsResponse.executionDurationMs` es la media de los valores no nulos de las repeticiones evaluables y es `null` si no hay ninguno. En experimentos anteriores a OE5 todas las repeticiones son evaluables (`technicallyEvaluable` ausente o `true`) y los contadores resultan `evaluableRepetitions = n`, `nonEvaluableRepetitions = 0`.
 - Nota (`WI-CORE-027`, IDEA-015): `errorSummary` y `failureSummary` se emiten saneados (secretos redactados y truncado a 500 caracteres, de forma idempotente, también sobre filas previas) y `failure.category` se valida contra `FailureType` (un valor desconocido se emite como `UNKNOWN`). El cambio afecta solo al contenido de campos ya existentes; la forma de las respuestas no cambia.
 - `ExperimentRepetitionResponse.generationDurationMs` y `totalDurationMs` conservan `0` cuando no se observaron, hasta `IDEA-017` (excepción documentada a «un valor no observable es `null`»); las medias de `StrategyMetricsResponse` ya ignoran los `null` crudos y no dependen de ese `0`.
@@ -390,26 +428,51 @@ interface ExperimentRepetitionV27Additions {
 
 ### 6.6 Progreso en tiempo real (WebSockets)
 
-El estado en tiempo real de `AnalysisRun` complementa, pero no reemplaza, los GET de estado por polling. Si el WebSocket no está disponible, el cliente continúa por HTTP sin duplicar la operación.
+**Ancla:** HU12 (consulta del estado de un Run). **Decisión:** `DEC-RT-001` (APPROVED el 2026-10-21, `spec/features/013-pr-driven-analysis/spec.md`). **Implementado:** `WI-CORE-074` (cortes 1 y 2).
+
+El estado en tiempo real de `AnalysisRun` y de `Experiment` complementa, pero no reemplaza, los GET de estado por polling (§6.2, §6.5 y §6.10). Si el WebSocket no está disponible, el cliente continúa por HTTP sin duplicar la operación. Transporte: Socket.IO, namespace por defecto, mismo host que la API HTTP. Los payloads de suscripción, `SubscribeAck` y los avisos tienen esquema en `spec/contracts/schemas/realtime-events.schema.json`, con ejemplos canónicos en `schemas/examples/` (`realtime-*`).
 
 ```ts
-// Eventos cliente -> servidor (namespace Socket.IO por defecto, mismo host que la API HTTP)
-interface SubscribeProjectVersionEvent { projectVersionId: Id } // evento 'subscribe:project-version'
-interface UnsubscribeProjectVersionEvent { projectVersionId: Id } // evento 'unsubscribe:project-version'
+// Handshake: el token es el mismo access token de usuario que en HTTP (DEC-RT-001).
+// Se envía en `auth.token` o en la cabecera `Authorization: Bearer <access token>`; si vienen ambos, prevalece `auth.token`.
+// Nunca en la query string.
+type HandshakeRejectCode =
+  | 'AUTH_REQUIRED'                 // sin token
+  | 'INVALID_ACCESS_TOKEN'          // token inválido o expirado
+  | 'GITHUB_IDENTITY_REQUIRED'      // token válido sin identidad GitHub (retryable: false)
+  | 'IDENTITY_UNAVAILABLE'          // Admin API no disponible con la identidad sin persistir (retryable: true)
+// Rechazo: connect_error con err.data = { code: HandshakeRejectCode, message: string, retryable: boolean }
 
-interface SubscribeAck { subscribed: boolean; code: 'GITHUB_VERIFICATION_UNAVAILABLE' | null; retryable: boolean } // acknowledgment de 'subscribe:project-version'
+// Eventos cliente -> servidor. Cada subscribe responde con acknowledgment SubscribeAck.
+interface SubscribeProjectVersionEvent { projectVersionId: Id }   // 'subscribe:project-version'
+interface UnsubscribeProjectVersionEvent { projectVersionId: Id } // 'unsubscribe:project-version'
+interface SubscribeAnalysisRunEvent { analysisRunId: Id }         // 'subscribe:analysis-run'
+interface UnsubscribeAnalysisRunEvent { analysisRunId: Id }       // 'unsubscribe:analysis-run'
+interface SubscribeExperimentEvent { experimentId: Id }           // 'subscribe:experiment'
+interface UnsubscribeExperimentEvent { experimentId: Id }         // 'unsubscribe:experiment'
 
-// Eventos servidor -> cliente
-// 'project-version:update', payload: ProjectVersionResponse (mismo shape que GET /project-versions/{id})
+interface SubscribeAck { subscribed: boolean; code: 'GITHUB_VERIFICATION_UNAVAILABLE' | null; retryable: boolean }
+
+// Eventos servidor -> cliente (payload = DTO de su GET; sin DTO paralelo)
+// 'project-version:update' -> ProjectVersionResponse   (= GET /project-versions/{id}, §6.2)
+// 'analysis-run:update'    -> AnalysisRunDetailResponse (= GET /analysis-runs/{id}, §6.10)
+// 'experiment:update'      -> ExperimentStatusResponse  (= GET /experiments/{id}, §6.5)
 ```
 
 Reglas:
 
-- El servidor emite `project-version:update` únicamente a los clientes suscritos a ese id específico (sin broadcast global); una conexión puede suscribirse a varios ids.
-- El payload es exactamente `ProjectVersionResponse` ya definido en 6.2: no se introduce un DTO paralelo para WebSocket.
-- Una desconexión limpia todas las suscripciones de esa conexión sin acción adicional del servidor.
-- No se emite ningún dato ausente de los DTOs HTTP equivalentes (sin prompts, embeddings ni keys de Storage).
-- El handshake WebSocket incluye el mismo access token de usuario; Core valida identidad antes de aceptar una suscripción y comprueba que el usuario tenga al menos rol Reader sobre el `Project` antes de unir el socket a una sala; Core mantiene el mapa socket -> `Project` de cada suscripción y saca al socket de las salas de un `Project` cuando el usuario pierde el acceso (§6.9), el Project se borra lógicamente o deja de ser visible para él (p. ej. su binding pasa a `REVOKED` y no es Admin), y deja de emitirle eventos. El acknowledgment de `subscribe:project-version` devuelve `SubscribeAck` con exactamente tres resultados: suscrito (`{ subscribed: true, code: null, retryable: false }`); verificación no disponible (§6.13, GitHub no permite verificar), rechazo reintentable (`{ subscribed: false, code: 'GITHUB_VERIFICATION_UNAVAILABLE', retryable: true }`); y sin visibilidad, sin distinguirlo de un id inexistente (`{ subscribed: false, code: null, retryable: false }`). La identidad del handshake se resuelve por la misma vía que en HTTP (§6.13, "Identidad"): un token válido sin identidad GitHub rechaza la conexión (`connect_error` con `data: { code: 'GITHUB_IDENTITY_REQUIRED', retryable: false }`) y una Admin API de Supabase no disponible con el vínculo no persistido la rechaza con `data: { code: 'IDENTITY_UNAVAILABLE', retryable: true }`; un token inválido o expirado, con `INVALID_ACCESS_TOKEN`. Un handshake sin token se acepta (compatibilidad con clientes que suscriben tras autenticar): cualquier `subscribe:*` sin credencial se rechaza con `AUTH_REQUIRED`, y un token presente que no puede autenticarse rechaza la conexión con `connect_error` y `data { code, message, retryable }`. Un rechazo desde middleware desactiva la reconexión automática de `socket.io-client`: con `retryable: true` el cliente debe llamar a `socket.connect()`. HTTP continúa como fallback.
+- **Handshake.** Sin token (ni `auth.token` ni cabecera `Bearer` no vacía) la conexión se rechaza con `AUTH_REQUIRED`, también bajo `AUTH_BYPASS`. Un token inválido o expirado se rechaza con `INVALID_ACCESS_TOKEN`. Un token válido sin identidad GitHub se rechaza con `GITHUB_IDENTITY_REQUIRED`, y con `IDENTITY_UNAVAILABLE` si la Admin API de Supabase no responde con el vínculo sin persistir (esa última es reintentable). La identidad se resuelve por el mismo resolvedor que HTTP (§6.13, «Identidad»). Bajo `AUTH_BYPASS_ENABLED` (solo local o mock) cualquier token no vacío autentica con la identidad sintética, igual que HTTP; sin token se rechaza igual.
+- **Cierre del handshake.** Un rechazo de middleware no abre la conexión: el cliente recibe `connect_error` con `err.data` y `socket.io-client` no reintenta por sí solo. Con `retryable: true` el cliente puede llamar a `socket.connect()`. El handshake no usa los códigos genéricos de §4.1 (`UNAUTHORIZED`, `FORBIDDEN`): un código explícito de la aplicación prevalece.
+- **Suscripciones.** Cada `subscribe:*` exige rol mínimo Reader sobre el `Project` del recurso (igual que su GET: `GET /project-versions/{id}` en §6.2, `GET /analysis-runs/{id}` en §6.10 y `GET /experiments/{id}` en §6.5), con la misma comprobación de visibilidad que HTTP. El acknowledgment `SubscribeAck` tiene exactamente tres resultados: suscrito (`{ subscribed: true, code: null, retryable: false }`); verificación no disponible (§6.13, GitHub no permite verificar) (`{ subscribed: false, code: 'GITHUB_VERIFICATION_UNAVAILABLE', retryable: true }`); y sin visibilidad, o id inexistente o malformado, sin distinguirlos (`{ subscribed: false, code: null, retryable: false }`).
+- **Denegación sin fuga.** Una suscripción denegada no une el socket a la sala y no recibe ningún evento de ese recurso. Un usuario sin acceso a un recurso no recibe ni su estado ni la existencia del id.
+- **Desuscripción.** `unsubscribe:*` saca al socket de la sala del recurso indicado, no devuelve acknowledgment y no concede ni expone nada. Una desconexión limpia todas las suscripciones de esa conexión sin acción adicional del servidor.
+- **Expulsión.** Si el usuario pierde el acceso al `Project` (§6.9: registro de acceso borrado, Project borrado lógicamente, o binding `REVOKED` y el usuario no es Admin), el servidor saca al socket de las salas de ese Project y deja de emitirle eventos. Una reconexión no restaura suscripciones: el cliente debe volver a suscribirse.
+- **Salas por id.** `project-version:{id}`, `analysis-run:{id}` y `experiment:{id}`. El servidor nunca hace broadcast global: solo emite a los sockets unidos a la sala del recurso que cambió. Una conexión puede suscribirse a varios ids.
+- **Contenido.** Cada evento lleva exactamente el DTO de su GET. No se emite ningún dato ausente de ese DTO (sin prompts, embeddings, keys de Storage, trazas ni contenido de Sandbox).
+- **Cuándo se emite.** `analysis-run:update` se emite por cada cambio de estado del `AnalysisRun` (inicio de procesamiento, `ACTION_REQUIRED`, continuación, cierre con resultado, `OBSOLETE`, cierre del PR) y por cada cambio visible en su DTO (contadores o snapshot) escrito por Core. La creación del Run no emite. `experiment:update` se emite por cada cambio de estado del experimento (`RUNNING`, `COMPLETED`, `FAILED`), inmediatamente. El progreso de repeticiones (`completedRepetitions`) tiene límite de ritmo de **1500 ms** por experimento: los cambios de progreso dentro de la ventana se agrupan en una emisión final con el estado leído al cerrarla; un cambio de estado no espera y cancela la emisión de progreso pendiente. La creación del experimento no emite. `project-version:update` está reservado: en este corte ningún flujo de producción lo emite.
+- **Garantías.** La emisión ocurre después de confirmar la escritura, nunca dentro de la transacción. Es best-effort: un fallo al emitir se registra y no altera la transición, el job ni la respuesta HTTP. Es at-most-once: no hay replay, historial, acknowledgment del cliente ni orden garantizado entre eventos o entre eventos y respuestas HTTP. Un cliente que se conecta, se reconecta o sospecha que perdió un evento hace el GET del recurso y reconcilia con esa respuesta, que es la fuente de verdad. Sin suscriptores, el servidor no lee la base de datos para componer el DTO.
+- **Polling.** Los GET de §6.2, §6.5 y §6.10 siguen siendo la base y el único mecanismo garantizado. Ningún flujo de Core depende de que el socket esté conectado.
+- **Cambio incompatible declarado (`INTEROP-2.18`).** Rechazar el handshake sin sesión (`AUTH_REQUIRED`) es el único cambio incompatible de esta versión: antes el handshake sin token se aceptaba y solo fallaban las suscripciones. Con sesión normal Developer Console no se rompe; con `AUTH_BYPASS` y sin token sí, y debe enviar cualquier token no vacío. GitHub Integration y Test Execution Sandbox no usan este transporte y no tienen impacto. Las suscripciones de `project-version` mantienen su comportamiento para un cliente con sesión.
 
 ### 6.7 Trazas de contexto
 
@@ -458,6 +521,24 @@ type RagMatchedVia = 'SEMANTIC' | 'IMPORTS' | 'IMPORTED_BY' | 'SAME_NAMESPACE' |
 type RagCandidateDecision = 'SELECTED' | 'DISCARDED'
 type RagDiscardReason = 'BELOW_MINIMUM_SCORE' | 'TOP_K_LIMIT' | 'TOKEN_BUDGET'
 
+type RagDependencyOrigin = 'CONSTRUCTOR' | 'METHOD_SIGNATURE'
+type RagDependencyResolvedBy = 'LITERAL' | 'IMPORT' | 'SAME_NAMESPACE'
+
+interface RagDependencyEntryResponse {
+  typeName: string // nombre corto tal como aparece en el código
+  fqcn: string // nombre completo sin '\' inicial: tomado del `use` o de un literal con '\' del código, o del mismo namespace de la clase declarante solo si existe en el índice de la versión
+  origin: RagDependencyOrigin // dónde se declaró el tipo; si aparece en ambos, CONSTRUCTOR
+  resolvedBy: RagDependencyResolvedBy
+  final?: true // INTEROP-2.15; solo PHP; presente únicamente si el chunk de declaración del tipo, resuelto en el índice de la versión, es `final class` o una enumeración; ausente = no determinado o no final
+}
+
+interface RagDependencyContextResponse {
+  entries: RagDependencyEntryResponse[] // máximo 20; constructor primero, luego firma; sin duplicados por fqcn
+  unresolvedCount: number // tipos candidatos que no se resolvieron y no se listan (sin nombrarlos); no incluye los recortados
+  tokenCount: number // tokens del texto de la sección tal como entra al prompt, incluido el encabezado; máximo 300
+  truncated: boolean // true si se recortaron entradas por el máximo de 20 o de 300 tokens
+}
+
 interface RagTargetNodeResponse {
   chunkIds: Id[]
   excerpt: SourceExcerptResponse
@@ -491,6 +572,7 @@ interface RagContextTraceDetailResponse extends ContextTraceSummaryResponse {
     semanticWeight: number
     structuralWeight: number
   }
+  dependencyContext?: RagDependencyContextResponse // INTEROP-2.14; solo PHP; ausente en trazas anteriores y en TypeScript
 }
 
 type AgentToolName = 'list_files' | 'search_text' | 'inspect_symbol' | 'read_file'
@@ -536,6 +618,7 @@ Reglas:
 
 - Una traza se vincula a una `ProjectVersion` inmutable. Los hashes, rangos y snippets son evidencia; las líneas circundantes pueden reconstruirse desde el snapshot congelado.
 - `RAG` conserva candidatos seleccionados y descartados. `discardReason` es `null` únicamente cuando `decision=SELECTED`; un score no se presenta como probabilidad.
+- `dependencyContext` (INTEROP-2.14) es contexto determinista no rankeado: no es un candidato, no participa en `minimumScore`, `topK`, `maxContextTokens` ni en `contextTokens`, y sus `tokenCount` (máximo 300) se suman al prompt aparte (el presupuesto efectivo del prompt es `maxContextTokens` más la sección). Solo lista nombres que el código declara (por `use` o literal con `\`) o que existen en el índice de tipos de la versión dentro del namespace de la clase declarante (`SAME_NAMESPACE`); no lista escalares ni clases globales internas de PHP; `unresolvedCount` cuenta los tipos no resueltos sin nombrarlos y el objeto se omite si no hay entradas ni no resueltos. Los consumidores deben tolerar su ausencia (trazas anteriores y TypeScript: «no calculado», no «sin dependencias»). La evidencia §6.16 no lo incluye (`schemaVersion '1'`) y la comparación OE2 SE vs SEM (§6.15) no lo usa. `final` (INTEROP-2.15) solo se emite como `true` cuando el tipo resuelto está declarado en el índice de la versión como `final class` (con o sin `readonly`) o como enumeración (implícitamente final: PHPUnit no puede crear un doble). Su ausencia no significa que el tipo sea mockeable: significa que no se determinó o que no es final (`abstract class`, `interface`, `trait`, `class` sin `final`, tipos fuera del índice como `vendor/`). No afirma nada sobre tipos fuera del índice ni sobre los no resueltos, no cambia el orden, el tope de 20 entradas ni el de 300 tokens, y no es una señal test-aware (`DEC-RAG-001`) ni de ranking. Trazas anteriores no lo tienen (sin backfill); los consumidores deben tolerar su ausencia. Como el resto de la traza, puede contener nombres de código confidencial.
 - `AGENT` conserva la secuencia observable de tool calls. No usa `SELECTED`/`DISCARDED`, no expone mensajes internos del modelo y no afirma qué contenido influyó en su respuesta.
 - `list_files` devuelve un nodo resumen; sus rutas completas se consultan paginadas. Un resultado vacío o un error permanece como paso atenuable mediante `status`.
 - El detalle de una traza o un listado de archivos antes del estado terminal de su run/experimento devuelve `409 CONTEXT_TRACE_NOT_FINISHED`. Un id inexistente o no autorizado devuelve `404 CONTEXT_TRACE_NOT_FOUND`.
@@ -617,7 +700,7 @@ Errores de dominio: `GITHUB_ACCOUNT_REQUIRED` (401), `GITHUB_USER_TOKEN_INVALID`
 
 - `POST /internal/v1/github/webhook-events` -> `202 GitHubWebhookAcceptedResponse` para una aceptación nueva/no-op y `200` solo para un PR cuya entrega ya está persistida. Es un endpoint privado GH Integration→Core; no pertenece a la API pública de Console ni acepta sesiones de usuario.
 
-GitHub envía `x-github-delivery`, `x-github-event` y `x-hub-signature-256` al host de GitHub Integration. Ese componente verifica la firma sobre el body crudo, normaliza el evento y reenvía a Core solo los campos allowlisted. Core autentica ese salto con un bearer GH→Core independiente y valida `schemaVersion` y la forma estricta del evento antes de procesarlo; el detalle del DTO y sus reglas está en `GH-INTEROP-1.5` (`spec/contracts/github-integration-contract.md`, §Webhooks). Core no recibe ni verifica firmas GitHub ni expone un ingress público de webhooks. Solo instalaciones y bindings `ENABLED` producen trabajo de análisis; los eventos de acceso de "Eventos de acceso" (abajo) se procesan aunque el binding no esté `ENABLED`, porque mantienen los registros de acceso de todo Project vivo.
+GitHub envía `x-github-delivery`, `x-github-event` y `x-hub-signature-256` al host de GitHub Integration. Ese componente verifica la firma sobre el body crudo, normaliza el evento y reenvía a Core solo los campos allowlisted. Core autentica ese salto con un bearer GH→Core independiente y valida `schemaVersion` y la forma estricta del evento antes de procesarlo; el detalle del DTO y sus reglas está en `GH-INTEROP-1.9` (`spec/contracts/github-integration-contract.md`, §Webhooks); la forma canónica ejecutable es `schemas/github-webhook-event.schema.json` (§10). Core no recibe ni verifica firmas GitHub ni expone un ingress público de webhooks. Solo instalaciones y bindings `ENABLED` producen trabajo de análisis; los eventos de acceso de "Eventos de acceso" (abajo) se procesan aunque el binding no esté `ENABLED`, porque mantienen los registros de acceso de todo Project vivo.
 
 ```ts
 type PullRequestAction =
@@ -751,12 +834,14 @@ interface AnalysisRunDetailResponse extends AnalysisRunSummaryResponse {
   changesetHeadSha: string
   indexDeltaBaseSha: string | null
   symbols: AnalysisSymbolResponse[]
-  history: AnalysisRunTransitionResponse[]
+  history?: AnalysisRunTransitionResponse[] // definido por HU12, pendiente de implementación: hoy `GET /analysis-runs/{id}` y `analysis-run:update` no lo emiten
   functionalBehaviorValidated: boolean
   resultSummary: string | null
   detailsUrl: string
 }
 ```
+
+`functionalBehaviorValidated` tiene la semántica fijada en §6.11 (INTEROP-2.9). `resultSummary` es texto para personas, no un enum ni un valor garantizado. **Implementado en `WI-CORE-046` (OC11):** cuando el compare del PR no puede verificarse (`UNVERIFIABLE` de GitHub Integration, `spec/contracts/github-integration-contract.md`, operación «Compare»), el Run termina `INFRASTRUCTURE_FAILURE` con Check `neutral` y un `resultSummary` genérico y veraz, «No se pudo verificar el compare de GitHub (por ejemplo, un PR con 300 o más archivos); análisis no realizado», distinguible de una caída de Core, sin un estado nuevo. Core no afirma que el PR exceda 300 archivos porque `UNVERIFIABLE` también cubre otras causas (permiso, 403, 429, 5xx, red); un mensaje específico de «PR excede 300 archivos» queda diferido a la deuda «umbral de repo grande + progreso». El límite de 300 archivos pertenece a GitHub Integration: este contrato no lo fija ni lo hace configurable.
 
 Un Run corresponde a un PR/HEAD; un Job/Attempt no. Una continuación por respuesta humana incrementa attempts sobre el mismo Run si el SHA no cambia. Un HEAD nuevo crea otro Run y marca el anterior `OBSOLETE` aunque estuviera `PROCESSING` o `ACTION_REQUIRED`.
 
@@ -768,6 +853,8 @@ Un Run corresponde a un PR/HEAD; un Job/Attempt no. Una continuación por respue
 - `GET /analysis-runs/{analysisRunId}/context-questions` -> `200 FunctionalQuestionSetResponse`.
 - `POST /analysis-runs/{analysisRunId}/context-questions/{questionId}/answers` -> `202 FunctionalAnswerAcceptedResponse`.
 - `GET /projects/{projectId}/functional-knowledge?status&cursor&limit` -> `200 Page<FunctionalKnowledgeResponse>`.
+
+**Errores de `POST …/answers` (INTEROP-2.9; comportamiento ya emitido por Core).** Las condiciones se evalúan en este orden: Run inexistente o no visible para quien responde → `404 ANALYSIS_RUN_NOT_FOUND`; pregunta inexistente, de otro Run o no accionable (por ejemplo, ya no `PENDING`, `OBSOLETE`, o su Run dejó de ser el vigente o de estar en `ACTION_REQUIRED` tras un HEAD nuevo o un PR cerrado) → `404 FUNCTIONAL_QUESTION_NOT_FOUND`; rol menor que Maintainer → `403 PROJECT_ROLE_INSUFFICIENT`. Por eso un Reader o Writer que responde tarde recibe `404` y no `403`: la comprobación de rol viene después y la respuesta no revela nada que su visibilidad del Run no le diera. El `404 FUNCTIONAL_QUESTION_NOT_FOUND` aplica a cualquier `choice`, incluida `UNKNOWN`, y no persiste respuesta, no crea ni modifica Functional Knowledge, no registra abstención y no encola continuación: una respuesta tardía no se conserva. El Run vigente evalúa su propio contexto y formula, si hace falta, sus propias preguntas.
 
 El inbox de preguntas también omite cualquier pregunta cuyo Run esté sin clasificar o corresponda a un PR anterior al binding. Al clasificarlo como anterior, las preguntas `PENDING` se obsoletan junto al Run.
 
@@ -831,7 +918,7 @@ interface SubmitFunctionalAnswerRequest {
 interface FunctionalAnswerAcceptedResponse extends AsyncAccepted {
   analysisRunId: Id
   questionId: Id
-  continuationAttemptId: Id | null
+  continuationAttemptId: Id | null // INTEROP-2.9: null si no se encoló continuación (ABSTAINED, o ANSWERED que deja el Run en ACTION_REQUIRED); opaco
   knowledgeId: Id | null
   outcome: 'ANSWERED' | 'ABSTAINED' // INTEROP-2.7 (implementado en WI-CORE-018): ABSTAINED implica continuationAttemptId=null y knowledgeId=null
 }
@@ -865,11 +952,15 @@ interface FunctionalKnowledgeConflictResponse {
 }
 ```
 
+**`continuationAttemptId` (INTEROP-2.9).** Es `null` cuando Core no encola una continuación: una abstención `UNKNOWN` (`outcome: 'ABSTAINED'`) y también una respuesta `ANSWERED` tras la cual el Run permanece `ACTION_REQUIRED` porque el evaluador funcional aún exige contexto (quedan preguntas por responder o surge una nueva pregunta adaptativa). Solo es distinto de `null` cuando Core encoló la continuación del Run; es un identificador opaco de correlación y no es consultable por otro endpoint. `knowledgeId` es `null` con `UNKNOWN` y con `KEEP_EXISTING`.
+
+**`functionalBehaviorValidated` (INTEROP-2.9).** Significa «el pipeline terminó sin hallar discrepancia», no «se ejecutó una validación». Es `true` solo cuando el Run termina `SUCCESS` o `NO_ADDITIONAL_TESTS_REQUIRED` (en este último caso los tests existentes suficientes no se ejecutan) y `false` en cualquier otro estado y mientras el Run no completó. No acredita que un baseline se haya ejecutado (`spec/features/013-pr-driven-analysis/spec.md`, OC09).
+
 **HU09, implementado (2026-09-18).** Antes de persistir la regla que produciría una respuesta, Core evalúa si ya existe una `FunctionalKnowledge` `ACTIVE` para el mismo scope+símbolo exacto+`scenarioKey` (desde INTEROP-2.7 el match incluye el `scenarioKey`, `DEC-FK-001`; otro `scenarioKey` del mismo target coexiste y no es conflicto; jerarquía PROJECT⊃MODULE⊃CLASS y contradicción semántica vía LLM quedan pendientes, ver `harness/state.json`). Si detecta una regla existente y la request no trae `conflictResolution`, responde `409 FUNCTIONAL_KNOWLEDGE_CONFLICT` con `details: FunctionalKnowledgeConflictResponse` (§4) y no persiste ni avanza el Run — Focus Mode muestra la regla existente junto a la propuesta para que el usuario decida antes de contaminar el conocimiento. Un reenvío con `conflictResolution.action: 'SUPERSEDE'` persiste la nueva regla `ACTIVE` y pasa la existente a `SUPERSEDED` (`supersedesId` la referencia); `'KEEP_EXISTING'` registra la respuesta como evidencia de la pregunta (`knowledgeId: null`) sin tocar la regla vigente. `conflictId` reutiliza el `questionId` (de un solo uso, expira si el HEAD cambia igual que una pregunta `OBSOLETE`).
 
 **INTEROP-2.7, `DEC-FK-001` (definido e implementado en `WI-CORE-020`).** La regla hereda `scenarioKind`/`scenarioKey` de la pregunta que la originó (las históricas, `EXPECTED_RESULT`/`LEGACY`); nunca los envía la persona. El match se refina por `scenarioKey`: el conflicto solo existe entre reglas con el mismo scope, `targetRef` y `scenarioKey`, y reglas con distinto `scenarioKey` coexisten como `ACTIVE`. Un índice único parcial `ACTIVE` sobre project+scope+`targetRef`+`scenarioKey` resuelve la carrera: la segunda respuesta recibe `409 FUNCTIONAL_KNOWLEDGE_CONFLICT` con la forma existente. El listado devuelve todas las reglas `ACTIVE` del target.
 
-**`UNKNOWN` (INTEROP-2.7, `DEC-FK-002`; definido e implementado en `WI-CORE-018`).** `UNKNOWN` es una abstención auditada y no una respuesta: solo Maintainer o Admin pueden registrarla (`403 PROJECT_ROLE_INSUFFICIENT` para Writer y Reader). La pregunta permanece `PENDING`, el Run permanece `ACTION_REQUIRED`, no se crea ni modifica Functional Knowledge, no se encola continuación y no hay generación. Core responde `202` con `outcome: 'ABSTAINED'`, `continuationAttemptId: null` y `knowledgeId: null`, y registra quién se abstuvo, con qué rol y cuándo (`abstention`). Otra persona con autoridad puede responder la misma pregunta después. Si el HEAD cambió, la pregunta queda `OBSOLETE`, no se reanuda el Run viejo y cualquier regla potencial se reevalúa contra el Run actual. La siguiente pregunta es adaptativa y reemplaza visualmente a la anterior; no se expone un total fijo.
+**`UNKNOWN` (INTEROP-2.7, `DEC-FK-002`; definido e implementado en `WI-CORE-018`).** `UNKNOWN` es una abstención auditada y no una respuesta: solo Maintainer o Admin pueden registrarla (`403 PROJECT_ROLE_INSUFFICIENT` para Writer y Reader). La pregunta permanece `PENDING`, el Run permanece `ACTION_REQUIRED`, no se crea ni modifica Functional Knowledge, no se encola continuación y no hay generación. Core responde `202` con `outcome: 'ABSTAINED'`, `continuationAttemptId: null` y `knowledgeId: null`, y registra quién se abstuvo, con qué rol y cuándo (`abstention`). Otra persona con autoridad puede responder la misma pregunta después. Si el HEAD cambió, la pregunta queda `OBSOLETE` y no se reanuda el Run viejo; responderla después recibe `404 FUNCTIONAL_QUESTION_NOT_FOUND` y no se conserva. El Run actual evalúa su propio contexto. La siguiente pregunta es adaptativa y reemplaza visualmente a la anterior; no se expone un total fijo.
 
 ### 6.12 Checks, propuestas y companion PR
 
@@ -987,8 +1078,8 @@ Un recurso no visible conserva el `404` de su recurso (`PROJECT_NOT_FOUND`, etc.
 
 | Rol mínimo | Operaciones |
 |---|---|
-| Sin rol de Project (solo sesión GitHub válida) | `GET /workspaces`; `GET /integrations/github/repositories` (con `workspaceId`: pertenencia al workspace); `POST /integrations/github/repositories/verify-app-access` y `GET /integrations/github/repositories/{owner}/{repo}/branches` (exigen permiso `maintain`/`write`/`admin` sobre el repositorio); `POST /projects` (personal: cualquiera; organización: Admin de la organización). Sin sesión de usuario: `GET /health`. El receptor privado normalizado GH Integration→Core se rige por `GH-INTEROP-1.5` (§6.9), no es una operación pública sujeta a rol de Project ni de Console. |
-| Reader | `GET /projects`, `GET /projects/{projectId}`; `GET /projects/{projectId}/versions`; `GET /project-versions/{id}`, `.../results`, `.../test-inventory`; `GET /projects/{projectId}/integrations/github`; `GET /projects/{projectId}/analysis-runs`, `GET /analysis-runs`, `GET /analysis-runs/{id}`; `GET /action-required`, `GET /analysis-runs/{id}/context-questions`, `GET /projects/{projectId}/functional-knowledge`; `GET /analysis-runs/{id}/test-proposals`, `GET /test-publications/{id}`; `GET /experiments/{id}`, `.../results`, `GET /analysis-runs/{id}/experiments`; `GET /experiments/{id}/context-traces`, `GET /context-traces/{id}`, `.../discovered-files`; `GET /retrieval-comparisons/{id}`, `.../results`, `.../evidence`, `GET /analysis-runs/{id}/retrieval-comparisons`; `GET /analysis-runs/{id}/trace`, `GET /analysis-runs/{id}/evidence`, `GET /experiments/{id}/evidence`; suscripción WebSocket `subscribe:project-version`. |
+| Sin rol de Project (solo sesión GitHub válida) | `GET /workspaces`; `GET /integrations/github/repositories` (con `workspaceId`: pertenencia al workspace); `POST /integrations/github/repositories/verify-app-access` y `GET /integrations/github/repositories/{owner}/{repo}/branches` (exigen permiso `maintain`/`write`/`admin` sobre el repositorio); `POST /projects` (personal: cualquiera; organización: Admin de la organización). Sin sesión de usuario: `GET /health`. El receptor privado normalizado GH Integration→Core se rige por `GH-INTEROP-1.9` (§6.9), no es una operación pública sujeta a rol de Project ni de Console. |
+| Reader | `GET /projects`, `GET /projects/{projectId}`; `GET /projects/{projectId}/versions`; `GET /project-versions/{id}`, `.../results`, `.../test-inventory`; `GET /projects/{projectId}/integrations/github`; `GET /projects/{projectId}/analysis-runs`, `GET /analysis-runs`, `GET /analysis-runs/{id}`; `GET /action-required`, `GET /analysis-runs/{id}/context-questions`, `GET /projects/{projectId}/functional-knowledge`; `GET /analysis-runs/{id}/test-proposals`, `GET /test-publications/{id}`; `GET /experiments/{id}`, `.../results`, `GET /analysis-runs/{id}/experiments`; `GET /experiments/{id}/context-traces`, `GET /context-traces/{id}`, `.../discovered-files`; `GET /retrieval-comparisons/{id}`, `.../results`, `.../evidence`, `GET /analysis-runs/{id}/retrieval-comparisons`; `GET /analysis-runs/{id}/trace`, `GET /analysis-runs/{id}/evidence`, `GET /experiments/{id}/evidence`; suscripciones WebSocket `subscribe:project-version`, `subscribe:analysis-run` y `subscribe:experiment` (§6.6). |
 | Writer | `POST /projects/{projectId}/integrations/github`, `POST .../enable`, `DELETE .../integrations/github` (pausa) (con la salvedad de que un Project sin repositorio, y uno con binding `REVOKED`, lo ve solo un Admin: reactivar un binding `REVOKED` lo hace un Admin); `POST /analysis-runs/{id}/test-publications`; `POST /experiments`; `POST /retrieval-comparisons`. |
 | Maintainer | `POST /analysis-runs/{id}/context-questions/{questionId}/answers` (incluye la abstención `UNKNOWN`, `DEC-FK-002`). |
 | Admin | `PATCH /projects/{projectId}`; `DELETE /projects/{projectId}`; `POST /projects` en una organización. |
@@ -1288,7 +1379,7 @@ interface EvidenceBundleResponse {
 
 ## 7. Contrato RAG Core ↔ Test Execution Sandbox
 
-La integración es HTTP interna y asíncrona. RAG Core es el único consumidor.
+La integración es HTTP interna y asíncrona. RAG Core es el único consumidor. La forma normativa de los request y response de esta sección está en `schemas/sandbox-execution.schema.json` (§10); los bloques TypeScript siguientes la ilustran.
 
 ### 7.1 Entradas mediante URL firmada temporal
 
@@ -1336,7 +1427,7 @@ interface CreateSandboxExecutionRequest {
   targetIds: Id[]
   executionProfile: ExecutionProfile
   runnerHint: TestRunner
-  phase: 'BASELINE' | 'GENERATED_TESTS'
+  phase?: 'BASELINE' | 'GENERATED_TESTS' // INTEROP-2.17: tolerancia transitoria; omitido equivale a 'GENERATED_TESTS'
 }
 
 interface SandboxExecutionAcceptedResponse extends AsyncAccepted {
@@ -1358,6 +1449,7 @@ Reglas:
 - `executionProfile` y `runnerHint` se verifican contra el snapshot. Una incompatibilidad termina como `CONFIGURATION`, no habilita ejecutar comandos suministrados por Core.
 - `NODE_TYPESCRIPT` exige `pnpm-lock.yaml`, instala con pnpm y lockfile congelado, y admite Jest/Vitest. npm, Yarn o ausencia de lockfile producen `UNSUPPORTED_PACKAGE_MANAGER`.
 - `PHP_LARAVEL_PHPUNIT` exige `composer.json`, usa `composer.lock` cuando existe, materializa dependencias con Composer y ejecuta PHPUnit en un container PHP/Laravel-compatible. Las versiones concretas son política del profile, no comandos suministrados por Core.
+- `phase` es opcional mientras Core no implemente el baseline (brecha documentada, OC09): Core lo omite y el Sandbox asume `GENERATED_TESTS`; un Sandbox anterior rechazaría el campo. Cuando Core ejecute `phase=BASELINE` lo enviará explícitamente y se volverá obligatorio con un nuevo CONTRACT_SYNC.
 - `phase=BASELINE` ejecuta únicamente tests relevantes ya existentes; `GENERATED_TESTS` incorpora los artefactos autorizados. Sandbox reporta hechos equivalentes en ambos casos y Core decide `BASELINE_FAILED` u otra clasificación.
 - Aclaración aditiva (2026-10-09, `CS-SANDBOX-20261009-001`, WI-CORE-013): `GENERATED_TESTS` con artefactos ejecuta **exclusivamente** las rutas de los artefactos aplicados; sin artefactos, la suite configurada. Mientras no exista forma contractual de nombrar los "tests relevantes", `BASELINE` ejecuta la suite configurada. `phase=BASELINE` con `artifacts` no vacío → `400 VALIDATION_ERROR`. Tolerancia transitoria: el Sandbox acepta `phase` omitido con default `GENERATED_TESTS`; Core lo enviará explícito cuando implemente el baseline, y entonces volverá a ser obligatorio. `phase` normalizado forma parte de la identidad lógica del request: el mismo `requestId` con otra `phase` → `409 IDEMPOTENCY_CONFLICT`.
 - Los límites de CPU, memoria, output y tiempo son configuración/política del Sandbox, no parámetros controlables por el request.
@@ -1415,6 +1507,8 @@ interface RunnerFacts {
 interface StageDuration {
   stage: SandboxStage
   durationMs: number
+  startedAt?: IsoDateTime // INTEROP-2.16: inicio de la etapa (ISO-8601 UTC); ausente en Sandboxes anteriores o en etapas que no lo emiten
+  completedAt?: IsoDateTime // INTEROP-2.16: fin de la etapa (ISO-8601 UTC); ausente en Sandboxes anteriores o en etapas que no lo emiten
 }
 
 interface SandboxFailureFact {
@@ -1452,6 +1546,8 @@ interface SandboxExecutionResultResponse {
 }
 ```
 
+`startedAt` y `completedAt` (INTEROP-2.16) son hechos de tiempo del Sandbox, opcionales por etapa: el Sandbox los emite para `PREPARING`, `INSTALLING_DEPENDENCIES` y `RUNNING_TESTS` desde `sourceRevision` `19dfde456795c0a533d4823c25b546f3d372a970` (`WI-SANDBOX-007`, `CS-SANDBOX-20261014-001`) una vez desplegado. Su ausencia (Sandbox anterior o etapa que no los emite) no es un error y los consumidores deben tolerarla e ignorar campos desconocidos (§1). `durationMs` sigue siendo la fuente de duración y no se valida contra `completedAt - startedAt`. Core los conserva solo en la evidencia interna del experimento (`WI-CORE-061`), sin exponerlos en DTO públicos ni en §6.16.
+
 `failureKind` (aditivo, 2026-10-09) es un hecho del runner, no una clasificación: `ASSERTION` = una aserción no se cumplió; `ERROR` = el test lanzó antes o en vez de verificar. PHPUnit lo deriva de JUnit `<failure>`/`<error>` (determinista); Jest/Vitest, con mejor esfuerzo (`matcherResult`, `Error: expect(`, `AssertionError`). Un Sandbox anterior puede omitirlo; Core no lo trata como fuente única de clasificación.
 
 El Sandbox devuelve hechos y evidencia acotada. No devuelve `valid`, una estrategia experimental ni una conclusión sobre calidad; RAG Core realiza esa normalización y persiste el resultado final en PostgreSQL. La evidencia que exceda el límite no autoriza acceso directo del Sandbox a Storage: se trunca de forma explícita o se entrega a Core mediante un mecanismo futuro aprobado.
@@ -1481,7 +1577,7 @@ El Sandbox devuelve hechos y evidencia acotada. No devuelve `valid`, una estrate
 - Core implementa el consumo de `PHP_LARAVEL_PHPUNIT` (`WI-CORE-013`, `WI-CORE-028`, `WI-CORE-029`). El Sandbox publicado implementa el equivalente de `NODE_TYPESCRIPT` con Jest/Vitest; `PHP_LARAVEL_PHPUNIT`, `phase` y `failureKind` los entrega el Sandbox según `CS-SANDBOX-20261009-001` y su estado de implementación se declara en ese componente.
 - La integración Core↔Sandbox actual continúa operativa bajo el subconjunto compatible de 1.6; la adopción completa de los campos 2.0 exige migración coordinada y contract tests en ambos backends.
 - `DEC-GH-001`, `DEC-INT-001`, `DEC-AUTH-001`, `DEC-IDEMP-001`, `DEC-WEB-AUTH-001`, `DEC-ORG-001`, `DEC-ORG-002`, `DEC-EXP-002`, `DEC-CHUNK-001` y `DEC-EMB-001` están `APROBADO` y, desde `INTEROP-2.7`, `DEC-EXP-003`, `DEC-EXP-FK-001`, `DEC-FK-001`, `DEC-FK-002` y `DEC-ORG-003` (todas `APROBADO`).
-- `DEC-INF-001` y `DEC-VAL-001` permanecen `PENDING` con blocks acotados. Mutation testing fue descartado para este alcance.
+- `DEC-INF-001` está `APROBADO` en SYSTEM-2.9 para reutilizar la VM GCE existente del Sandbox bajo los controles allí fijados; esto no declara firewall endurecido ni E2E desplegado. `DEC-VAL-001` permanece `PENDING` para código/evidencia empresarial, sin bloquear repositorios de piloto controlados. Mutation testing fue descartado para este alcance.
 
 ## 9. Reglas de implementación
 
@@ -1490,4 +1586,12 @@ El Sandbox devuelve hechos y evidencia acotada. No devuelve `valid`, una estrate
 - Centralizar correlación y `ErrorEnvelope` en interceptors/filtros; no formatear errores manualmente en cada controller.
 - Usar tokens de inyección para `ObjectStorageService` en Core, el downloader HTTP del Sandbox, clientes HTTP y demás puertos reemplazables.
 - No compartir paquetes de código entre repositorios como fuente oculta de verdad: cada implementación deriva de `INTEROP-2.2` y se verifica mediante contract tests/fixtures versionados.
-- Todo cambio de contrato debe actualizar primero el documento canónico, después sus dos espejos y finalmente los adapters/tests afectados.
+- Todo cambio de contrato debe actualizar primero el documento canónico (y sus esquemas), después sus espejos y finalmente los adapters/tests afectados.
+
+## 10. Esquemas JSON canónicos
+
+- `spec/contracts/schemas/` contiene los esquemas JSON (draft 2020-12) de las formas que cruzan fronteras entre servicios: `common.schema.json` (tipos de §2), `error-envelope.schema.json` (§4), `sandbox-execution.schema.json` (§7) y `github-webhook-event.schema.json` (evento normalizado GitHub Integration→Core y respuesta de aceptación, §6.9; CT-01, `GH-INTEROP-1.9`).
+- Core es el propietario. Los demás repositorios espejan la carpeta byte por byte con Contract Sync, igual que los contratos Markdown.
+- La prosa define la semántica y el esquema define la forma. Ante una discrepancia de forma prevalece el esquema y la prosa se corrige en el siguiente corte.
+- Cada backend genera sus tipos TypeScript desde los esquemas (no los escribe a mano), valida con ellos las respuestas y los inputs que recibe de otro servicio en la frontera (sin `as T`; transitoriamente Core solo avisa en log ante desvío en las respuestas de aceptación y resultado del Sandbox y conserva parsers tolerantes con Sandboxes anteriores; la validación estricta llega en un corte posterior) y mantiene un contract test que valida sus payloads reales contra el esquema espejado.
+- Alcance inicial: error envelope y Core↔Sandbox. Las demás superficies (Core↔GitHub Integration, Console↔Core) se incorporan en cortes posteriores; hasta entonces siguen gobernadas solo por la prosa.
