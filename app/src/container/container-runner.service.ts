@@ -198,7 +198,8 @@ export class ContainerRunner {
   }
 
   /**
-   * Corre sobre la imagen PHP gestionada (Composer y `unzip` ya incluidos):
+   * Corre sobre la imagen PHP gestionada (Composer, `unzip` y las extensiones
+   * intl, gd, zip, bcmath y gmp ya incluidas, WI-SANDBOX-021):
    * sin `apt-get` en caliente ni capabilities por encima de `CapDrop: ['ALL']`.
    * `--no-scripts`: la etapa tiene red y no ejecuta scripts del proyecto
    * (Laravel regenera su manifest de paquetes al arrancar los tests).
@@ -554,7 +555,7 @@ export class ContainerRunner {
         ? await this.docker.buildImage(
             {
               context: MANAGED_PHP_IMAGE_CONTEXT,
-              src: ['Dockerfile', 'restore-workspace-acl'],
+              src: ['Dockerfile', 'restore-workspace-acl', 'zz-sandbox.ini'],
             },
             { t: image },
           )

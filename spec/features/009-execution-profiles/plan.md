@@ -44,3 +44,8 @@ No cambiar `sddVersion`, `SYSTEM-2.2`, la cardinalidad de binding ni infraestruc
 3. Fallar cerrado sin cambiar a permisos globales si la utilidad ACL no existe o no puede aplicar/verificar entradas; documentar `setfacl`/paquete Linux `acl` como prerequisito host, sin instalarlo ni cambiar VM en este WI.
 4. Probar lectura/escritura como `sandbox` UID 10001, acceso bidireccional y cleanup host, aislamiento entre dos workspaces, snapshot con archivos/directorios anidados y denegación/cleanup ante `chmod` adversarial de contenido propiedad del contenedor.
 5. No alterar UID/GID 10001, límites, aislamiento de red, montaje Docker, respuestas API, ni contratos; el E2E remoto queda para un WI/ejecución operativa posterior con autorización vigente.
+
+## WI-SANDBOX-021 — Imagen PHP ampliada
+
+1. `app/docker/php/Dockerfile`: añadir `intl`, `gd`, `zip`, `bcmath`, `gmp` (con `docker-php-ext-install`, `-dev` purgados) y `zz-sandbox.ini` con `memory_limit = 512M`; test estático `php-image-dockerfile.spec.ts`.
+2. Smoke en clones scratch fuera de los repos del sistema (money, orm, Vouchers) con límites del Sandbox; digest de la imagen registrado; runbook manual de despliegue en la VM. Sin cambio de contrato ni de lógica.
