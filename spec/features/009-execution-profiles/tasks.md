@@ -42,3 +42,7 @@ Nota de verificación: el e2e real de `full-pipeline.e2e-spec.ts` para `PHP_LARA
 ## WI-SANDBOX-004 — registro Harness del E2E remoto fallido
 
 - [x] Registrar los intentos autorizados, el fallo HTTP 401 previo y la ejecución aceptada que falló al instalar dependencias; no declarar éxito ni repetir el POST. Evidencia reconciliada: `harness/reports/wi-sandbox-004-remote-e2e-authorization.md`.
+
+## WI-SANDBOX-020 — `ext-intl` en la imagen PHP (HU11, perfil PHP)
+
+- [ ] **ST-SANDBOX-020 · T-IN_PROGRESS · WI-SANDBOX-020 · HU11:** agregar `ext-intl` a la imagen gestionada `tjc-sandbox-php:8.3-nonroot` (compilada con `libicu-dev`, que luego se purga), afirmarla en el e2e PHP real y documentar la reconstrucción manual de la imagen en cada host.

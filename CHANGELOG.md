@@ -6,6 +6,7 @@ Todos los cambios notables de la línea base SDD se registran aquí. El contenid
 
 ## [Unreleased]
 
+- **WI-SANDBOX-020 / HU11 (2026-10-24, decisión del usuario):** la imagen gestionada `tjc-sandbox-php:8.3-nonroot` incluye `ext-intl` (compilada con `libicu-dev`, que luego se purga; queda solo la ICU de runtime, +36 MB). Corrige proyectos Laravel que usan `Locale`/`NumberFormatter` y fallaban con `Class "Locale" not found`. El e2e PHP real lo afirma dentro del PHPUnit generado. Sin cambio de etiqueta, UID 10001, capabilities, red, límites ni contrato HTTP; cada host reconstruye la imagen a mano al desplegar (runbook en `harness/reports/wi-sandbox-020-implementation.md`).
 - **WI-SANDBOX-017 / HU11 (2026-10-21, solo documental):** el espejo pasa a `SYSTEM-2.14` / `INTEROP-2.19` (CS-CORE-20261021-004, DEC-EXP-005: configuración única del LLM de Core). Sin cambio de código, esquemas ni comportamiento del Sandbox.
 - **WI-SANDBOX-015 / HU11 (2026-10-21):** homologación con `INTEROP-2.18` (CS-CORE-20261021-003), tipos regenerados y `413 PAYLOAD_TOO_LARGE` para cuerpos que exceden el límite (antes `500`).
 - **WI-SANDBOX-014 / HU11 (2026-10-18, decisión del usuario vía cross):** `SANDBOX_MAX_CONCURRENT_EXECUTIONS` pasa de 4 a 2 por defecto (VM de referencia e2-medium 2 vCPU / 4 GB con contenedores de 1 GiB, ADR-10). Las ejecuciones por encima del tope esperan en `PENDING`; la latencia en cola es una medida diagnóstica y no de calidad. Contrato HTTP sin cambios.

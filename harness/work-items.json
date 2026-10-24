@@ -357,6 +357,38 @@
         "El test pasa con Docker local y en la CI de GitHub (Linux); el PR #7 queda con la CI en verde.",
         "Solo cambia el test; sin cambio de producto; los 4 validadores, lint, pruebas y build pasan; revisión independiente del reviewer."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-020",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "lane": "STANDARD",
+      "status": "W-IN_REVIEW",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Agregar ext-intl a la imagen PHP gestionada del Sandbox",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-020"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/009-execution-profiles/spec.md",
+        "spec/features/009-execution-profiles/plan.md",
+        "spec/features/009-execution-profiles/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "La imagen gestionada tjc-sandbox-php:8.3-nonroot incluye ext-intl (extension_loaded('intl') y Locale/NumberFormatter usables); el build falla si intl no queda cargada.",
+        "Los paquetes de compilación (libicu-dev y dependencias) se purgan: la imagen conserva solo la librería ICU de runtime y los mismos paquetes -dev que la imagen base php:8.3-cli; acl, unzip, Composer y el usuario sandbox 10001 siguen presentes.",
+        "El e2e real del perfil PHP afirma intl dentro del PHPUnit generado, junto a la identidad 10001.",
+        "No cambian nombre/etiqueta de la imagen, UID, capabilities, red, límites ni el contrato HTTP; se documenta la reconstrucción manual de la imagen por host.",
+        "Lint, pruebas unitarias y e2e, build, contracts:check y los validadores SDD/Harness pasan antes de la revisión independiente del reviewer."
+      ]
     }
   ]
 }

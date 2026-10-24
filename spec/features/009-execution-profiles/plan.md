@@ -44,3 +44,9 @@ No cambiar `sddVersion`, `SYSTEM-2.2`, la cardinalidad de binding ni infraestruc
 3. Fallar cerrado sin cambiar a permisos globales si la utilidad ACL no existe o no puede aplicar/verificar entradas; documentar `setfacl`/paquete Linux `acl` como prerequisito host, sin instalarlo ni cambiar VM en este WI.
 4. Probar lectura/escritura como `sandbox` UID 10001, acceso bidireccional y cleanup host, aislamiento entre dos workspaces, snapshot con archivos/directorios anidados y denegación/cleanup ante `chmod` adversarial de contenido propiedad del contenedor.
 5. No alterar UID/GID 10001, límites, aislamiento de red, montaje Docker, respuestas API, ni contratos; el E2E remoto queda para un WI/ejecución operativa posterior con autorización vigente.
+
+## WI-SANDBOX-020 — `ext-intl` en la imagen PHP gestionada (HU11)
+
+1. En `app/docker/php/Dockerfile`, compilar `intl` con `docker-php-ext-install` sobre `libicu-dev`, marcar como manuales solo las librerías de runtime enlazadas y purgar las de compilación; el build falla si `intl` no queda cargada.
+2. Afirmar `extension_loaded('intl')` y un uso real de `Locale` dentro del PHPUnit generado del e2e PHP, junto a la identidad 10001.
+3. Mantener nombre/etiqueta de la imagen, UID, capabilities, red y contratos; documentar la reconstrucción manual por host.

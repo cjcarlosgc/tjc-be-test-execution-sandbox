@@ -2250,5 +2250,153 @@
       "closedAt": "2026-10-22T06:35:06.000Z"
     }
   ],
-  "activeWorkItem": null
+  "activeWorkItem": {
+    "id": "WI-SANDBOX-020",
+    "component": "SANDBOX",
+    "workItemType": "PRODUCT",
+    "storyIds": [
+      "HU11"
+    ],
+    "taskIds": [
+      "ST-SANDBOX-020"
+    ],
+    "caseIds": [],
+    "sprint": "Estabilización 2026-10",
+    "status": "W-IN_REVIEW",
+    "specPaths": [
+      "spec/features/009-execution-profiles/spec.md",
+      "spec/features/009-execution-profiles/plan.md",
+      "spec/features/009-execution-profiles/tasks.md"
+    ],
+    "transversalPaths": [],
+    "approved": true,
+    "decisionGate": {
+      "checked": true,
+      "blockingDecisionIds": [],
+      "nonBlockingDecisionIds": [],
+      "checkedAt": "2026-10-24T14:52:03.000Z"
+    },
+    "execution": {
+      "leaderAgent": "leader",
+      "analysisAgent": "leader",
+      "implementationAgent": "leader",
+      "contractReviewAgent": null,
+      "reviewAgent": "reviewer",
+      "handoffs": [
+        {
+          "agent": "leader",
+          "status": "APPROVED",
+          "summary": "ext-intl agregada a la imagen gestionada y afirmada en el e2e PHP real; lint/unit/build/contracts/e2e PHP en verde, prueba negativa con la imagen anterior. Implementación por el leader (excepción declarada en el reporte).",
+          "evidence": [
+            "harness/reports/wi-sandbox-020-implementation.md"
+          ],
+          "filesAffected": [
+            "app/docker/php/Dockerfile",
+            "app/test/full-pipeline.e2e-spec.ts",
+            "app/README.md",
+            "CHANGELOG.md",
+            "spec/features/009-execution-profiles/spec.md",
+            "spec/features/009-execution-profiles/plan.md",
+            "spec/features/009-execution-profiles/tasks.md"
+          ],
+          "reason": "pedido directo del usuario para el piloto experimental",
+          "executedBy": {
+            "agent": "leader",
+            "configuredModel": "claude-opus-5-5",
+            "servedModel": "claude-opus-5-5",
+            "effort": "medium"
+          }
+        }
+      ],
+      "reviewCycles": 0,
+      "maxReviewCycles": 2
+    },
+    "gates": {
+      "sddVerified": "G-PASSED",
+      "implementationCompleted": "G-PASSED",
+      "independentReviewPassed": "G-NOT_RUN",
+      "technicalChecksPassed": "G-PASSED",
+      "contractReviewed": "G-NOT_APPLICABLE",
+      "canonicalContractSynced": "G-NOT_APPLICABLE",
+      "contractSyncPublished": "G-NOT_APPLICABLE",
+      "interopSyncChecked": "G-PASSED",
+      "noBlockingDecisions": "G-PASSED",
+      "retryLimitRespected": "G-PASSED"
+    },
+    "coordination": {
+      "contractImpact": false,
+      "publishesContract": false,
+      "pullCheckpoints": [
+        {
+          "checkpoint": "start",
+          "workItem": "WI-SANDBOX-020",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [],
+          "resolvedSyncIds": [
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-24T14:51:44.462Z"
+        },
+        {
+          "checkpoint": "implementation-delivery",
+          "workItem": "WI-SANDBOX-020",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [],
+          "resolvedSyncIds": [
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-24T14:51:44.506Z"
+        },
+        {
+          "checkpoint": "before-review",
+          "workItem": "WI-SANDBOX-020",
+          "relevantPendingSyncIds": [],
+          "acknowledgedSyncIds": [],
+          "resolvedSyncIds": [
+            "CS-CORE-20261011-002",
+            "CS-CORE-20261012-002",
+            "CS-CORE-20261012-010",
+            "CS-CORE-20261012-012"
+          ],
+          "deferredSyncIds": [],
+          "notRelevantSyncIds": [],
+          "checkedAt": "2026-10-24T15:02:57.626Z"
+        }
+      ],
+      "publishedSyncIds": [],
+      "pendingRelevantSyncIds": []
+    },
+    "evidence": [
+      "harness/reports/wi-sandbox-020-implementation.md"
+    ],
+    "blockedReason": null,
+    "gateEvidence": {
+      "implementationCompleted": [
+        "harness/reports/wi-sandbox-020-implementation.md"
+      ],
+      "technicalChecksPassed": [
+        "harness/reports/wi-sandbox-020-implementation.md"
+      ],
+      "sddVerified": [
+        "harness/reports/wi-sandbox-020-implementation.md"
+      ],
+      "noBlockingDecisions": [
+        "harness/reports/wi-sandbox-020-implementation.md"
+      ],
+      "interopSyncChecked": [
+        "harness/reports/wi-sandbox-020-implementation.md"
+      ]
+    }
+  },
+  "lastUpdatedAt": "2026-10-24T15:02:57.000Z"
 }
