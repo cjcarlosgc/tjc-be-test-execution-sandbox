@@ -13,7 +13,8 @@ Copiar `.env.example` a `.env` y completar al menos `SANDBOX_SERVICE_TOKEN` y `S
 
 ## Perfil PHP (`PHP_LARAVEL_PHPUNIT`)
 
-- La primera ejecución PHP construye la imagen `tjc-sandbox-php:8.3` desde `docker/php/Dockerfile` (PHP 8.3 CLI + `unzip` + Composer 2). Requiere red y tarda unos minutos una sola vez; después se reutiliza.
+- La primera ejecución PHP construye la imagen `tjc-sandbox-php:8.3-nonroot` desde `docker/php/Dockerfile` (PHP 8.3 CLI + extensiones `intl`, `gd`, `zip`, `bcmath`, `gmp` + `acl`, `unzip` + Composer 2; usuario `sandbox` 10001). Requiere red y tarda unos minutos una sola vez; después se reutiliza.
+- La imagen no se reconstruye sola si cambia el Dockerfile: tras cambiarlo hay que hacer `docker build -t tjc-sandbox-php:8.3-nonroot app/docker/php` a mano (ver `harness/reports/wi-sandbox-021-smoke-evidence.md`).
 - `composer install --no-scripts` corre con red; los tests corren sin red con `APP_ENV=testing` y un `APP_KEY` aleatorio por ejecución.
 - Con `phase` omitido o `GENERATED_TESTS`, PHPUnit ejecuta solo los artefactos generados; cada caso fallido trae `failureKind` (`ASSERTION` o `ERROR`).
 

@@ -23,9 +23,12 @@ export interface ContainerLimitsConfig {
 
 /**
  * Imagen del profile PHP que el propio Sandbox construye desde
- * `app/docker/php/Dockerfile` si falta en el host (009, corte T-003). Si
+ * `app/docker/php/Dockerfile` si falta en el host (009, corte T-003). Incluye
+ * Composer 2, `unzip`, `acl` y las extensiones `intl`, `gd`, `zip`, `bcmath`
+ * y `gmp` (WI-SANDBOX-021). Cambiar el Dockerfile no reconstruye una imagen ya
+ * existente: hay que rehacer el build a mano con el mismo tag. Si
  * `SANDBOX_DEFAULT_PHP_IMAGE` apunta a otra imagen, se descarga con pull y
- * debe traer `composer` y `unzip` en el PATH.
+ * debe traer `composer`, `unzip` y esas mismas extensiones en el PATH.
  */
 export const MANAGED_PHP_IMAGE = 'tjc-sandbox-php:8.3-nonroot';
 
@@ -58,8 +61,9 @@ export function resolveContainerLimits(
         user: configService.get<string>('SANDBOX_CONTAINER_USER', 'node'),
       },
       /**
-       * La imagen gestionada parte de `php:8.3-cli`; es un default
-       * configurable, no una versión fija de política (009/system-contract.md:
+       * La imagen gestionada parte de `php:8.3-cli` con intl, gd, zip, bcmath
+       * y gmp añadidas (WI-SANDBOX-021); es un default configurable, no una
+       * versión fija de política (009/system-contract.md:
        * "no se fija una única versión de PHP/Laravel hasta revisar
        * repositorios reales). La imagen gestionada crea el usuario Unix
        * no-root `sandbox` (UID/GID 10001); esta identidad no es configurable

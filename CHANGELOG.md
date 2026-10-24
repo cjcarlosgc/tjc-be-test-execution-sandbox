@@ -6,6 +6,7 @@ Todos los cambios notables de la línea base SDD se registran aquí. El contenid
 
 ## [Unreleased]
 
+- **WI-SANDBOX-021 / HU11 (2026-10-24, decisión del usuario vía cross):** la imagen PHP gestionada (`tjc-sandbox-php:8.3-nonroot`) se amplía una sola vez con `intl`, `gd`, `zip`, `bcmath` y `gmp` y `memory_limit = 512M` para los pilotos de Core; se congela antes del experimento. Smoke en clones scratch: money (1060 tests) y orm pasan; Vouchers no es apto (necesita base de datos y migraciones). El redespliegue en la VM es manual (`docker build` con el mismo tag; el Sandbox no reconstruye una imagen existente). Sin cambio de contrato.
 - **WI-SANDBOX-020 / HU11 (2026-10-24, solo documental):** el espejo pasa directo a `SYSTEM-2.16` / `INTEROP-2.21` (CS-CORE-20261024-002 y -004, tomado del commit `2318b9df` de Core): nuevo esquema canónico `github-webhook-event` (CT-01; sin uso en el Sandbox), ejemplo `sandbox-result.failed.json` con `DEPENDENCY_INSTALL_FAILED` y prosa neutral del proveedor del LLM. Tipos regenerados; sin cambio de lógica.
 - **WI-SANDBOX-017 / HU11 (2026-10-21, solo documental):** el espejo pasa a `SYSTEM-2.14` / `INTEROP-2.19` (CS-CORE-20261021-004, DEC-EXP-005: configuración única del LLM de Core). Sin cambio de código, esquemas ni comportamiento del Sandbox.
 - **WI-SANDBOX-015 / HU11 (2026-10-21):** homologación con `INTEROP-2.18` (CS-CORE-20261021-003), tipos regenerados y `413 PAYLOAD_TOO_LARGE` para cuerpos que exceden el límite (antes `500`).

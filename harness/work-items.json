@@ -392,6 +392,37 @@
         "El ejemplo corregido sandbox-result.failed.json (DEPENDENCY_INSTALL_FAILED) coincide con el código y los tipos del Sandbox (sandbox-fact-error.ts); los contract tests C-06/C-07 y el del cliente real de Core se reejecutan en verde; sin cambio de lógica.",
         "Ambos eventos se acusan y se resuelven con reporte; las versiones citadas en AGENTS.md y spec/README.md pasan a 2.16/2.21; lint, pruebas, build, contracts:check y los 4 validadores pasan."
       ]
+    },
+    {
+      "id": "WI-SANDBOX-021",
+      "component": "SANDBOX",
+      "workItemType": "PRODUCT",
+      "status": "W-DONE",
+      "priority": "P1",
+      "sprint": "Estabilización 2026-10",
+      "title": "Ampliar la imagen PHP gestionada con las extensiones de los pilotos y verificarla con smoke",
+      "storyIds": [
+        "HU11"
+      ],
+      "taskIds": [
+        "ST-SANDBOX-021"
+      ],
+      "caseIds": [],
+      "dependsOn": [],
+      "contractImpact": false,
+      "publishesContract": false,
+      "specPaths": [
+        "spec/features/009-execution-profiles/spec.md",
+        "spec/features/009-execution-profiles/plan.md",
+        "spec/features/009-execution-profiles/tasks.md"
+      ],
+      "acceptanceCriteria": [
+        "app/docker/php/Dockerfile añade intl, gd, zip, bcmath y gmp (y las demás extensiones que detecte el smoke), una sola vez (la imagen se congela antes del experimento); sigue siendo runtime puro (sin código del proyecto ni credenciales), con el usuario no-root `sandbox` (UID/GID 10001) y Composer 2.",
+        "La spec 009 documenta qué cuenta como configuración de imagen (Sandbox neutral, ADR-10) y qué hay que redesplegar en la VM (`docker build` de la imagen y `SANDBOX_DEFAULT_PHP_IMAGE`; el despliegue lo ordena el usuario aparte).",
+        "La imagen se construye con Docker local y `php -m` muestra las extensiones nuevas y las ya cubiertas por Laravel 12 / PHP 8.2 (ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl, pcre, session, tokenizer, pdo_sqlite); el test conductual del ACL sigue pasando con la imagen nueva.",
+        "Smoke en clones scratch fuera de los repos del sistema (sin commits a los forks) de money, orm y Vouchers (rama develop): composer.lock generado con la imagen nueva, phpunit.xml con SQLite en memoria para Vouchers sin tocar tests ni oráculo, y composer install + phpunit con tiempo y memoria, con los diffs y resultados en un reporte; si money falla por diferencia de ICU se cambia a una base Ubuntu 24.04 (ICU 74) y se avisa.",
+        "Lint, pruebas, build, contracts:check y los 4 validadores pasan; revisión independiente del reviewer."
+      ]
     }
   ]
 }

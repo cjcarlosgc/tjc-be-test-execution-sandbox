@@ -112,3 +112,4 @@ Residuales de la revisión independiente de WI-SANDBOX-010, sin urgencia y sin t
 | I-SANDBOX-012 | Mapear 405, 406, 415 y 503 a los códigos genéricos exactos de INTEROP-2.18 §4.1 (METHOD_NOT_ALLOWED, NOT_ACCEPTABLE, UNSUPPORTED_MEDIA_TYPE, SERVICE_UNAVAILABLE) en el filtro; hoy caen a HTTP_ERROR (permitido por `code` abierto). | WI-015 · MINOR |
 | I-SANDBOX-013 | Limpiar el directorio temporal que crea `test/support/isolate-env.ts` por archivo e2e y documentar que depende del pool `forks` de vitest (process.chdir no existe en worker threads). | WI-018 · MINOR |
 | I-SANDBOX-014 | Endurecer el hook de títulos: `\b` no separa en `_`, así que `x_WI-015` pasa sin validar. | WI-016 · MINOR |
+| I-SANDBOX-015 | Fijar la base `php:8.3-cli` por digest en el Dockerfile y cubrir con el test estático la purga de `-dev` y el `ldd` de las extensiones. | WI-021 · MINOR |

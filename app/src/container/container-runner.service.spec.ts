@@ -552,7 +552,7 @@ describe('ContainerRunner', () => {
         { context: string; src: string[] },
         { t: string },
       ];
-      expect(context.src).toEqual(['Dockerfile', 'restore-workspace-acl']);
+      expect(context.src).toEqual(['Dockerfile', 'restore-workspace-acl', 'zz-sandbox.ini']);
       expect(context.context.replace(/\\/g, '/')).toMatch(/\/docker\/php\/?$/);
       expect(options.t).toBe(MANAGED_PHP_IMAGE);
       expect(docker.pull).not.toHaveBeenCalled();
