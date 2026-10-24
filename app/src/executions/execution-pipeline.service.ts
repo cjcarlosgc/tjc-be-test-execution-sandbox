@@ -42,6 +42,13 @@ import {
   EXECUTION_REPOSITORY,
   type ExecutionRepository,
 } from './execution.repository.js';
+import { getNumberConfig } from '../common/config/get-number-config.js';
+
+/**
+ * Tope por defecto de ejecuciones simultáneas. Pensado para la VM de referencia (e2-medium, 2 vCPU / 4 GB) con
+ * contenedores de 1 GiB. La espera en cola es una medida diagnóstica, no de calidad; ver spec 008 («Concurrencia»).
+ */
+export const DEFAULT_MAX_CONCURRENT_EXECUTIONS = 2;
 
 const SNAPSHOT_STAGING_PREFIX = 'sandbox-snapshot-';
 const RESULTS_FILENAME = '.sandbox-results.json';
@@ -74,6 +81,9 @@ export class ExecutionPipelineService {
   private readonly logger = new Logger(ExecutionPipelineService.name);
   private readonly executionDeadlineMs: number;
   private readonly maxWorkspaceBytes: number;
+  private readonly maxConcurrent: number;
+  private active = 0;
+  private readonly waiting: Array<() => void> = [];
 
   constructor(
     @Inject(EXECUTION_REPOSITORY)
@@ -90,6 +100,7 @@ export class ExecutionPipelineService {
     const limits = resolveSandboxLimits(configService);
     this.executionDeadlineMs = limits.executionDeadlineMs;
     this.maxWorkspaceBytes = limits.maxWorkspaceBytes;
+    this.maxConcurrent = Math.max(1, Math.floor(getNumberConfig(configService, 'SANDBOX_MAX_CONCURRENT_EXECUTIONS', DEFAULT_MAX_CONCURRENT_EXECUTIONS)));
   }
 
   /**
@@ -97,11 +108,38 @@ export class ExecutionPipelineService {
    * para no bloquear el `202`; los tests pueden esperarla directamente.
    */
   run(executionId: string): Promise<void> {
-    return this.execute(executionId).catch((error: unknown) => {
-      this.logger.error(
-        `unhandled pipeline error for ${executionId}: ${(error as Error).message}`,
-      );
-    });
+    return this.withSlot(() =>
+      this.execute(executionId).catch((error: unknown) => {
+        this.logger.error(
+          `unhandled pipeline error for ${executionId}: ${(error as Error).message}`,
+        );
+      }),
+    );
+  }
+
+  /** Cuántas ejecuciones corren ahora y cuántas esperan un hueco (para pruebas y diagnóstico). */
+  get load(): { active: number; waiting: number } {
+    return { active: this.active, waiting: this.waiting.length };
+  }
+
+  /**
+   * Limita las ejecuciones simultáneas (`SANDBOX_MAX_CONCURRENT_EXECUTIONS`, por defecto 2): cada una usa un
+   * contenedor con CPU y memoria acotadas, y sin tope una ráfaga de peticiones agota la VM. Las que esperan
+   * conservan el estado `PENDING`, que es lo que Core ya sabe consultar.
+   */
+  private async withSlot<T>(task: () => Promise<T>): Promise<T> {
+    if (this.active >= this.maxConcurrent) {
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    } else {
+      this.active += 1;
+    }
+    try {
+      return await task();
+    } finally {
+      const next = this.waiting.shift();
+      if (next) next();
+      else this.active -= 1;
+    }
   }
 
   private async execute(executionId: string): Promise<void> {
@@ -313,7 +351,7 @@ export class ExecutionPipelineService {
         originalBytes: reportTruncated ? reportBytes : null,
       });
 
-      const facts: RunnerFacts = adapter.parseResult(rawResults);
+      const facts: RunnerFacts = adapter.parseResult(rawResults, containerWorkingDir);
 
       currentStage = 'FINALIZING';
       const now = new Date().toISOString();

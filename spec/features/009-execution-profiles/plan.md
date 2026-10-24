@@ -10,7 +10,7 @@
 
 T-001 solo consolida contrato y planificación; no modifica `app/` ni infraestructura.
 
-## Corte T-003 — Validación PHP/Laravel (HU43)
+## Corte T-003 — Validación PHP/Laravel (HU11, perfil PHP)
 
 1. Imagen gestionada: Dockerfile `app/docker/php/Dockerfile`, build vía Docker API si falta; quitar `apt-get` y `capAdd` de la instalación PHP.
 2. Instalación sin scripts y entorno de testing (`APP_ENV`, `APP_KEY` aleatorio) solo en el container de tests PHP.
@@ -20,7 +20,7 @@ T-001 solo consolida contrato y planificación; no modifica `app/` ni infraestru
 6. Unit tests por cada regla; e2e real PHP (selección + `ERROR` vs `ASSERTION`) sobre Docker API (Docker Desktop o socket Podman).
 7. `CONTRACT_SYNC` hacia Core por `failureKind` y por la tolerancia de `phase`.
 
-## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU43)
+## WI-SANDBOX-001 — `projectRoot` Core→Sandbox (HU11, perfil PHP)
 
 1. Importar y validar el `projectRoot` opcional de INTEROP-2.8; ausencia significa `.`.
 2. Resolverlo bajo la raíz lógica extraída del snapshot y rechazar path absoluto, traversal, inexistencia, normalización no válida o escape por symlink antes de instalar dependencias o ejecutar código.
@@ -44,3 +44,9 @@ No cambiar `sddVersion`, `SYSTEM-2.2`, la cardinalidad de binding ni infraestruc
 3. Fallar cerrado sin cambiar a permisos globales si la utilidad ACL no existe o no puede aplicar/verificar entradas; documentar `setfacl`/paquete Linux `acl` como prerequisito host, sin instalarlo ni cambiar VM en este WI.
 4. Probar lectura/escritura como `sandbox` UID 10001, acceso bidireccional y cleanup host, aislamiento entre dos workspaces, snapshot con archivos/directorios anidados y denegación/cleanup ante `chmod` adversarial de contenido propiedad del contenedor.
 5. No alterar UID/GID 10001, límites, aislamiento de red, montaje Docker, respuestas API, ni contratos; el E2E remoto queda para un WI/ejecución operativa posterior con autorización vigente.
+
+## WI-SANDBOX-020 — `ext-intl` en la imagen PHP gestionada (HU11)
+
+1. En `app/docker/php/Dockerfile`, compilar `intl` con `docker-php-ext-install` sobre `libicu-dev`, marcar como manuales solo las librerías de runtime enlazadas y purgar las de compilación; el build falla si `intl` no queda cargada.
+2. Afirmar `extension_loaded('intl')` y un uso real de `Locale` dentro del PHPUnit generado del e2e PHP, junto a la identidad 10001.
+3. Mantener nombre/etiqueta de la imagen, UID, capabilities, red y contratos; documentar la reconstrucción manual por host.

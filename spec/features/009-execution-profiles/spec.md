@@ -1,7 +1,7 @@
 # 009 — Execution profiles
 
 **Estado:** APROBADO
-**Story IDs:** HU43
+**Story IDs:** HU11 (perfil PHP/Laravel; antes HU43 en SDD 2.1)
 **Contrato:** SYSTEM-2.2 (línea base Sandbox) / INTEROP-2.8 (campo Core→Sandbox `projectRoot`)
 
 ## Objetivo
@@ -26,9 +26,9 @@ Sandbox no recibe GitHub installation/repository/PR, identidad humana, prompts, 
 
 ## Fuera de alcance T-001
 
-La implementación Docker/PHP, imágenes y adapter PHPUnit pertenecen a HU43 posterior. El proveedor remoto permanece bloqueado solo por `DEC-INF-001`.
+La implementación Docker/PHP, imágenes y adapter PHPUnit pertenecen al perfil PHP de HU11 (antes HU43) posterior. El proveedor remoto permanece bloqueado solo por `DEC-INF-001`.
 
-## Corte T-003 — Validación PHP/Laravel utilizable como evidencia (HU43)
+## Corte T-003 — Validación PHP/Laravel utilizable como evidencia (HU11, perfil PHP)
 
 **Estado:** APROBADO por el usuario (2026-10-09) para implementar en `feature/php-profile`.
 **Motivo:** la validación empresarial y el piloto experimental son PHP/Laravel/PHPUnit. El corte 3 ejecuta PHPUnit real, pero sus hechos no distinguen el test generado del resto de la suite ni un error técnico de un fallo de aserción, y el entorno Laravel no queda preparado.
@@ -37,7 +37,7 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 
 ### Reglas
 
-1. **Imagen PHP propia del Sandbox.** El profile usa una imagen gestionada por el Sandbox (`php:8.3-cli` + `unzip` + Composer 2), construida desde un Dockerfile versionado en `app/` la primera vez que falte en el host. La instalación deja de ejecutar `apt-get` y deja de añadir capabilities sobre `CapDrop: ['ALL']`. Imagen y versión siguen siendo configuración (`SANDBOX_DEFAULT_PHP_IMAGE`).
+1. **Imagen PHP propia del Sandbox.** El profile usa una imagen gestionada por el Sandbox (`php:8.3-cli` + `unzip` + `ext-intl` + Composer 2; `ext-intl` desde WI-SANDBOX-020), construida desde un Dockerfile versionado en `app/` la primera vez que falte en el host. La instalación deja de ejecutar `apt-get` y deja de añadir capabilities sobre `CapDrop: ['ALL']`. Imagen y versión siguen siendo configuración (`SANDBOX_DEFAULT_PHP_IMAGE`).
 2. **Instalación PHP.** `composer install --no-interaction --no-progress --prefer-dist --no-scripts`: respeta `composer.lock` cuando existe y no ejecuta scripts del proyecto durante la etapa con red. Laravel regenera su manifest de paquetes al arrancar los tests.
 3. **Entorno Laravel de testing.** El container de tests del profile PHP recibe `APP_ENV=testing` y un `APP_KEY` aleatorio por ejecución (`base64:` + 32 bytes), sin red. Es política del profile, no un parámetro del request; las variables que fije `phpunit.xml` del proyecto se respetan.
 4. **Selección de tests por fase.** `phase` (INTEROP §7.2) se acepta como opcional con default `GENERATED_TESTS` mientras Core no lo envíe:
@@ -51,13 +51,13 @@ Referencia de stack verificada en un repositorio autorizado (Laravel 12, PHP ^8.
 
 ### Fuera de este corte
 
-Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (HU47/`DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
+Persistencia del repositorio de ejecuciones, límite de concurrencia, reconciliación de containers huérfanos, mapeo de UID y filtrado de red para la VM remota (infraestructura remota de HU11 / `DEC-INF-001`), y nombrar tests relevantes del baseline (requiere cambio de contrato en Core). El usuario aprobó después el corte local y acotado `WI-SANDBOX-002`: no-root dentro del container PHP y ownership del volumen local; no cambia esa exclusión de infraestructura remota.
 
-## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU43)
+## WI-SANDBOX-001 — Ejecutar PHP bajo el `projectRoot` enviado por Core (HU11, perfil PHP)
 
 **Estado:** implementado y verificado localmente.
 
-## WI-SANDBOX-002 — Identidad local PHP no-root (HU43)
+## WI-SANDBOX-002 — Identidad local PHP no-root (HU11, perfil PHP)
 
 **Estado:** aprobado por el usuario (2026-10-12) para Docker local.
 
@@ -76,3 +76,11 @@ La configuración ACL se aplica por workspace antes de materializar el snapshot/
 La utilidad `setfacl` del host (paquete Linux `acl`) es un prerrequisito de operación para el despliegue actual; este WI no la instala en la VM ni realiza otros cambios externos. No se modifican `SDD 2.1`, `SYSTEM-2.2`, `INTEROP-2.8`, autenticación, límites, ni la identidad PHP 10001.
 
 **Plataformas y clasificación de fallos (corrección 2026-10-12):** la ACL se aplica y verifica solo cuando el host es Linux, donde sigue siendo obligatoria y falla cerrada. En hosts sin soporte ACL (macOS/Windows con Docker Desktop, donde el montaje bind mapea la propiedad) se omite y se registra en log; esos hosts son solo de desarrollo local. Si en Linux faltan `setfacl`/`getfacl` o no se pueden verificar las entradas, la ejecución falla con `category: INFRASTRUCTURE` y `code: WORKSPACE_PROVISIONING_FAILED` (campo `code` libre de `SandboxFailureFact`; sin cambio de contrato). `acl` es prerrequisito de **todos** los perfiles en hosts Linux, no solo PHP. La recuperación de ACL en contenedor repara únicamente entradas del UID 10001 (único con propiedad para `setfacl`); el host limpia primero con `rm` y solo si falla restaura entradas propias. La imagen gestionada `tjc-sandbox-php:8.3-nonroot` debe reconstruirse al desplegar este corte (se construye solo si no existe).
+
+## WI-SANDBOX-020 — `ext-intl` en la imagen PHP gestionada (HU11, perfil PHP)
+
+**Estado:** aprobado por el usuario (2026-10-24) para el piloto experimental con repositorios PHP open source.
+
+La imagen oficial `php:8.3-cli` no incluye `ext-intl`. Laravel la usa a través de `Locale`, `NumberFormatter` e `IntlDateFormatter` (p. ej. `Number::currency()` o middleware de idioma), y un proyecto que la necesite falla con `Class "Locale" not found` aunque su `composer.lock` no la declare como requisito. La imagen gestionada `tjc-sandbox-php:8.3-nonroot` incluye `ext-intl`, compilada contra la ICU de la distribución base; los paquetes de compilación (`libicu-dev` y dependencias) se purgan y solo queda la librería ICU de runtime.
+
+No cambian el nombre ni la etiqueta de la imagen, la identidad PHP 10001, `CapDrop`, la red, los límites, la instalación con Composer ni el contrato HTTP. Como el Sandbox solo construye la imagen cuando no existe, cada host la reconstruye a mano al desplegar este corte (runbook en `harness/reports/`).

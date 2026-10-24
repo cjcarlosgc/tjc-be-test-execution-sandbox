@@ -43,7 +43,7 @@ export class VitestTestRunnerAdapter implements TestRunnerAdapter {
     ];
   }
 
-  parseResult(rawOutput: string): RunnerFacts {
-    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', rawOutput);
+  parseResult(rawOutput: string, containerRoot?: string): RunnerFacts {
+    return parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', rawOutput, containerRoot);
   }
 }

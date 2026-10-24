@@ -79,6 +79,7 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
   let app: INestApplication;
   let fixtureServer: FixtureServer;
   let workspaceRoot: string;
+  let executionStateDir: string;
   let projectZip: Buffer;
   let projectSha256: string;
   let wrappedProjectZip: Buffer;
@@ -92,6 +93,11 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
       path.join(os.tmpdir(), 'sandbox-full-pipeline-'),
     );
     process.env.SANDBOX_WORKSPACE_ROOT = workspaceRoot;
+    // Estado de ejecuciones aislado por corrida: sin esto, los requestId fijos de estas pruebas se reproducirían entre corridas.
+    executionStateDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'sandbox-e2e-state-'),
+    );
+    process.env.SANDBOX_EXECUTION_STATE_DIR = executionStateDir;
 
     projectZip = await buildZipFixtureFromDir(FIXTURE_DIR);
     projectSha256 = createHash('sha256').update(projectZip).digest('hex');
@@ -136,6 +142,7 @@ describe.skipIf(!dockerAvailable)('Full execution pipeline (e2e real)', () => {
     await app.close();
     await fixtureServer.close();
     await fs.rm(workspaceRoot, { recursive: true, force: true });
+    await fs.rm(executionStateDir, { recursive: true, force: true });
   });
 
   it(
@@ -435,6 +442,9 @@ final class GeneratedMathTest extends TestCase
         $this->assertSame('testing', getenv('APP_ENV'));
         $this->assertMatchesRegularExpression('/^base64:.{44}$/', (string) getenv('APP_KEY'));
         $this->assertSame('10001', trim((string) shell_exec('id -u')));
+        // WI-SANDBOX-020: la imagen gestionada trae ext-intl.
+        $this->assertTrue(extension_loaded('intl'));
+        $this->assertSame('español', \\Locale::getDisplayLanguage('es', 'es'));
     }
 
     public function testAssertionMismatch(): void

@@ -1,8 +1,17 @@
 {
-  "workItem": "HU43-profile-change",
-  "sequence": ["leader", "sdd-analyst", "implementer", ["reviewer", "contract-reviewer"], "leader"],
-  "contractReviewerCondition": ["executions", "dto", "phase", "executionProfile", "auth", "headers", "idempotency", "statuses", "evidence"],
-  "pullCheckpoints": ["start", "before-implementation-delivery", "before-review", "before-done"],
-  "handoffFields": ["status", "findings", "blockers", "filesAffected", "evidence", "recommendedNextStep"],
-  "retryPolicy": { "maxReviewCycles": 2, "onExceeded": ["BLOCKED", "DECISION_REQUIRED"] }
+  "workflow": "fan-out-fan-in",
+  "workItem": "example-contract-cut",
+  "sequence": [
+    "leader",
+    "sdd-analyst",
+    "implementer",
+    ["reviewer", "contract-reviewer"],
+    "leader"
+  ],
+  "handoffs": {
+    "sdd-analyst": {"status": "APPROVED", "findings": [], "blockers": [], "filesAffected": ["spec/contracts/interoperability-contract.md"], "evidence": ["decision gate checked"], "recommendedNextStep": "Implement approved cut."},
+    "implementer": {"status": "APPROVED", "findings": [], "blockers": [], "filesAffected": ["app/example.ts"], "evidence": ["tests passed", "CONTRACT_SYNC PULL passed"], "recommendedNextStep": "Run parallel reviews."},
+    "reviewer": {"status": "APPROVED", "findings": [], "blockers": [], "filesAffected": ["app/example.ts"], "evidence": ["independent review passed"], "recommendedNextStep": "Fan in."},
+    "contract-reviewer": {"status": "APPROVED", "findings": [], "blockers": [], "filesAffected": ["spec/contracts/interoperability-contract.md"], "evidence": ["consumers identified", "CONTRACT_SYNC required"], "recommendedNextStep": "Publish sync before DONE."}
+  }
 }

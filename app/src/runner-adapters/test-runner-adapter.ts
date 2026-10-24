@@ -26,5 +26,6 @@ export interface TestRunnerAdapter {
   readonly runner: TestRunner;
   supports(context: ProjectRunnerContext): Promise<boolean>;
   buildCommand(context: ProjectRunnerContext): string[];
-  parseResult(rawOutput: string): RunnerFacts;
+  /** `containerRoot`: raíz del proyecto dentro del contenedor, para relativizar `suitePath`. */
+  parseResult(rawOutput: string, containerRoot?: string): RunnerFacts;
 }

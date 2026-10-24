@@ -1,14 +1,13 @@
 # Entrega y trazabilidad Git
 
 **Estado:** APROBADO
-**Alcance:** RAG Core API, Developer Console y Test Execution Sandbox
+**Alcance:** RAG Core API, GitHub Integration API, Developer Console y Test Execution Sandbox
 
 ## Versión SDD conjunta
 
-- `sddVersion` identifica la línea base consolidada de toda la solución, no una versión local independiente de cada repositorio.
-- Cuando se actualiza la línea base SDD en cualquiera de los tres componentes, se homologan en el mismo corte las versiones declaradas por RAG Core API, Developer Console y Test Execution Sandbox.
-- Una diferencia temporal mientras se editan las tres copias no constituye una nueva versión válida y debe resolverse antes de commit.
-- `SYSTEM-*` e `INTEROP-*` mantienen versionado propio y solo cambian cuando cambia su contrato correspondiente.
+- La línea base vigente es SDD 3.1 / Harness V3, común a los cuatro repositorios. `planningBaseline: 2026-09-24-core-console-transition` se conserva solo como marca histórica de la adopción por etapas y como referencia de fecha para Contract Sync.
+- Todo cambio de reglas del SDD o del Harness se define primero en Core y se replica a los demás repositorios en el mismo corte de trabajo (ver `harness/README.md` de Core, «checklist de homologación»).
+- `SYSTEM-*` e `INTEROP-*` mantienen versionado propio y solo cambian cuando cambia su contrato correspondiente; esta copia solo los espeja.
 
 ## Unidad de commit
 
@@ -51,6 +50,14 @@ La revisión consolidada comprueba como mínimo:
 El resultado se registra en `harness/reports/sprint-<N>-review.md` con el rango o commit final revisado, HU incluidas, verificaciones ejecutadas, hallazgos y veredicto `APPROVED` o `CHANGES_REQUESTED`. Para una entrega extraordinaria fuera del cierre se usa `harness/reports/delivery-<scope>-review.md`.
 
 El reporte puede incorporarse después de la aprobación mediante un commit exclusivo de evidencia `docs(review): ...`. Esa única diferencia no invalida el veredicto si el reviewer comprueba antes del push que el commit solo modifica los reportes declarados y conserva las mismas HU; cualquier otro cambio sí exige repetir la revisión completa.
+
+## Delegación entre sesiones de agente
+
+- La sesión coordinadora es **cross** (carpeta raíz `Tesis/`). Ningún repositorio es la sesión coordinadora: cada uno trabaja dentro de su propio SDD y Harness.
+- Cross envía handoffs a la sesión de cada componente sin pedir confirmación previa al usuario. Cada handoff es autocontenido (alcance, decisiones ya tomadas, criterio de terminado) y pide responder a cross.
+- Una sesión que recibe un handoff lo ejecuta con su propio flujo (WI, reviewer, gates) y responde a cross al terminar o al bloquearse con resultado, evidencia y pendientes. Un handoff no modifica por sí solo la fuente de verdad.
+- Excepcionalmente el usuario puede pedir que un cambio compartido lo ejecute la propia sesión cross sobre varios repositorios; esa autorización vale solo para ese cambio.
+- El trabajo se hace siempre en `feature/jean`. El merge a `develop` y todo push, PR o cambio de `main` los ordena el usuario en cada ocasión.
 
 ## Puerta de push
 

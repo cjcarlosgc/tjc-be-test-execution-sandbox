@@ -146,3 +146,86 @@ describe('parseJestCompatibleJson', () => {
     });
   });
 });
+
+describe('parseJestCompatibleJson: suitePath relativo (INTEROP §7.3, RelativePath)', () => {
+  /** Reporte mínimo con un único archivo de suite cuyo nombre se parametriza. */
+  const reportFor = (suiteName: string) =>
+    JSON.stringify({
+      success: true,
+      numTotalTests: 1,
+      numPassedTests: 1,
+      numFailedTests: 0,
+      numPendingTests: 0,
+      testResults: [
+        {
+          name: suiteName,
+          status: 'passed',
+          assertionResults: [{ title: 'works', status: 'passed', duration: 1, failureMessages: [] }],
+        },
+      ],
+    });
+  const suitePathFor = (suiteName: string, containerRoot?: string) =>
+    parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', reportFor(suiteName), containerRoot).testCases[0]!
+      .suitePath;
+
+  it('relativiza una ruta absoluta bajo la raíz del proyecto dentro del contenedor', () => {
+    expect(suitePathFor('/app/src/math.test.ts', '/app')).toBe('src/math.test.ts');
+    expect(suitePathFor('/app/apps/web/src/a.test.ts', '/app/apps/web')).toBe('src/a.test.ts');
+  });
+
+  it('acepta una raíz con barra final', () => {
+    expect(suitePathFor('/app/src/math.test.ts', '/app/')).toBe('src/math.test.ts');
+  });
+
+  it('deja una ruta ya relativa normalizada con separadores POSIX', () => {
+    expect(suitePathFor('src/math.test.ts', '/app')).toBe('src/math.test.ts');
+    expect(suitePathFor('./src/math.test.ts')).toBe('src/math.test.ts');
+    expect(suitePathFor('src\\nested\\math.test.ts', '/app')).toBe('src/nested/math.test.ts');
+  });
+
+  it('reduce a su nombre base una ruta absoluta fuera de la raíz, sin emitir ruta absoluta', () => {
+    expect(suitePathFor('/private/tmp/runner/src/math.test.js', '/app')).toBe('math.test.js');
+    expect(suitePathFor('/app-evil/src/math.test.ts', '/app')).toBe('math.test.ts');
+    expect(suitePathFor('/private/tmp/runner/src/math.test.js')).toBe('math.test.js');
+  });
+
+  it('reduce a su nombre base una ruta de Windows (con unidad o con separadores \\), nunca la emite absoluta', () => {
+    expect(suitePathFor('C:\\work\\app\\src\\math.test.ts', '/app')).toBe('math.test.ts');
+    expect(suitePathFor('\\\\server\\share\\math.test.ts', '/app')).toBe('math.test.ts');
+    expect(suitePathFor('C:/work/app/src/math.test.ts')).toBe('math.test.ts');
+  });
+
+  it('nunca emite una ruta con ".." y reduce a nombre base si la normalizada sale de la raíz', () => {
+    expect(suitePathFor('../secret/math.test.ts', '/app')).toBe('math.test.ts');
+    expect(suitePathFor('src/../../secret/math.test.ts', '/app')).toBe('math.test.ts');
+    expect(suitePathFor('/app/src/../../etc/passwd', '/app')).toBe('passwd');
+  });
+
+  it('no altera el mensaje de error ni el nombre del caso', () => {
+    const raw = JSON.stringify({
+      success: false,
+      numTotalTests: 1,
+      numPassedTests: 0,
+      numFailedTests: 1,
+      numPendingTests: 0,
+      testResults: [
+        {
+          name: '/app/src/math.test.ts',
+          status: 'failed',
+          assertionResults: [
+            {
+              title: 'sub',
+              status: 'failed',
+              duration: 1,
+              failureMessages: ['AssertionError: at /app/src/math.test.ts:4'],
+            },
+          ],
+        },
+      ],
+    });
+    const testCase = parseJestCompatibleJson('NODE_TYPESCRIPT', 'VITEST', raw, '/app').testCases[0]!;
+    expect(testCase.suitePath).toBe('src/math.test.ts');
+    expect(testCase.name).toBe('sub');
+    expect(testCase.errorMessage).toBe('AssertionError: at /app/src/math.test.ts:4');
+  });
+});

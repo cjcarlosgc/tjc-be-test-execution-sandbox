@@ -82,3 +82,25 @@ describe('parsePhpunitJunitXml', () => {
     });
   });
 });
+
+describe('parsePhpunitJunitXml: suitePath relativo (INTEROP §7.3, RelativePath)', () => {
+  it('relativiza un nombre de suite absoluto bajo la raíz del contenedor y deja los nombres de clase intactos', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="/app/tests/Unit/MathTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.001">
+    <testcase name="testAddWorks" class="MathTest" classname="MathTest" file="/app/tests/Unit/MathTest.php" line="10" assertions="1" time="0.001"/>
+  </testsuite>
+  <testsuite name="MathTest" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.001">
+    <testcase name="testSubWorks" class="MathTest" classname="MathTest" file="/app/tests/Unit/MathTest.php" line="12" assertions="1" time="0.001"/>
+  </testsuite>
+</testsuites>`;
+    const facts = parsePhpunitJunitXml(xml, '/app');
+    expect(facts.testCases.map((tc) => tc.suitePath)).toEqual(['tests/Unit/MathTest.php', 'MathTest']);
+  });
+
+  it('reduce a nombre base un nombre de suite absoluto fuera de la raíz', () => {
+    const xml = `<?xml version="1.0"?>
+<testsuites><testsuite name="C:\\work\\MathTest.php" tests="1"><testcase name="t" class="MathTest" time="0.001"/></testsuite></testsuites>`;
+    expect(parsePhpunitJunitXml(xml, '/app').testCases[0]!.suitePath).toBe('MathTest.php');
+  });
+});

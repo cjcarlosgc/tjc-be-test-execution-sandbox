@@ -36,7 +36,7 @@ export class PhpunitTestRunnerAdapter implements TestRunnerAdapter {
     ];
   }
 
-  parseResult(rawOutput: string): RunnerFacts {
-    return parsePhpunitJunitXml(rawOutput);
+  parseResult(rawOutput: string, containerRoot?: string): RunnerFacts {
+    return parsePhpunitJunitXml(rawOutput, containerRoot);
   }
 }

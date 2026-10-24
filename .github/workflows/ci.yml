@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, 'feature/**']
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdd:
+    name: Validadores SDD y Harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: app/.nvmrc
+      - run: node scripts/sdd-check.mjs
+      - run: node harness/validate-work-items.mjs
+      - run: node harness/validate-harness.mjs
+      - run: node harness/validate-completions.mjs
+
+  app:
+    name: Lint, build y tests de app/
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: app/.nvmrc
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm contracts:check
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test

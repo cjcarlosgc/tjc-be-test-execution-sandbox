@@ -1,33 +1,40 @@
 /**
- * Vocabulario compartido de INTEROP-1.1 §7 (Core <-> Sandbox). Vive fuera de
- * `executions/` para que módulos de nivel inferior (workspace, materialization)
- * puedan tipar sus errores/resultados sin depender de la feature HTTP.
+ * Vocabulario compartido de INTEROP §7 (Core <-> Sandbox). Los tipos de cable se derivan del contrato generado
+ * (`spec/contracts/schemas`, ver `src/contracts/generated`); aquí solo viven las constantes y los tipos internos.
+ * Vive fuera de `executions/` para que módulos de nivel inferior (workspace, materialization) puedan tipar sus
+ * errores/resultados sin depender de la feature HTTP.
  */
+import type {
+  ArtifactType,
+  EphemeralDownloadRef as ContractEphemeralDownloadRef,
+  ExecutionArtifactInput as ContractExecutionArtifactInput,
+  ExecutionEvidenceFact as ContractExecutionEvidenceFact,
+  ExecutionInputRole as ContractExecutionInputRole,
+  ExecutionPhase as ContractExecutionPhase,
+  ExecutionProfile as ContractExecutionProfile,
+  ExecutionScope as ContractExecutionScope,
+  RunnerFacts as ContractRunnerFacts,
+  SandboxExecutionStatus as ContractSandboxExecutionStatus,
+  SandboxFailureFact as ContractSandboxFailureFact,
+  SandboxStage as ContractSandboxStage,
+  StageDuration as ContractStageDuration,
+  TestCaseFact as ContractTestCaseFact,
+  TestRunner as ContractTestRunner,
+} from '../../contracts/generated/contract-types.js';
 
-export type ExecutionInputRole = 'PROJECT_SNAPSHOT' | 'GENERATED_ARTIFACT';
-export type ExecutionArtifactType = 'CREATED' | 'MODIFIED';
-export type SandboxStage =
-  | 'PREPARING'
-  | 'INSTALLING_DEPENDENCIES'
-  | 'COMPILING'
-  | 'RUNNING_TESTS'
-  | 'FINALIZING';
-export type SandboxExecutionStatus =
-  | 'PENDING'
-  | SandboxStage
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'TIMED_OUT';
-export type ExecutionScope = 'TARGET' | 'BATCH';
+export type ExecutionInputRole = ContractExecutionInputRole;
+export type ExecutionArtifactType = ArtifactType;
+export type SandboxStage = ContractSandboxStage;
+export type SandboxExecutionStatus = ContractSandboxExecutionStatus;
+export type ExecutionScope = ContractExecutionScope;
 /**
- * INTEROP §7.2: `BASELINE` ejecuta la suite existente; `GENERATED_TESTS`
- * ejecuta solo los artefactos materializados (009, corte T-003). Opcional en
- * el request mientras Core no lo envíe; default `GENERATED_TESTS`.
+ * INTEROP §7.2: `BASELINE` ejecuta la suite existente; `GENERATED_TESTS` ejecuta solo los artefactos
+ * materializados. Opcional en el request mientras Core no lo envíe; default `GENERATED_TESTS`.
  */
-export type ExecutionPhase = 'BASELINE' | 'GENERATED_TESTS';
+export type ExecutionPhase = ContractExecutionPhase;
 export const DEFAULT_EXECUTION_PHASE: ExecutionPhase = 'GENERATED_TESTS';
-export type ExecutionProfile = 'NODE_TYPESCRIPT' | 'PHP_LARAVEL_PHPUNIT';
-export type TestRunner = 'JEST' | 'VITEST' | 'PHPUNIT';
+export type ExecutionProfile = ContractExecutionProfile;
+export type TestRunner = ContractTestRunner;
 
 /**
  * INTEROP-2.0 §7.2: el profile fija el conjunto de runners aceptados; una
@@ -42,20 +49,8 @@ export const EXECUTION_PROFILE_RUNNERS: Record<
   PHP_LARAVEL_PHPUNIT: ['PHPUNIT'],
 };
 
-export interface EphemeralDownloadRef {
-  role: ExecutionInputRole;
-  url: string;
-  expiresAt: string;
-  sha256: string;
-  sizeBytes: number;
-}
-
-export interface ExecutionArtifactInput {
-  artifactId: string;
-  relativePath: string;
-  artifactType: ExecutionArtifactType;
-  download: EphemeralDownloadRef;
-}
+export type EphemeralDownloadRef = ContractEphemeralDownloadRef;
+export type ExecutionArtifactInput = ContractExecutionArtifactInput;
 
 export type TestCaseFactStatus = 'PASSED' | 'FAILED' | 'SKIPPED' | 'TODO';
 
@@ -66,68 +61,15 @@ export type TestCaseFactStatus = 'PASSED' | 'FAILED' | 'SKIPPED' | 'TODO';
  */
 export type TestCaseFailureKind = 'ASSERTION' | 'ERROR';
 
-export interface TestCaseFact {
-  suitePath: string | null;
-  name: string;
-  status: TestCaseFactStatus;
-  durationMs: number | null;
-  errorMessage: string | null;
-  failureKind: TestCaseFailureKind | null;
-}
+export type TestCaseFact = ContractTestCaseFact;
+export type RunnerFacts = ContractRunnerFacts;
+export type StageDuration = ContractStageDuration;
 
-export interface RunnerFacts {
-  executionProfile: ExecutionProfile;
-  runner: TestRunner;
-  compiled: boolean;
-  executed: boolean;
-  passed: boolean;
-  totalTests: number;
-  passedTests: number;
-  failedTests: number;
-  skippedTests: number;
-  testCases: TestCaseFact[];
-  testCasesTruncated: boolean;
-}
+export type SandboxFailureFact = ContractSandboxFailureFact;
+export type SandboxFailureCategory = SandboxFailureFact['category'];
 
-export interface StageDuration {
-  stage: SandboxStage;
-  durationMs: number;
-  /** Aditivo (WI-SANDBOX-007): instante ISO de inicio de la etapa. */
-  startedAt?: string;
-  /** Aditivo (WI-SANDBOX-007): instante ISO de fin de la etapa. */
-  completedAt?: string;
-}
-
-export type SandboxFailureCategory =
-  | 'COMPILATION'
-  | 'TEST_ASSERTION'
-  | 'TEST_RUNTIME'
-  | 'DEPENDENCY'
-  | 'CONFIGURATION'
-  | 'INFRASTRUCTURE'
-  | 'UNKNOWN';
-
-export interface SandboxFailureFact {
-  stage: SandboxStage;
-  category: SandboxFailureCategory;
-  code: string;
-  message: string;
-}
-
-export type ExecutionEvidenceKind =
-  | 'COMPILER_STDOUT'
-  | 'COMPILER_STDERR'
-  | 'TEST_STDOUT'
-  | 'TEST_STDERR'
-  | 'RUNNER_REPORT';
-
-export interface ExecutionEvidenceFact {
-  kind: ExecutionEvidenceKind;
-  stage: SandboxStage;
-  content: string;
-  truncated: boolean;
-  originalBytes: number | null;
-}
+export type ExecutionEvidenceFact = ContractExecutionEvidenceFact;
+export type ExecutionEvidenceKind = ExecutionEvidenceFact['kind'];
 
 export interface ExecutionResultFacts {
   facts: RunnerFacts | null;

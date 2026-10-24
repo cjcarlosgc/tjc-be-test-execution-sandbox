@@ -1,6 +1,6 @@
 # Contexto operativo del proyecto
 
-**Estado:** APROBADO — SDD 2.1 (baseline local Sandbox)
+**Estado:** APROBADO — SDD 3.1
 
 `tjc-be-test-execution-sandbox` es el backend de ejecución aislada cuyo único consumidor es RAG Core. Ejecuta código no confiable y devuelve hechos; no genera pruebas ni interpreta objetivos de producto.
 
